@@ -97,4 +97,21 @@ Route::middleware('auth.custom')->group(function () {
     Route::get('/audit-logs', [AuditLogController::class, 'index'])
         ->name('audit.logs')
         ->middleware('role:Admin');
+
+    Route::middleware(['auth'])->group(function () {
+ 
+    // Settings page  (Admin → Settings submenu)
+    Route::get('/admin/settings', [SettingsController::class, 'index'])
+        ->name('settings.index');
+ 
+    // Theme update endpoint  (called via fetch() from settings.blade.php)
+    Route::post('/admin/settings/theme', [SettingsController::class, 'updateTheme'])
+        ->name('settings.theme.update');
+
+
+    Route::middleware(['auth.custom', 'role:Admin,Officer'])
+    ->get('/members', [MemberController::class, 'index'])
+    ->name('members.index');
+ 
+});
 });

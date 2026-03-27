@@ -2,58 +2,83 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use Carbon\Carbon;
+use App\Models\User;
+use App\Models\Member;
+use App\Models\Document;
+use App\Models\Budget;
+use Illuminate\Support\Facades\Auth;
 
 class DashboardController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('auth.custom');
+    }
+
     public function index()
     {
-        $user = auth()->user();
+        $user = Auth::user()->load('role');
 
-        // ---- Role ----
+        // Stats
+        $totalMembers        = Member::count();
+        $activeMembers       = Member::where(function ($q) {
+                                    $q->whereNull('term_end')
+                                      ->orWhere('term_end', '>=', now());
+                                })->count();
+        $officersCount       = User::whereHas('role', fn($q) =>
+                                    $q->whereIn('name', ['Admin', 'Officer'])
+                               )->count();
+        $newMembersThisMonth = Member::whereMonth('created_at', now()->month)
+                                     ->whereYear('created_at', now()->year)
+                                     ->count();
+
+        // Members table with pagination
+        $members = Member::with('user.role')
+            ->latest()
+            ->paginate(10);
+
+        // Role & status color maps
         $roleColors = [
-            'Admin'   => 'bg-red-100 text-red-800',
-            'Officer' => 'bg-blue-100 text-blue-800',
-            'Auditor' => 'bg-yellow-100 text-yellow-800',
-            'Member'  => 'bg-gray-100 text-gray-700',
+            'Admin'   => 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300',
+            'Officer' => 'bg-sky-100 text-sky-700 dark:bg-sky-900 dark:text-sky-300',
+            'Auditor' => 'bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300',
+            'Member'  => 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300',
         ];
-
-        // Get role name as string
-        $roleName = $user->role?->name ?? '—';
-
-        // Safely get role color, fallback to gray
-        $roleColor = $roleColors[$roleName] ?? 'bg-gray-100 text-gray-700';
-
-        // ---- Status ----
-        $status = $user->member?->status;
-        $statusDisplay = $status ? ucfirst($status) : '—';
-
         $statusColors = [
-            'active'    => 'bg-green-100 text-green-800',
-            'inactive'  => 'bg-gray-100 text-gray-700',
-            'suspended' => 'bg-red-100 text-red-700',
+            'Active'   => 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300',
+            'Inactive' => 'bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400',
         ];
 
-        $statusColor = $statusColors[$status] ?? 'bg-gray-100 text-gray-700';
+        // Recent activity
+        $recentDocuments = Document::with('uploader')
+            ->latest('uploaded_at')
+            ->take(5)
+            ->get();
+        $recentBudgets   = Budget::with('reviewer.user')
+            ->latest()
+            ->take(5)
+            ->get();
 
-        // ---- Dates ----
-        $joinedAt = $user->member?->joined_at
-            ? Carbon::parse($user->member->joined_at)->format('M d, Y')
-            : '—';
+        // Total approved budget
+        $totalBudget = Budget::where('status', 'approved')->sum('amount');
 
-        $memberSince = $user->created_at
-            ? $user->created_at->format('M d, Y')
-            : '—';
+        // Badges
+        $userBadges = [];
 
-        return view('dashboard', compact(
+        // Use dashboard.dashboard (folder.file)
+        return view('dashboard.dashboard', compact(
             'user',
-            'roleName',
-            'roleColor',
-            'statusDisplay',
-            'statusColor',
-            'joinedAt',
-            'memberSince'
+            'totalMembers',
+            'activeMembers',
+            'officersCount',
+            'newMembersThisMonth',
+            'members',
+            'roleColors',
+            'statusColors',
+            'recentDocuments',
+            'recentBudgets',
+            'totalBudget',
+            'userBadges'
         ));
     }
 }

@@ -1,0 +1,188 @@
+/* ================================================================
+   VSULHS_SSLG — Theme System
+   Import in resources/css/app.css:  @import './themes.css';
+   ================================================================ */
+
+/* ── Utility classes used in blade ── */
+.sidebar-bg         { background-color: var(--sb-bg); }
+.sidebar-border-b   { border-bottom: 1px solid var(--sb-border); }
+.sidebar-border-t   { border-top:    1px solid var(--sb-border); }
+.sidebar-brand-name { color: var(--sb-text-active); }
+.sidebar-brand-sub  { color: var(--sb-text-muted); }
+.sidebar-avatar     { background-color: var(--sb-accent); color: #fff; }
+
+.sidebar-nav-item            { color: var(--sb-text-muted);  border-left: 2px solid transparent; display:flex; align-items:center; }
+.sidebar-nav-item:hover      { color: var(--sb-text-active); background-color: var(--sb-hover-bg); }
+.sidebar-nav-active          { color: var(--sb-text-active); background-color: var(--sb-active-bg); border-left: 2px solid var(--sb-accent); }
+
+.sidebar-sub-item            { color: var(--sb-text-muted);  border-left: 2px solid transparent; display:flex; align-items:center; }
+.sidebar-sub-item:hover      { color: var(--sb-text-active); background-color: var(--sb-hover-bg); }
+.sidebar-sub-active          { color: var(--sb-text-active); background-color: var(--sb-active-bg); border-left: 2px solid var(--sb-accent); }
+
+.topbar-bg     { background-color: var(--tb-bg); }
+.topbar-border { border-bottom: 1px solid var(--tb-border); }
+.topbar-title  { color: var(--tb-title); }
+.accent-pill   { background-color: var(--sb-accent-l); color: var(--sb-accent-t); }
+
+/* ── Role pill colours (always fixed regardless of theme) ── */
+.pill-admin    { background:#EEEDFE; color:#3C3489; }
+.pill-officer  { background:#E6F1FB; color:#0C447C; }
+.pill-auditor  { background:#FAEEDA; color:#633806; }
+.pill-member   { background:#F1EFE8; color:#5F5E5A; }
+.pill-active   { background:#EAF3DE; color:#27500A; }
+.pill-inactive { background:#FCEBEB; color:#791F1F; }
+
+/* ================================================================
+   THEMES — applied to <html class="theme-*">
+   ================================================================ */
+.theme-navy {
+    --sb-bg:          #1a1a2e;
+    --sb-accent:      #7F77DD;
+    --sb-accent-l:    #EEEDFE;
+    --sb-accent-t:    #3C3489;
+    --sb-text-active: #ffffff;
+    --sb-text-muted:  rgba(255,255,255,0.48);
+    --sb-hover-bg:    rgba(255,255,255,0.05);
+    --sb-active-bg:   rgba(255,255,255,0.09);
+    --sb-border:      rgba(255,255,255,0.08);
+    --tb-bg:          #111827;
+    --tb-border:      rgba(255,255,255,0.07);
+    --tb-title:       #ffffff;
+}
+.theme-forest {
+    --sb-bg:          #0F2D1A;
+    --sb-accent:      #1D9E75;
+    --sb-accent-l:    #E1F5EE;
+    --sb-accent-t:    #085041;
+    --sb-text-active: #ffffff;
+    --sb-text-muted:  rgba(255,255,255,0.48);
+    --sb-hover-bg:    rgba(255,255,255,0.05);
+    --sb-active-bg:   rgba(255,255,255,0.09);
+    --sb-border:      rgba(255,255,255,0.08);
+    --tb-bg:          #0a1f10;
+    --tb-border:      rgba(255,255,255,0.07);
+    --tb-title:       #ffffff;
+}
+.theme-crimson {
+    --sb-bg:          #2D0F0F;
+    --sb-accent:      #E24B4A;
+    --sb-accent-l:    #FCEBEB;
+    --sb-accent-t:    #791F1F;
+    --sb-text-active: #ffffff;
+    --sb-text-muted:  rgba(255,255,255,0.48);
+    --sb-hover-bg:    rgba(255,255,255,0.05);
+    --sb-active-bg:   rgba(255,255,255,0.09);
+    --sb-border:      rgba(255,255,255,0.08);
+    --tb-bg:          #1a0808;
+    --tb-border:      rgba(255,255,255,0.07);
+    --tb-title:       #ffffff;
+}
+.theme-slate {
+    --sb-bg:          #1C2333;
+    --sb-accent:      #378ADD;
+    --sb-accent-l:    #E6F1FB;
+    --sb-accent-t:    #0C447C;
+    --sb-text-active: #ffffff;
+    --sb-text-muted:  rgba(255,255,255,0.48);
+    --sb-hover-bg:    rgba(255,255,255,0.05);
+    --sb-active-bg:   rgba(255,255,255,0.09);
+    --sb-border:      rgba(255,255,255,0.08);
+    --tb-bg:          #111827;
+    --tb-border:      rgba(255,255,255,0.07);
+    --tb-title:       #ffffff;
+}
+.theme-amber {
+    --sb-bg:          #2B1F05;
+    --sb-accent:      #BA7517;
+    --sb-accent-l:    #FAEEDA;
+    --sb-accent-t:    #633806;
+    --sb-text-active: #ffffff;
+    --sb-text-muted:  rgba(255,255,255,0.48);
+    --sb-hover-bg:    rgba(255,255,255,0.05);
+    --sb-active-bg:   rgba(255,255,255,0.09);
+    --sb-border:      rgba(255,255,255,0.08);
+    --tb-bg:          #1a1208;
+    --tb-border:      rgba(255,255,255,0.07);
+    --tb-title:       #ffffff;
+}
+.theme-rose {
+    --sb-bg:          #2D0F1E;
+    --sb-accent:      #D4537E;
+    --sb-accent-l:    #FBEAF0;
+    --sb-accent-t:    #72243E;
+    --sb-text-active: #ffffff;
+    --sb-text-muted:  rgba(255,255,255,0.48);
+    --sb-hover-bg:    rgba(255,255,255,0.05);
+    --sb-active-bg:   rgba(255,255,255,0.09);
+    --sb-border:      rgba(255,255,255,0.08);
+    --tb-bg:          #1a0812;
+    --tb-border:      rgba(255,255,255,0.07);
+    --tb-title:       #ffffff;
+}
+.theme-light {
+    --sb-bg:          #f0ede8;
+    --sb-accent:      #534AB7;
+    --sb-accent-l:    #EEEDFE;
+    --sb-accent-t:    #3C3489;
+    --sb-text-active: #26215C;
+    --sb-text-muted:  rgba(40,38,70,0.50);
+    --sb-hover-bg:    rgba(83,74,183,0.06);
+    --sb-active-bg:   rgba(83,74,183,0.11);
+    --sb-border:      rgba(40,38,70,0.10);
+    --tb-bg:          #1f1f2e;
+    --tb-border:      rgba(255,255,255,0.07);
+    --tb-title:       #ffffff;
+}
+
+/* ================================================================
+   DARK MODE  — <html class="theme-* dark">
+   Only the main content area flips; sidebar colour is theme-driven.
+   ================================================================ */
+
+/* Page shell */
+html.dark body                        { background-color: #0d0d12; }
+html.dark .main-bg                    { background-color: #0d0d12; }
+
+/* Cards / panels */
+html.dark .card                       { background-color: #18181f !important; border-color: rgba(255,255,255,0.07) !important; }
+html.dark .bg-white                   { background-color: #18181f !important; }
+html.dark .bg-gray-50                 { background-color: #111118 !important; }
+html.dark .bg-gray-100                { background-color: #0d0d12 !important; }
+
+/* Borders */
+html.dark .border-gray-200            { border-color: rgba(255,255,255,0.07) !important; }
+html.dark .border-gray-100            { border-color: rgba(255,255,255,0.05) !important; }
+html.dark .divide-gray-100 > * + *    { border-color: rgba(255,255,255,0.05) !important; }
+html.dark thead.bg-gray-50            { background-color: rgba(255,255,255,0.03) !important; }
+html.dark .border-b                   { border-color: rgba(255,255,255,0.06); }
+
+/* Text */
+html.dark .text-gray-900              { color: #e4e2dc !important; }
+html.dark .text-gray-800              { color: #d0cec8 !important; }
+html.dark .text-gray-700              { color: #b8b6b0 !important; }
+html.dark .text-gray-600              { color: #9a9890 !important; }
+html.dark .text-gray-500              { color: #7a7870 !important; }
+html.dark .text-gray-400              { color: #5a5850 !important; }
+html.dark h1, html.dark h2,
+html.dark h3, html.dark h4            { color: #e4e2dc !important; }
+
+/* Table rows */
+html.dark tr.border-b                 { border-color: rgba(255,255,255,0.05) !important; }
+html.dark tr:hover td                 { background-color: rgba(255,255,255,0.03) !important; }
+
+/* Inputs */
+html.dark input,
+html.dark select,
+html.dark textarea {
+    background-color: #1e1e28 !important;
+    border-color: rgba(255,255,255,0.12) !important;
+    color: #e4e2dc !important;
+}
+
+/* Pagination */
+html.dark nav[role=navigation] span,
+html.dark nav[role=navigation] a {
+    background-color: #18181f !important;
+    border-color: rgba(255,255,255,0.07) !important;
+    color: #b8b6b0 !important;
+}

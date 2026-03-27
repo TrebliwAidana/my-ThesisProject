@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Member;
 use App\Models\User;
+use App\Helpers\UserHelper;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -20,7 +21,7 @@ class MemberController extends Controller
         $this->middleware('auth.custom');
 
         // Only Admin and Officer can create, edit, or delete
-        $this->middleware('role:Admin,Officer')
+        $this->middleware('role:Adviser,Officer')
              ->only(['create', 'store', 'edit', 'update', 'destroy']);
     }
 
@@ -42,23 +43,40 @@ class MemberController extends Controller
 
     public function create()
     {
-        $users = User::whereDoesntHave('member')->get();
-        return view('members.create', compact('users'));
+        return view('members.create');
     }
 
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'user_id'    => ['required', 'exists:users,id', 'unique:members,user_id'],
-            'position'   => ['required', 'string', 'max:150'],
-            'term_start' => ['required', 'date'],
-            'term_end'   => ['nullable', 'date', 'after_or_equal:term_start'],
+            'full_name' => 'required|string|max:255',
+            'position' => 'required|string|max:255',
+            'term_start' => 'required|date',
+            'term_end' => 'nullable|date|after_or_equal:term_start',
         ]);
-
-        Member::create($validated);
-
+        
+        // Generate email for member
+        $email = UserHelper::generateUniqueMemberEmail($validated['full_name']);
+        
+        // Create user with member role (role_id = 4)
+        $user = User::create([
+            'full_name' => $validated['full_name'],
+            'email' => $email,
+            'password' => bcrypt('password'), // Default password
+            'role_id' => 4, // Member role
+            'position' => $validated['position'],
+        ]);
+        
+        // Create member record
+        $member = Member::create([
+            'user_id' => $user->id,
+            'position' => $validated['position'],
+            'term_start' => $validated['term_start'],
+            'term_end' => $validated['term_end'],
+        ]);
+        
         return redirect()->route('members.index')
-            ->with('success', 'Member added successfully.');
+            ->with('success', "Member created successfully! Email: {$email}, Password: password");
     }
 
     public function show(Member $member)
@@ -71,17 +89,15 @@ class MemberController extends Controller
 
     public function edit(Member $member)
     {
-        $users = User::all();
-        return view('members.edit', compact('member', 'users'));
+        return view('members.edit', compact('member'));
     }
 
     public function update(Request $request, Member $member)
     {
         $validated = $request->validate([
-            'user_id'    => ['required', 'exists:users,id', 'unique:members,user_id,' . $member->id],
-            'position'   => ['required', 'string', 'max:150'],
+            'position' => ['required', 'string', 'max:150'],
             'term_start' => ['required', 'date'],
-            'term_end'   => ['nullable', 'date', 'after_or_equal:term_start'],
+            'term_end' => ['nullable', 'date', 'after_or_equal:term_start'],
         ]);
 
         $member->update($validated);
@@ -92,14 +108,21 @@ class MemberController extends Controller
 
     public function destroy(Member $member)
     {
+        // Also delete the associated user
+        $user = $member->user;
         $member->delete();
+        
+        if ($user && $user->role_id == 4) { // Only delete if it's a member role
+            $user->delete();
+        }
+        
         return redirect()->route('members.index')
             ->with('success', 'Member removed successfully.');
     }
 
     /**
      * Members can only view their own record.
-     * Admins, Officers, and Auditors can view any record.
+     * Advisers, Officers, and Auditors can view any record.
      */
     private function authorizeMemberAccess(Member $member): void
     {

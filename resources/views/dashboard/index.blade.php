@@ -47,7 +47,7 @@
                         <span class="bg-red-100 text-red-700 text-xs font-semibold px-2 py-0.5 rounded-full">Suspended</span>
                     @endif
                 </td>
-                <td class="px-5 py-3 text-gray-600">{{ $member->joined_at->format('M d, Y') }}</td>
+                <td class="px-5 py-3 text-gray-600">{{ optional($member->joined_at)->format('M d, Y') ?? 'N/A' }}</td>
                 <td class="px-5 py-3 text-right">
                     <div class="flex items-center justify-end gap-2">
                         <a href="{{ route('members.edit', $member->id) }}"

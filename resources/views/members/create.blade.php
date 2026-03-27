@@ -1,77 +1,77 @@
 @extends('layouts.app')
-@section('title', 'Add Member — VSULHS_SSLG')
+
+@section('title', 'Add New Member')
 
 @section('content')
-
-<div class="mb-6">
-    <a href="{{ route('members.index') }}" class="text-sm text-gray-500 hover:text-gray-800 transition">← Back to Members</a>
-    <h1 class="text-2xl font-bold text-gray-900 mt-2">Add Member</h1>
+<div class="max-w-2xl mx-auto">
+    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-slate-200 dark:border-gray-700">
+        <div class="px-6 py-4 border-b border-slate-200 dark:border-gray-700">
+            <h2 class="text-xl font-semibold text-slate-800 dark:text-slate-200">Add New Member</h2>
+            <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Email will be auto-generated as: firstname@vsulhs-sslg.com</p>
+        </div>
+        
+        <form action="{{ route('members.store') }}" method="POST" class="p-6">
+            @csrf
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Full Name</label>
+                    <input type="text" name="full_name" required value="{{ old('full_name') }}"
+                           class="w-full px-4 py-2 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white @error('full_name') border-red-500 @enderror">
+                    @error('full_name')
+                        <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                    @enderror
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Position</label>
+                    <input type="text" name="position" required value="{{ old('position') }}"
+                           class="w-full px-4 py-2 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white @error('position') border-red-500 @enderror">
+                    @error('position')
+                        <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                    @enderror
+                </div>
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Term Start</label>
+                        <input type="date" name="term_start" required value="{{ old('term_start') }}"
+                               class="w-full px-4 py-2 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white @error('term_start') border-red-500 @enderror">
+                        @error('term_start')
+                            <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                        @enderror
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Term End</label>
+                        <input type="date" name="term_end" value="{{ old('term_end') }}"
+                               class="w-full px-4 py-2 border border-slate-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white">
+                        @error('term_end')
+                            <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                        @enderror
+                    </div>
+                </div>
+                
+                <div class="bg-slate-50 dark:bg-gray-700/50 rounded-lg p-4 mt-4">
+                    <p class="text-sm text-slate-600 dark:text-slate-400">
+                        <strong>Auto-generated credentials:</strong><br>
+                        Email: <span class="font-mono text-indigo-600 dark:text-indigo-400">[firstname]@vsulhs-sslg.com</span><br>
+                        Password: <span class="font-mono text-indigo-600 dark:text-indigo-400">password</span>
+                    </p>
+                </div>
+            </div>
+            
+            <div class="flex justify-end gap-3 mt-6 pt-4 border-t border-slate-200 dark:border-gray-700">
+                <a href="{{ route('members.index') }}" 
+                   class="px-4 py-2 border border-slate-300 dark:border-gray-600 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-gray-700">
+                    Cancel
+                </a>
+                <button type="submit"
+                        class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium">
+                    Create Member
+                </button>
+            </div>
+        </form>
+    </div>
 </div>
-
-<div class="bg-white rounded-xl border border-gray-200 p-6 max-w-xl">
-    <form method="POST" action="{{ route('members.store') }}">
-        @csrf
-
-        {{-- User --}}
-        <div class="mb-4">
-            <label class="block text-sm font-semibold text-gray-700 mb-1">User</label>
-            <select name="user_id" required
-                    class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black {{ $errors->has('user_id') ? 'border-red-400' : '' }}">
-                <option value="">— Select a user —</option>
-                @if($users->count())
-                    @foreach ($users as $user)
-                        <option value="{{ $user->id }}" {{ old('user_id') == $user->id ? 'selected' : '' }}>
-                            {{ $user->full_name }} ({{ $user->role->name ?? 'No Role' }})
-                        </option>
-                    @endforeach
-                @else
-                    <option value="" disabled>No users available</option>
-                @endif
-            </select>
-            @error('user_id') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
-        </div>
-
-        {{-- Organization --}}
-        <div class="mb-4">
-            <label class="block text-sm font-semibold text-gray-700 mb-1">Organization</label>
-            <input type="text" name="organization" value="{{ old('organization', 'VSULHS_SSLG') }}" required
-                   class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black {{ $errors->has('organization') ? 'border-red-400' : '' }}">
-            @error('organization') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
-        </div>
-
-        {{-- Status --}}
-        <div class="mb-4">
-            <label class="block text-sm font-semibold text-gray-700 mb-1">Status</label>
-            <select name="status" required
-                    class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black">
-                @foreach (['active', 'inactive', 'suspended'] as $s)
-                    <option value="{{ $s }}" {{ old('status', 'active') === $s ? 'selected' : '' }}>
-                        {{ ucfirst($s) }}
-                    </option>
-                @endforeach
-            </select>
-            @error('status') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
-        </div>
-
-        {{-- Joined At --}}
-        <div class="mb-6">
-            <label class="block text-sm font-semibold text-gray-700 mb-1">Date Joined</label>
-            <input type="date" name="joined_at" value="{{ old('joined_at', date('Y-m-d')) }}" required
-                   class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black {{ $errors->has('joined_at') ? 'border-red-400' : '' }}">
-            @error('joined_at') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
-        </div>
-
-        <div class="flex gap-3">
-            <button type="submit"
-                    class="bg-black text-white text-sm font-semibold px-5 py-2 rounded-lg hover:bg-gray-800 transition">
-                Add Member
-            </button>
-            <a href="{{ route('members.index') }}"
-               class="text-sm font-semibold text-gray-600 border border-gray-300 px-5 py-2 rounded-lg hover:bg-gray-50 transition">
-                Cancel
-            </a>
-        </div>
-    </form>
-</div>
-
 @endsection
