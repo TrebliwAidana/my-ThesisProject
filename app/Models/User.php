@@ -4,7 +4,6 @@ namespace App\Models;
 
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -52,15 +51,16 @@ use App\Models\Budget;
  */
 class User extends Authenticatable
 {
-    use Notifiable, HasUuids;
+    use Notifiable;  // Removed HasUuids
 
     protected $fillable = [
         'full_name',
         'email',
         'password',
         'role_id',
-         'theme',          // ← add this
-         'remember_token',
+        'position',      // Added position
+        'theme',
+        'remember_token',
     ];
 
     protected $hidden = [
@@ -76,10 +76,9 @@ class User extends Authenticatable
     }
     
     protected $casts = [
-        // ... your existing casts ...
         'email_verified_at' => 'datetime',
         'password'          => 'hashed',
-        'theme'             => 'string',  // ← add this
+        'theme'             => 'string',
     ];
 
     /**
@@ -145,7 +144,8 @@ class User extends Authenticatable
     {
         if (!$permission) return true;
 
-        $roleName = strtolower($this->role?->name);
+        // Use the exact role name as stored in the database
+        $roleName = $this->role?->name;
 
         $permissions = config("permissions.roles.$roleName", []);
 
@@ -153,22 +153,22 @@ class User extends Authenticatable
     }
 
     /**
- * Set default password for new members
- */
-protected static function boot()
-{
-    parent::boot();
-    
-    static::creating(function ($user) {
-        // If user is a member (role_id = 4) and no password set
-        if ($user->role_id == 4 && empty($user->password)) {
-            $user->password = bcrypt('password');
-        }
+     * Set default password for new members
+     */
+    protected static function boot()
+    {
+        parent::boot();
         
-        // If user is a member and no email set
-        if ($user->role_id == 4 && empty($user->email)) {
-            $user->email = \App\Helpers\UserHelper::generateUniqueMemberEmail($user->full_name);
-        }
-    });
-}
+        static::creating(function ($user) {
+            // If user is a member (role_id = 4) and no password set
+            if ($user->role_id == 4 && empty($user->password)) {
+                $user->password = bcrypt('password');
+            }
+            
+            // If user is a member and no email set
+            if ($user->role_id == 4 && empty($user->email)) {
+                $user->email = \App\Helpers\UserHelper::generateUniqueMemberEmail($user->full_name);
+            }
+        });
+    }
 }

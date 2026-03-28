@@ -9,10 +9,6 @@ use Symfony\Component\HttpFoundation\Response;
 
 class AuthMiddleware
 {
-    /**
-     * Handle an incoming request.
-     * Redirects to login if the user is not authenticated.
-     */
     public function handle(Request $request, Closure $next): Response
     {
         if (!Auth::check()) {

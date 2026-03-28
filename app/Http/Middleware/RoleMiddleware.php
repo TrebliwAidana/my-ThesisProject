@@ -9,24 +9,27 @@ use Symfony\Component\HttpFoundation\Response;
 
 class RoleMiddleware
 {
-    /**
-     * Handle an incoming request.
-     *
-     * Usage in routes or constructors:
-     *   middleware('role:Admin')
-     *   middleware('role:Admin,Officer')
-     *   middleware('role:Admin,Officer,Auditor')
-     *
-     * @param string ...$roles  One or more allowed role names
-     */
     public function handle(Request $request, Closure $next, string ...$roles): Response
     {
+        // Check if user is authenticated
         if (!Auth::check()) {
             return redirect()->route('login')
                 ->with('error', 'You must be logged in to access this page.');
         }
 
-        $userRole = Auth::user()->role->name ?? null;
+        $user = Auth::user();
+        
+        // Check if user has a role
+        if (!$user->role) {
+            abort(403, 'User role not assigned. Please contact administrator.');
+        }
+
+        $userRole = $user->role->name;
+
+        // If no roles are specified, just pass through
+        if (empty($roles)) {
+            return $next($request);
+        }
 
         if (!in_array($userRole, $roles)) {
             abort(403, 'Unauthorized. You do not have permission to perform this action.');

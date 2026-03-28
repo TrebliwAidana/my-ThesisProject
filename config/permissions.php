@@ -4,63 +4,69 @@
 return [
 
     'roles' => [
-        'admin' => [
+        'Adviser' => [
             'manage-members',
             'manage-documents',
             'manage-budgets',
             'manage-users',
             'manage-settings',
+            'manage-roles',
+            'manage-permissions',
+            'view-reports',
         ],
-        'officer' => [
+        'Officer' => [
             'manage-members',
             'manage-documents',
+            'view-budgets',
+            'create-budgets',
+            'review-budgets',
+            'view-reports',
         ],
-        'auditor' => [
+        'Auditor' => [
+            'view-members',
             'view-documents',
             'view-budgets',
+            'view-reports',
         ],
-        'member' => [
-            'view-documents',
+        'Member' => [
+            'view-members',
+            'view-organization-info',
         ],
     ],
 
-    // 🔥 NEW: Sidebar Menu Config
+    // Sidebar Menu Config
     'menu' => [
-
         [
             'label' => 'Dashboard',
             'route' => 'dashboard',
-            'permission' => null, // everyone can see
+            'permission' => null,
         ],
-
         [
             'label' => 'Members',
             'route' => 'members.index',
             'permission' => 'manage-members',
         ],
-
         [
             'label' => 'Documents',
             'route' => 'documents.index',
             'permission' => 'manage-documents',
         ],
-
         [
             'label' => 'Budgets',
             'route' => 'budgets.index',
             'permission' => 'manage-budgets',
         ],
-
         [
-            'label' => 'Users',
-            'route' => 'admin.users',
+            'label' => 'Adviser',
+            'route' => null,
             'permission' => 'manage-users',
-        ],
-
-        [
-            'label' => 'Settings',
-            'route' => 'settings.index',
-            'permission' => 'manage-settings',
+            'submenu' => [
+                ['label' => 'User Management', 'route' => 'admin.users.index', 'permission' => 'manage-users'],
+                ['label' => 'Roles', 'route' => 'admin.roles.index', 'permission' => 'manage-roles'],
+                ['label' => 'Permissions', 'route' => 'admin.permissions.index', 'permission' => 'manage-permissions'],
+                ['label' => 'Settings', 'route' => 'settings.index', 'permission' => 'manage-settings'],
+                ['label' => 'Audit Logs', 'route' => 'audit.logs', 'permission' => 'view-reports'],
+            ],
         ],
     ],
 ];

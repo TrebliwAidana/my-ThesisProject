@@ -32,8 +32,8 @@ Route::middleware('auth.custom')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
-    // Members — Admin & Officer
-    Route::middleware('role:Admin,Officer')->prefix('members')->name('members.')->group(function () {
+    // Members — Adviser & Officer
+    Route::middleware('role:Adviser,Officer')->prefix('members')->name('members.')->group(function () {
         Route::get('/', [MemberController::class, 'index'])->name('index');
         Route::get('/create', [MemberController::class, 'create'])->name('create');
         Route::post('/', [MemberController::class, 'store'])->name('store');
@@ -42,8 +42,8 @@ Route::middleware('auth.custom')->group(function () {
         Route::delete('/{id}', [MemberController::class, 'destroy'])->name('destroy');
     });
 
-    // Documents — Admin & Officer
-    Route::middleware('role:Admin,Officer')->prefix('documents')->name('documents.')->group(function () {
+    // Documents — Adviser & Officer
+    Route::middleware('role:Adviser,Officer')->prefix('documents')->name('documents.')->group(function () {
         Route::get('/', [DocumentController::class, 'index'])->name('index');
         Route::get('/upload', [DocumentController::class, 'create'])->name('create');
         Route::post('/', [DocumentController::class, 'store'])->name('store');
@@ -51,8 +51,8 @@ Route::middleware('auth.custom')->group(function () {
         Route::delete('/{id}', [DocumentController::class, 'destroy'])->name('destroy');
     });
 
-    // Budgets — Admin & Auditor
-    Route::middleware('role:Admin,Auditor')->prefix('budgets')->name('budgets.')->group(function () {
+    // Budgets — Adviser & Auditor
+    Route::middleware('role:Adviser,Auditor')->prefix('budgets')->name('budgets.')->group(function () {
         Route::get('/', [BudgetController::class, 'index'])->name('index');
         Route::get('/create', [BudgetController::class, 'create'])->name('create');
         Route::post('/', [BudgetController::class, 'store'])->name('store');
@@ -61,8 +61,8 @@ Route::middleware('auth.custom')->group(function () {
         Route::delete('/{id}', [BudgetController::class, 'destroy'])->name('destroy');
     });
 
-    // Admin-only routes
-    Route::middleware('role:Admin')->prefix('admin')->name('admin.')->group(function () {
+    // Admin-only routes (now Adviser-only)
+    Route::middleware('role:Adviser')->prefix('admin')->name('admin.')->group(function () {
 
         // Users
         Route::prefix('users')->name('users.')->group(function () {
@@ -88,30 +88,29 @@ Route::middleware('auth.custom')->group(function () {
         });
     });
 
-    // Settings — Admin only
+    // Settings — Adviser only
     Route::get('/settings', [SettingsController::class, 'index'])
         ->name('settings.index')
-        ->middleware('role:Admin');
+        ->middleware('role:Adviser');
 
-    // Audit Logs — Admin only
+    // Audit Logs — Adviser only
     Route::get('/audit-logs', [AuditLogController::class, 'index'])
         ->name('audit.logs')
-        ->middleware('role:Admin');
+        ->middleware('role:Adviser');
 
     Route::middleware(['auth'])->group(function () {
  
-    // Settings page  (Admin → Settings submenu)
-    Route::get('/admin/settings', [SettingsController::class, 'index'])
-        ->name('settings.index');
+        // Settings page (Adviser → Settings submenu)
+        Route::get('/admin/settings', [SettingsController::class, 'index'])
+            ->name('settings.index');
  
-    // Theme update endpoint  (called via fetch() from settings.blade.php)
-    Route::post('/admin/settings/theme', [SettingsController::class, 'updateTheme'])
-        ->name('settings.theme.update');
+        // Theme update endpoint (called via fetch() from settings.blade.php)
+        Route::post('/admin/settings/theme', [SettingsController::class, 'updateTheme'])
+            ->name('settings.theme.update');
 
-
-    Route::middleware(['auth.custom', 'role:Admin,Officer'])
-    ->get('/members', [MemberController::class, 'index'])
-    ->name('members.index');
- 
-});
+        // Dashboard routes
+        Route::get('/dashboard', [DashboardController::class, 'index'])
+            ->middleware(['auth.custom', 'prevent-back-history'])
+            ->name('dashboard');
+    });
 });

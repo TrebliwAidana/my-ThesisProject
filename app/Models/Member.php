@@ -31,6 +31,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Member whereTermStart($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Member whereUpdatedAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Member whereUserId($value)
+ * @property \Illuminate\Support\Carbon|null $joined_at
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Member whereJoinedAt($value)
  * @mixin \Eloquent
  */
 class Member extends Model
@@ -51,6 +53,7 @@ class Member extends Model
         'joined_at'  => 'date', // Add this if you have joined_at
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
+       
     ];
 
     /**
