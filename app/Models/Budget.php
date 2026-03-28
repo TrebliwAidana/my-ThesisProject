@@ -5,61 +5,59 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-/**
- * @property int $id
- * @property numeric $amount
- * @property string|null $desc
- * @property int|null $reviewed_by
- * @property string $status
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
- * @property-read \App\Models\Member|null $reviewer
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Budget approved()
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Budget newModelQuery()
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Budget newQuery()
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Budget pending()
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Budget query()
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Budget rejected()
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Budget whereAmount($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Budget whereCreatedAt($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Budget whereDesc($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Budget whereId($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Budget whereReviewedBy($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Budget whereStatus($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Budget whereUpdatedAt($value)
- * @mixin \Eloquent
- */
 class Budget extends Model
 {
-    // ✅ FIXED: Removed HasUuids — migration uses integer id()
     protected $fillable = [
-        // ✅ FIXED: Synced to match migration columns exactly
+        'title',
+        'description',
         'amount',
-        'desc',
-        'reviewed_by',
+        'category',
         'status',
+        'requested_by',
+        'reviewed_by',
+        'approved_by',
+        'reviewed_at',
+        'approved_at',
+        'disbursed_at',
+        'review_remarks',
+        'approval_remarks',
+        'attachment_path',
     ];
 
     protected $casts = [
         'amount' => 'decimal:2',
+        'reviewed_at' => 'datetime',
+        'approved_at' => 'datetime',
+        'disbursed_at' => 'datetime',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
     ];
 
-    /**
-     * ✅ FIXED: reviewer() now correctly points to Member (not User)
-     * because reviewed_by is a foreign key to the members table.
-     * Use reviewer.user to get the actual user: Budget::with('reviewer.user')
-     */
-    public function reviewer(): BelongsTo
+    // Relationships
+    public function requester(): BelongsTo
     {
-        return $this->belongsTo(Member::class, 'reviewed_by');
+        return $this->belongsTo(User::class, 'requested_by');
     }
 
-    /**
-     * Scope: budgets by status.
-     */
+    public function reviewer(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'reviewed_by');
+    }
+
+    public function approver(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    // Scopes
     public function scopePending($query)
     {
         return $query->where('status', 'pending');
+    }
+
+    public function scopeReviewed($query)
+    {
+        return $query->where('status', 'reviewed');
     }
 
     public function scopeApproved($query)
@@ -70,5 +68,58 @@ class Budget extends Model
     public function scopeRejected($query)
     {
         return $query->where('status', 'rejected');
+    }
+
+    public function scopeDisbursed($query)
+    {
+        return $query->where('status', 'disbursed');
+    }
+
+    public function scopeByCategory($query, $category)
+    {
+        return $query->where('category', $category);
+    }
+
+    // Helper Methods
+    public function isPending(): bool
+    {
+        return $this->status === 'pending';
+    }
+
+    public function isReviewed(): bool
+    {
+        return $this->status === 'reviewed';
+    }
+
+    public function isApproved(): bool
+    {
+        return $this->status === 'approved';
+    }
+
+    public function isRejected(): bool
+    {
+        return $this->status === 'rejected';
+    }
+
+    public function isDisbursed(): bool
+    {
+        return $this->status === 'disbursed';
+    }
+
+    public function canReview(): bool
+    {
+        return in_array($this->status, ['pending', 'reviewed']);
+    }
+
+    public function getStatusColorAttribute(): string
+    {
+        return match($this->status) {
+            'pending' => 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300',
+            'reviewed' => 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300',
+            'approved' => 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300',
+            'rejected' => 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300',
+            'disbursed' => 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300',
+            default => 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300',
+        };
     }
 }

@@ -25,8 +25,9 @@ class DashboardController extends Controller
                                     $q->whereNull('term_end')
                                       ->orWhere('term_end', '>=', now());
                                 })->count();
+        // FIXED: Changed 'Admin' to 'Adviser'
         $officersCount       = User::whereHas('role', fn($q) =>
-                                    $q->whereIn('name', ['Admin', 'Officer'])
+                                    $q->whereIn('name', ['Adviser', 'Officer'])
                                )->count();
         $newMembersThisMonth = Member::whereMonth('created_at', now()->month)
                                      ->whereYear('created_at', now()->year)
@@ -37,9 +38,9 @@ class DashboardController extends Controller
             ->latest()
             ->paginate(10);
 
-        // Role & status color maps
+        // Role & status color maps - FIXED: Changed 'Admin' to 'Adviser'
         $roleColors = [
-            'Admin'   => 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300',
+            'Adviser' => 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300',
             'Officer' => 'bg-sky-100 text-sky-700 dark:bg-sky-900 dark:text-sky-300',
             'Auditor' => 'bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300',
             'Member'  => 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300',
@@ -49,12 +50,12 @@ class DashboardController extends Controller
             'Inactive' => 'bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400',
         ];
 
-        // Recent activity
+        // Recent activity - FIXED: Changed 'reviewer.user' to 'requester'
         $recentDocuments = Document::with('uploader')
             ->latest('uploaded_at')
             ->take(5)
             ->get();
-        $recentBudgets   = Budget::with('reviewer.user')
+        $recentBudgets   = Budget::with('requester')  // Changed from 'reviewer.user'
             ->latest()
             ->take(5)
             ->get();

@@ -11,9 +11,10 @@ use Illuminate\Support\Facades\Auth;
 
 /**
  * MemberController
- * - Adviser, Officer : full CRUD
- * - Auditor        : index + show only
- * - Member         : show own record only
+ * - Adviser : full CRUD (can create any role)
+ * - Officer : can only create/edit/delete Members
+ * - Auditor : index + show only
+ * - Member : show own record only
  */
 class MemberController extends Controller
 {
@@ -63,7 +64,15 @@ class MemberController extends Controller
             abort(403, 'Unauthorized. Only Advisers and Officers can create members.');
         }
         
-        $roles = Role::all();
+        // Filter roles based on user's permission
+        if ($user->role->name === 'Adviser') {
+            // Adviser can create all roles
+            $roles = Role::all();
+        } else {
+            // Officer can only create Member role
+            $roles = Role::where('name', 'Member')->get();
+        }
+        
         return view('members.create', compact('roles'));
     }
 
@@ -89,6 +98,17 @@ class MemberController extends Controller
             'term_start' => 'required|date',
             'term_end' => 'nullable|date|after_or_equal:term_start',
         ]);
+        
+        // RESTRICTION: Officers cannot create Advisers, Officers, or Auditors
+        if ($user->role->name === 'Officer') {
+            $selectedRole = Role::find($validated['role_id']);
+            
+            // Officers can only create Members
+            if ($selectedRole->name !== 'Member') {
+                return redirect()->route('members.index')
+                    ->with('error', '🔒 ACCESS DENIED\n\nYou are not authorized to create this role.\n\nAs an Officer, you can only create regular Members.\n\nPlease contact an Adviser if you need to create higher-level accounts.');
+            }
+        }
         
         // Check if position is valid for the selected role
         $role = Role::find($validated['role_id']);
@@ -121,7 +141,7 @@ class MemberController extends Controller
         ]);
         
         return redirect()->route('members.index')
-            ->with('success', "Member created successfully! Email: {$email}, Password: password");
+            ->with('success', "✅ Member created successfully! Email: {$email}, Password: password");
     }
 
     public function show(Member $member)
@@ -152,7 +172,23 @@ class MemberController extends Controller
             abort(403, 'Unauthorized. Only Advisers and Officers can edit members.');
         }
         
-        $roles = Role::all();
+        // RESTRICTION: Officers cannot edit Advisers, Officers, or Auditors
+        if ($user->role->name === 'Officer') {
+            $targetRole = $member->user->role->name;
+            if ($targetRole !== 'Member') {
+                return redirect()->route('members.index')
+                    ->with('error', '🔒 ACCESS DENIED\n\nYou are not authorized to edit this member.\n\nAs an Officer, you can only edit regular Members.\n\nAdvisers, Officers, and Auditors can only be edited by an Adviser.');
+            }
+        }
+        
+        // Filter roles based on user's permission for editing
+        if ($user->role->name === 'Adviser') {
+            $roles = Role::all();
+        } else {
+            // Officers can only change role to Member
+            $roles = Role::where('name', 'Member')->get();
+        }
+        
         return view('members.edit', compact('member', 'roles'));
     }
 
@@ -161,7 +197,7 @@ class MemberController extends Controller
         $member = Member::find($id);
         
         if (!$member) {
-            return back()->with('error', 'Member not found.');
+            return back()->with('error', '❌ Member not found.');
         }
         
         $user = Auth::user();
@@ -176,6 +212,15 @@ class MemberController extends Controller
             abort(403, 'Unauthorized. Only Advisers and Officers can update members.');
         }
         
+        // RESTRICTION: Officers cannot edit Advisers, Officers, or Auditors
+        if ($user->role->name === 'Officer') {
+            $targetRole = $member->user->role->name;
+            if ($targetRole !== 'Member') {
+                return redirect()->route('members.index')
+                    ->with('error', '🔒 ACCESS DENIED\n\nYou are not authorized to edit this member.\n\nAs an Officer, you can only edit regular Members.\n\nAdvisers, Officers, and Auditors can only be edited by an Adviser.');
+            }
+        }
+        
         $validated = $request->validate([
             'position' => ['required', 'string', 'max:150'],
             'joined_at' => ['required', 'date'],
@@ -183,6 +228,23 @@ class MemberController extends Controller
             'term_end' => ['nullable', 'date', 'after_or_equal:term_start'],
             'role_id' => ['nullable', 'exists:roles,id'],
         ]);
+        
+        // RESTRICTION: Officers cannot upgrade roles
+        if ($user->role->name === 'Officer') {
+            $newRoleId = $request->input('role_id');
+            $currentRoleName = $member->user->role->name;
+            
+            // If trying to change role
+            if ($newRoleId && $newRoleId != $member->user->role_id) {
+                $newRole = Role::find($newRoleId);
+                
+                // Officers cannot promote anyone to Adviser, Officer, or Auditor
+                if ($newRole->name !== 'Member') {
+                    return redirect()->route('members.index')
+                        ->with('error', '🔒 ACCESS DENIED\n\nYou are not authorized to promote members to higher roles.\n\nOnly Advisers can create or promote to Adviser, Officer, or Auditor roles.\n\nPlease contact an Adviser if you need to create higher-level accounts.');
+                }
+            }
+        }
         
         // Safety Check: Prevent changing the last adviser's role
         $currentUserRole = $member->user->role->name;
@@ -194,7 +256,7 @@ class MemberController extends Controller
             })->count();
             
             if ($adviserCount <= 1 && $newRoleId && $newRoleId != $member->user->role_id) {
-                return back()->with('error', '⚠️⚠️⚠️ CANNOT CHANGE ROLE ⚠️⚠️⚠️<br><br>This is the LAST ADVISER in the system.');
+                return back()->with('error', '⚠️⚠️⚠️ CANNOT CHANGE ROLE ⚠️⚠️⚠️\n\nThis is the LAST ADVISER in the system.\n\nYou cannot change the role of the last adviser. There must be at least one adviser to manage the system.\n\nPlease create another adviser first, then you can change this one.');
             }
         }
         
@@ -219,8 +281,16 @@ class MemberController extends Controller
             ]);
         }
         
-        // Also update the user's role if changed
+        // Also update the user's role if changed (and allowed)
         if ($newRoleId && $newRoleId != $member->user->role_id) {
+            // Double-check for officer trying to upgrade
+            if ($user->role->name === 'Officer') {
+                $newRole = Role::find($newRoleId);
+                if ($newRole->name !== 'Member') {
+                    return redirect()->route('members.index')
+                        ->with('error', '🔒 ACCESS DENIED\n\nYou are not authorized to change roles.\n\nOnly Advisers can change roles to Adviser, Officer, or Auditor.');
+                }
+            }
             $member->user->update([
                 'role_id' => $newRoleId
             ]);
@@ -255,6 +325,15 @@ class MemberController extends Controller
             return back()->with('error', '❌ Member record is invalid.');
         }
         
+        // RESTRICTION: Officers cannot delete Advisers, Officers, or Auditors
+        if ($user->role->name === 'Officer') {
+            $userRole = $member->user->role->name;
+            if ($userRole !== 'Member') {
+                return redirect()->route('members.index')
+                    ->with('error', '🔒 ACCESS DENIED\n\nYou are not authorized to delete this member.\n\nAs an Officer, you can only delete regular Members.\n\nAdvisers, Officers, and Auditors can only be deleted by an Adviser.');
+            }
+        }
+        
         // Check if trying to delete an adviser
         if ($member->user->role && $member->user->role->name === 'Adviser') {
             $adviserCount = User::whereHas('role', function($q) {
@@ -262,7 +341,7 @@ class MemberController extends Controller
             })->count();
             
             if ($adviserCount <= 1) {
-                return back()->with('error', '⚠️⚠️⚠️ CANNOT DELETE ⚠️⚠️⚠️<br><br>This is the LAST ADVISER in the system.<br><br>There must be at least one adviser to manage the system.');
+                return back()->with('error', '⚠️⚠️⚠️ CANNOT DELETE ⚠️⚠️⚠️\n\nThis is the LAST ADVISER in the system.\n\nThere must be at least one adviser to manage the system.\n\nPlease create another adviser first before deleting this one.');
             }
         }
         

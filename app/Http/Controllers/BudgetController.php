@@ -3,8 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Budget;
-use App\Models\Member;
+use App\Models\BudgetCategory;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 /**
  * BudgetController
@@ -23,16 +24,60 @@ class BudgetController extends Controller
              ->only(['create', 'store', 'edit', 'update', 'destroy']);
     }
 
-    public function index()
-    {
-        $budgets = Budget::with('reviewer.user')->latest()->paginate(10);
-        return view('budgets.index', compact('budgets'));
+   public function index(Request $request)
+{
+    $user = Auth::user();
+    
+    // Check permissions
+    if (!in_array($user->role->name, ['Adviser', 'Officer', 'Auditor'])) {
+        abort(403, 'Unauthorized. Only Advisers, Officers, and Auditors can view budgets.');
     }
+    
+    $query = Budget::with(['requester', 'reviewer', 'approver'])->latest();
+    
+    // Filter by status
+    if ($request->filled('status')) {
+        $query->where('status', $request->status);
+    }
+    
+    // Filter by category
+    if ($request->filled('category')) {
+        $query->where('category', $request->category);
+    }
+    
+    // Search
+    if ($request->filled('search')) {
+        $search = $request->search;
+        $query->where(function($q) use ($search) {
+            $q->where('title', 'like', "%{$search}%")
+              ->orWhere('description', 'like', "%{$search}%");
+        });
+    }
+    
+    $budgets = $query->paginate(15);
+    $categories = BudgetCategory::where('is_active', true)->get();
+    $statusCounts = [
+        'pending' => Budget::where('status', 'pending')->count(),
+        'reviewed' => Budget::where('status', 'reviewed')->count(),
+        'approved' => Budget::where('status', 'approved')->count(),
+        'rejected' => Budget::where('status', 'rejected')->count(),
+        'disbursed' => Budget::where('status', 'disbursed')->count(),
+    ];
+    
+    return view('budgets.index', compact('budgets', 'categories', 'statusCounts'));
+}
 
     public function create()
     {
-        $members = Member::with('user')->get();
-        return view('budgets.create', compact('members'));
+        $user = Auth::user();
+    
+    // Only Adviser and Officer can create budgets
+    if (!in_array($user->role->name, ['Adviser', 'Officer'])) {
+        abort(403, 'Unauthorized. Only Advisers and Officers can create budgets.');
+    }
+    
+    $categories = BudgetCategory::where('is_active', true)->get();
+    return view('budgets.create', compact('categories'));
     }
 
     public function store(Request $request)
@@ -58,8 +103,15 @@ class BudgetController extends Controller
 
     public function edit(Budget $budget)
     {
-        $members = Member::with('user')->get();
-        return view('budgets.edit', compact('budget', 'members'));
+        $user = Auth::user();
+    
+    // Only pending budgets can be edited, and only by creator
+    if ($budget->status !== 'pending' || $budget->requested_by !== $user->id) {
+        abort(403, 'Cannot edit this budget request.');
+    }
+    
+    $categories = BudgetCategory::where('is_active', true)->get();
+    return view('budgets.edit', compact('budget', 'categories'));
     }
 
     public function update(Request $request, Budget $budget)

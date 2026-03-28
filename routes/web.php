@@ -8,6 +8,7 @@ use App\Http\Controllers\BudgetController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\AuditLogController;
+use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -51,20 +52,21 @@ Route::middleware('auth.custom')->group(function () {
         Route::delete('/{id}', [DocumentController::class, 'destroy'])->name('destroy');
     });
 
-    // Budgets — Adviser & Auditor
-    Route::middleware('role:Adviser,Auditor')->prefix('budgets')->name('budgets.')->group(function () {
+    // Budgets — Adviser, Officer, Auditor
+    Route::middleware('role:Adviser,Officer,Auditor')->prefix('budgets')->name('budgets.')->group(function () {
         Route::get('/', [BudgetController::class, 'index'])->name('index');
         Route::get('/create', [BudgetController::class, 'create'])->name('create');
         Route::post('/', [BudgetController::class, 'store'])->name('store');
-        Route::get('/{id}', [BudgetController::class, 'show'])->name('show');
-        Route::patch('/{id}/review', [BudgetController::class, 'review'])->name('review');
-        Route::delete('/{id}', [BudgetController::class, 'destroy'])->name('destroy');
+        Route::get('/{budget}', [BudgetController::class, 'show'])->name('show');
+        Route::get('/{budget}/edit', [BudgetController::class, 'edit'])->name('edit');
+        Route::put('/{budget}', [BudgetController::class, 'update'])->name('update');
+        Route::get('/{budget}/review', [BudgetController::class, 'review'])->name('review');
+        Route::post('/{budget}/approve', [BudgetController::class, 'approve'])->name('approve');
+        Route::delete('/{budget}', [BudgetController::class, 'destroy'])->name('destroy');
     });
 
-    // Admin-only routes (now Adviser-only)
+    // Admin-only routes (Adviser only)
     Route::middleware('role:Adviser')->prefix('admin')->name('admin.')->group(function () {
-
-        // Users
         Route::prefix('users')->name('users.')->group(function () {
             Route::get('/', [AdminController::class, 'users'])->name('index');
             Route::get('/create', [AdminController::class, 'createUser'])->name('create');
@@ -74,14 +76,12 @@ Route::middleware('auth.custom')->group(function () {
             Route::delete('/{id}', [AdminController::class, 'destroyUser'])->name('destroy');
         });
 
-        // Roles
         Route::prefix('roles')->name('roles.')->group(function () {
             Route::get('/', [AdminController::class, 'roles'])->name('index');
             Route::post('/', [AdminController::class, 'storeRole'])->name('store');
             Route::delete('/{id}', [AdminController::class, 'destroyRole'])->name('destroy');
         });
 
-        // Permissions
         Route::prefix('permissions')->name('permissions.')->group(function () {
             Route::get('/', [AdminController::class, 'permissions'])->name('index');
             Route::post('/sync', [AdminController::class, 'syncPermissions'])->name('sync');
@@ -98,19 +98,15 @@ Route::middleware('auth.custom')->group(function () {
         ->name('audit.logs')
         ->middleware('role:Adviser');
 
-    Route::middleware(['auth'])->group(function () {
- 
-        // Settings page (Adviser → Settings submenu)
-        Route::get('/admin/settings', [SettingsController::class, 'index'])
-            ->name('settings.index');
- 
-        // Theme update endpoint (called via fetch() from settings.blade.php)
-        Route::post('/admin/settings/theme', [SettingsController::class, 'updateTheme'])
-            ->name('settings.theme.update');
-
-        // Dashboard routes
-        Route::get('/dashboard', [DashboardController::class, 'index'])
-            ->middleware(['auth.custom', 'prevent-back-history'])
-            ->name('dashboard');
+    // Theme update endpoint
+    Route::post('/admin/settings/theme', [SettingsController::class, 'updateTheme'])
+        ->name('settings.theme.update')
+        ->middleware('role:Adviser');
+    
+    // Profile routes (for all authenticated users)
+    Route::prefix('profile')->name('profile.')->group(function () {
+        Route::get('/', [ProfileController::class, 'index'])->name('index');
+        Route::put('/', [ProfileController::class, 'updateProfile'])->name('update');
+        Route::put('/password', [ProfileController::class, 'updatePassword'])->name('password');
     });
 });

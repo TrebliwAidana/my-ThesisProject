@@ -4,6 +4,115 @@
 
 @section('content')
 
+{{-- Vanishing Popup Notifications --}}
+
+    <div x-data="{ show: true }" 
+         x-init="setTimeout(() => show = false, 5000)"
+         x-show="show"
+         x-transition:enter="transform transition duration-300 ease-out"
+         x-transition:enter-start="translate-x-full opacity-0"
+         x-transition:enter-end="translate-x-0 opacity-100"
+         x-transition:leave="transform transition duration-200 ease-in"
+         x-transition:leave-start="translate-x-0 opacity-100"
+         x-transition:leave-end="translate-x-full opacity-0"
+         class="fixed top-20 right-4 z-50 w-96 max-w-full rounded-lg shadow-lg overflow-hidden border-l-4 border-green-500 bg-green-50 dark:bg-green-900/30">
+        <div class="p-4">
+            <div class="flex items-start">
+                <div class="flex-shrink-0">
+                    <svg class="h-5 w-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+                <div class="ml-3 flex-1">
+                    <p class="text-sm font-medium text-green-800 dark:text-green-200">
+                        
+                    </p>
+                </div>
+                <div class="ml-4 flex-shrink-0">
+                    <button @click="show = false" class="inline-flex text-green-500 hover:text-green-600 focus:outline-none">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+@endif
+
+
+    <div x-data="{ show: true }" 
+         x-init="setTimeout(() => show = false, 5000)"
+         x-show="show"
+         x-transition:enter="transform transition duration-300 ease-out"
+         x-transition:enter-start="translate-x-full opacity-0"
+         x-transition:enter-end="translate-x-0 opacity-100"
+         x-transition:leave="transform transition duration-200 ease-in"
+         x-transition:leave-start="translate-x-0 opacity-100"
+         x-transition:leave-end="translate-x-full opacity-0"
+         class="fixed top-20 right-4 z-50 w-96 max-w-full rounded-lg shadow-lg overflow-hidden border-l-4 border-red-500 bg-red-50 dark:bg-red-900/30">
+        <div class="p-4">
+            <div class="flex items-start">
+                <div class="flex-shrink-0">
+                    <svg class="h-5 w-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+                <div class="ml-3 flex-1">
+                    <p class="text-sm font-medium text-red-800 dark:text-red-200">
+                       
+                    </p>
+                </div>
+                <div class="ml-4 flex-shrink-0">
+                    <button @click="show = false" class="inline-flex text-red-500 hover:text-red-600 focus:outline-none">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+@endif
+
+@if($errors->any())
+    <div x-data="{ show: true }" 
+         x-init="setTimeout(() => show = false, 5000)"
+         x-show="show"
+         x-transition:enter="transform transition duration-300 ease-out"
+         x-transition:enter-start="translate-x-full opacity-0"
+         x-transition:enter-end="translate-x-0 opacity-100"
+         x-transition:leave="transform transition duration-200 ease-in"
+         x-transition:leave-start="translate-x-0 opacity-100"
+         x-transition:leave-end="translate-x-full opacity-0"
+         class="fixed top-20 right-4 z-50 w-96 max-w-full rounded-lg shadow-lg overflow-hidden border-l-4 border-red-500 bg-red-50 dark:bg-red-900/30">
+        <div class="p-4">
+            <div class="flex items-start">
+                <div class="flex-shrink-0">
+                    <svg class="h-5 w-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+                <div class="ml-3 flex-1">
+                    <p class="text-sm font-medium text-red-800 dark:text-red-200">Please fix the following errors:</p>
+                    <ul class="text-sm text-red-700 dark:text-red-300 mt-1 list-disc list-inside">
+                        @foreach($errors->all() as $error)
+                            <li>{{ $error }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+                <div class="ml-4 flex-shrink-0">
+                    <button @click="show = false" class="inline-flex text-red-500 hover:text-red-600 focus:outline-none">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+@endif
+
 <div class="mb-6">
     <a href="{{ route('members.index') }}" class="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 transition">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -13,7 +122,7 @@
     </a>
     <h1 class="text-2xl font-bold text-gray-900 dark:text-white mt-3">Edit Member</h1>
     @if($member && $member->user)
-        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Editing {{ $member->user->full_name }}</p>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">{{ $member->user->full_name }}</p>
     @endif
 </div>
 
@@ -23,56 +132,11 @@
         @csrf 
         @method('PUT')
 
-        {{-- Member Info Card --}}
-        <div class="mb-6 p-4 bg-gray-50 dark:bg-gray-700/30 rounded-xl">
-            <div class="flex items-center gap-3">
-                <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-100 to-indigo-200 dark:from-indigo-900/50 dark:to-indigo-800/50 flex items-center justify-center text-lg font-bold text-indigo-700 dark:text-indigo-300">
-                    {{ strtoupper(substr($member->user->full_name, 0, 2)) }}
-                </div>
-                <div>
-                    <p class="font-semibold text-gray-900 dark:text-white">{{ $member->user->full_name }}</p>
-                    <p class="text-sm text-gray-500 dark:text-gray-400">{{ $member->user->email }}</p>
-                </div>
-            </div>
-        </div>
-
-        {{-- Role Selection (reordered to come first) --}}
-        <div class="mb-4">
-            <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Role</label>
-            <select name="role_id" id="role_id" required
-                    class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition {{ $errors->has('role_id') ? 'border-red-500' : '' }}">
-                <option value="">Select Role</option>
-                @foreach($roles as $role)
-                    <option value="{{ $role->id }}" {{ old('role_id', $member->user->role_id) == $role->id ? 'selected' : '' }}>
-                        {{ $role->name }}
-                    </option>
-                @endforeach
-            </select>
-            @error('role_id') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
-            
-            @php
-                $adviserCount = \App\Models\User::whereHas('role', function($q) {
-                    $q->where('name', 'Adviser');
-                })->count();
-                $isLastAdviser = ($member->user->role->name === 'Adviser' && $adviserCount <= 1);
-            @endphp
-            
-            @if($isLastAdviser)
-                <div class="mt-2 p-3 bg-yellow-50 dark:bg-yellow-900/20 border-l-4 border-yellow-500 rounded">
-                    <p class="text-sm text-yellow-800 dark:text-yellow-300">
-                        ⚠️ <strong>Warning:</strong> This is the LAST ADVISER in the system.<br>
-                        You cannot change the role of the last adviser. The role must remain as "Adviser" to maintain system administration.
-                    </p>
-                </div>
-            @endif
-        </div>
-
-        {{-- Position Selection (dropdown, dynamic based on role) --}}
+        {{-- Position --}}
         <div class="mb-4">
             <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Position</label>
             <select name="position" id="position" required
-                    class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition {{ $errors->has('position') ? 'border-red-500' : '' }}">
-                <option value="">Select Position</option>
+                    class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition">
                 @php
                     $currentRoleName = $member->user->role->name;
                     $allowedPositions = [
@@ -89,15 +153,43 @@
                     </option>
                 @endforeach
             </select>
-            @error('position') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
+        </div>
+
+        {{-- Role Selection --}}
+        <div class="mb-4">
+            <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Role</label>
+            <select name="role_id" id="role_id" required
+                    class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition">
+                <option value="">Select Role</option>
+                @foreach($roles as $role)
+                    <option value="{{ $role->id }}" {{ old('role_id', $member->user->role_id) == $role->id ? 'selected' : '' }}>
+                        {{ $role->name }}
+                    </option>
+                @endforeach
+            </select>
+            
+            @php
+                $adviserCount = \App\Models\User::whereHas('role', function($q) {
+                    $q->where('name', 'Adviser');
+                })->count();
+                $isLastAdviser = ($member->user->role->name === 'Adviser' && $adviserCount <= 1);
+            @endphp
+            
+            @if($isLastAdviser)
+                <div class="mt-2 p-3 bg-yellow-100 dark:bg-yellow-900/30 border border-yellow-400 dark:border-yellow-700 rounded-lg">
+                    <p class="text-sm text-yellow-800 dark:text-yellow-300">
+                        ⚠️ <strong>Warning:</strong> This is the LAST ADVISER in the system.<br>
+                        You cannot change the role of the last adviser. The role must remain as "Adviser" to maintain system administration.
+                    </p>
+                </div>
+            @endif
         </div>
 
         {{-- Member Since (Joined At) --}}
         <div class="mb-4">
             <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Member Since</label>
             <input type="date" name="joined_at" value="{{ old('joined_at', optional($member->joined_at)->format('Y-m-d')) }}" required
-                   class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition {{ $errors->has('joined_at') ? 'border-red-500' : '' }}">
-            @error('joined_at') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
+                   class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition">
             <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">The date when this member first joined the organization.</p>
         </div>
 
@@ -105,22 +197,20 @@
         <div class="mb-4">
             <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Term Start</label>
             <input type="date" name="term_start" value="{{ old('term_start', optional($member->term_start)->format('Y-m-d')) }}" required
-                   class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition {{ $errors->has('term_start') ? 'border-red-500' : '' }}">
-            @error('term_start') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
+                   class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition">
         </div>
 
         {{-- Term End --}}
         <div class="mb-6">
             <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Term End</label>
             <input type="date" name="term_end" value="{{ old('term_end', optional($member->term_end)->format('Y-m-d')) }}"
-                   class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition {{ $errors->has('term_end') ? 'border-red-500' : '' }}">
-            @error('term_end') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
+                   class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition">
             <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Leave empty for ongoing term.</p>
         </div>
 
-        <div class="flex gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+        <div class="flex gap-3">
             <button type="submit"
-                    class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold px-5 py-2.5 rounded-lg transition duration-200 shadow-md hover:shadow-lg">
+                    class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold px-5 py-2.5 rounded-lg transition">
                 Update Member
             </button>
             <a href="{{ route('members.index') }}"
@@ -132,7 +222,6 @@
 </div>
 
 <script>
-    // Dynamic position dropdown based on role selection
     const positionsByRole = {
         'Adviser': ['Adviser'],
         'Officer': ['President', 'Secretary', 'Treasurer', 'Auditor'],
@@ -148,7 +237,6 @@
         const selectedOption = roleSelect.options[roleSelect.selectedIndex];
         const selectedRole = selectedOption ? selectedOption.text : '';
         
-        // Clear current options
         positionSelect.innerHTML = '<option value="">Select Position</option>';
         
         if (selectedRole && positionsByRole[selectedRole]) {
@@ -156,7 +244,6 @@
                 const option = document.createElement('option');
                 option.value = position;
                 option.textContent = position;
-                // Pre-select the current position if it matches
                 if (position === currentPosition) {
                     option.selected = true;
                 }
@@ -165,7 +252,6 @@
         }
     }
 
-    // Add event listener for role change
     roleSelect.addEventListener('change', updatePositions);
 </script>
 
