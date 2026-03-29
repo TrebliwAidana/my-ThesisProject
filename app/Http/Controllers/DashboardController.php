@@ -20,25 +20,19 @@ class DashboardController extends Controller
         $user = Auth::user()->load('role');
 
         // Stats
-        $totalMembers        = Member::count();
-        $activeMembers       = Member::where(function ($q) {
-                                    $q->whereNull('term_end')
-                                      ->orWhere('term_end', '>=', now());
-                                })->count();
-        // FIXED: Changed 'Admin' to 'Adviser'
-        $officersCount       = User::whereHas('role', fn($q) =>
-                                    $q->whereIn('name', ['Adviser', 'Officer'])
-                               )->count();
-        $newMembersThisMonth = Member::whereMonth('created_at', now()->month)
-                                     ->whereYear('created_at', now()->year)
-                                     ->count();
+        $totalMembers = User::count();
+        $activeMembers = User::where('is_active', true)->count();
+        $officersCount = User::whereHas('role', fn($q) =>
+            $q->whereIn('name', ['Adviser', 'Officer'])
+        )->count();
+        $newMembersThisMonth = User::whereMonth('created_at', now()->month)
+            ->whereYear('created_at', now()->year)
+            ->count();
 
         // Members table with pagination
-        $members = Member::with('user.role')
-            ->latest()
-            ->paginate(10);
+        $members = User::with('role')->latest()->paginate(10);
 
-        // Role & status color maps - FIXED: Changed 'Admin' to 'Adviser'
+        // Role & status color maps
         $roleColors = [
             'Adviser' => 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300',
             'Officer' => 'bg-sky-100 text-sky-700 dark:bg-sky-900 dark:text-sky-300',
@@ -50,12 +44,12 @@ class DashboardController extends Controller
             'Inactive' => 'bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400',
         ];
 
-        // Recent activity - FIXED: Changed 'reviewer.user' to 'requester'
+        // Recent activity
         $recentDocuments = Document::with('uploader')
-            ->latest('uploaded_at')
+            ->latest('created_at')
             ->take(5)
             ->get();
-        $recentBudgets   = Budget::with('requester')  // Changed from 'reviewer.user'
+        $recentBudgets = Budget::with('requester')
             ->latest()
             ->take(5)
             ->get();
@@ -66,8 +60,8 @@ class DashboardController extends Controller
         // Badges
         $userBadges = [];
 
-        // Use dashboard.dashboard (folder.file)
-        return view('dashboard.dashboard', compact(
+        // Use 'dashboard' view (make sure you have resources/views/dashboard.blade.php)
+        return view('dashboard.index', compact(
             'user',
             'totalMembers',
             'activeMembers',

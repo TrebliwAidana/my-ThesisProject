@@ -5,68 +5,83 @@ namespace App\Http\Controllers;
 use App\Models\Member;
 use App\Models\User;
 use App\Models\Role;
-use App\Models\PositionChangeLog;  // Add this
+use App\Models\PositionChangeLog;
 use App\Helpers\UserHelper;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;  // Add this
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 
 class MemberController extends Controller
 {
     public function __construct()
     {
         $this->middleware('auth.custom');
-        // Role middleware removed - we'll check permissions inside methods
     }
 
     public function index()
     {
         $user = Auth::user();
 
-        // Check if user is authenticated
         if (!$user) {
             return redirect()->route('login');
         }
 
-        // Check if user has a role
         if (!$user->role) {
             abort(403, 'User role not assigned. Please contact administrator.');
         }
 
-        // Member role: only see their own member record
+        // Get statistics for dashboard
+        $totalMembers = User::count();
+        $activeMembers = User::where('is_active', true)->count();
+        $totalRoles = Role::count();
+        $verifiedEmails = User::whereNotNull('email_verified_at')->count();
+        $recentLogins = User::whereNotNull('last_login_at')
+            ->where('last_login_at', '>=', now()->subDays(7))
+            ->count();
+
+        // For Adviser/Officer/Auditor - show ALL users
         if ($user->role->name === 'Member') {
-            $members = Member::with('user', 'positionChangedBy')  // Add positionChangedBy
-                ->where('user_id', $user->id)
+            // Members can only see themselves
+            $users = User::with('role')
+                ->where('id', $user->id)
                 ->paginate(10);
         } else {
-            $members = Member::with('user', 'positionChangedBy')  // Add positionChangedBy
+            // Advisers, Officers, and Auditors can see all users
+            $users = User::with('role')
                 ->latest()
                 ->paginate(10);
         }
 
-        return view('members.index', compact('members'));
+        // Get all roles for filter
+        $roles = Role::all();
+
+        return view('members.index', compact(
+            'users', 
+            'roles', 
+            'totalMembers', 
+            'activeMembers', 
+            'totalRoles', 
+            'recentLogins',
+            'verifiedEmails'
+        ));
     }
 
     public function create()
     {
         $user = Auth::user();
 
-        // Check if user is authenticated
         if (!$user || !$user->role) {
             abort(403, 'Unauthorized.');
         }
 
-        // Only Adviser and Officer can create members
         if (!in_array($user->role->name, ['Adviser', 'Officer'])) {
             abort(403, 'Unauthorized. Only Advisers and Officers can create members.');
         }
 
-        // Filter roles based on user's permission
         if ($user->role->name === 'Adviser') {
-            // Adviser can create all roles
             $roles = Role::all();
         } else {
-            // Officer can only create Member role
             $roles = Role::where('name', 'Member')->get();
         }
 
@@ -77,37 +92,35 @@ class MemberController extends Controller
     {
         $user = Auth::user();
 
-        // Check if user is authenticated
         if (!$user || !$user->role) {
             abort(403, 'Unauthorized.');
         }
 
-        // Only Adviser and Officer can create members
         if (!in_array($user->role->name, ['Adviser', 'Officer'])) {
             abort(403, 'Unauthorized. Only Advisers and Officers can create members.');
         }
 
         $validated = $request->validate([
-            'full_name' => 'required|string|max:255',
-            'role_id' => 'required|exists:roles,id',
-            'position' => 'required|string|max:255',
-            'joined_at' => 'required|date',
-            'term_start' => 'required|date',
-            'term_end' => 'nullable|date|after_or_equal:term_start',
+            'first_name' => ['required', 'string', 'max:255'],
+            'last_name' => ['required', 'string', 'max:255'],
+            'middle_name' => ['nullable', 'string', 'max:255'],
+            'email' => ['nullable', 'email', 'unique:users,email'],
+            'student_id' => ['nullable', 'string', 'unique:users,student_id'],
+            'year_level' => ['nullable', 'string'],
+            'role_id' => ['required', 'exists:roles,id'],
+            'position' => ['required', 'string', 'max:255'],
+            'is_active' => ['boolean'],
+            'send_welcome_email' => ['nullable', 'boolean'],
         ]);
 
-        // RESTRICTION: Officers cannot create Advisers, Officers, or Auditors
         if ($user->role->name === 'Officer') {
             $selectedRole = Role::find($validated['role_id']);
-
-            // Officers can only create Members
             if ($selectedRole->name !== 'Member') {
                 return redirect()->route('members.index')
-                    ->with('error', '❌ ACCESS DENIED\n\nYou are not authorized to create this role.\n\nAs an Officer, you can only create regular Members.\n\nPlease contact an Adviser if you need to create higher-level accounts.');
+                    ->with('error', '❌ ACCESS DENIED: Officers can only create Member accounts.');
             }
         }
 
-        // Check if position is valid for the selected role
         $role = Role::find($validated['role_id']);
         $allowedPositions = $this->getAllowedPositions($role->name);
 
@@ -116,34 +129,52 @@ class MemberController extends Controller
                 ->withInput();
         }
 
-        // Generate email for member
-        $email = UserHelper::generateUniqueMemberEmail($validated['full_name']);
-
         DB::beginTransaction();
 
         try {
-            // Create user with selected role
+            // Generate full name
+            $fullName = $validated['first_name'] . ' ' . $validated['last_name'];
+            if (!empty($validated['middle_name'])) {
+                $fullName = $validated['first_name'] . ' ' . $validated['middle_name'] . ' ' . $validated['last_name'];
+            }
+            
+            // Generate email if not provided
+            $email = $validated['email'] ?? UserHelper::generateUniqueMemberEmail(
+                $validated['first_name'], 
+                $validated['last_name']
+            );
+            
+            // Default password
+            $password = 'password';
+            
             $newUser = User::create([
-                'full_name' => $validated['full_name'],
+                'full_name' => $fullName,
+                'first_name' => $validated['first_name'],
+                'last_name' => $validated['last_name'],
+                'middle_name' => $validated['middle_name'] ?? null,
                 'email' => $email,
-                'password' => bcrypt('password'),
+                'password' => Hash::make($password),
                 'role_id' => $validated['role_id'],
                 'position' => $validated['position'],
+                'student_id' => $validated['student_id'] ?? null,
+                'year_level' => $validated['year_level'] ?? null,
+                'is_active' => $validated['is_active'] ?? true,
+                'email_verified_at' => now(),
             ]);
 
             // Create member record
-            $member = Member::create([
+            Member::create([
                 'user_id' => $newUser->id,
                 'position' => $validated['position'],
-                'joined_at' => $validated['joined_at'],
-                'term_start' => $validated['term_start'],
-                'term_end' => $validated['term_end'],
+                'joined_at' => now(),
+                'term_start' => now(),
+                'term_end' => null,
             ]);
 
             DB::commit();
 
             return redirect()->route('members.index')
-                ->with('success', "✅ Member created successfully! Email: {$email}, Password: password");
+                ->with('success', "✅ Member created successfully! Email: {$email}, Password: {$password}");
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -151,374 +182,158 @@ class MemberController extends Controller
         }
     }
 
-    public function show(Member $member)
-    {
-        $this->authorizeMemberAccess($member);
-
-        $member->load('user', 'budgets', 'positionChangeHistory.changer');  // Add position history
-        return view('members.show', compact('member'));
-    }
-
     public function edit($id)
     {
-        $member = Member::find($id);
-
-        if (!$member) {
-            abort(404, 'Member not found');
-        }
-
-        $user = Auth::user();
-
-        // Check if user is authenticated
-        if (!$user || !$user->role) {
-            abort(403, 'Unauthorized.');
-        }
-
-        // Only Adviser and Officer can edit members
-        if (!in_array($user->role->name, ['Adviser', 'Officer'])) {
-            abort(403, 'Unauthorized. Only Advisers and Officers can edit members.');
-        }
-
-        // RESTRICTION: Officers cannot edit Advisers, Officers, or Auditors
-        if ($user->role->name === 'Officer') {
-            $targetRole = $member->user->role->name;
-            if ($targetRole !== 'Member') {
-                return redirect()->route('members.index')
-                    ->with('error', '❌ ACCESS DENIED\n\nYou are not authorized to edit this member.\n\nAs an Officer, you can only edit regular Members.\n\nAdvisers, Officers, and Auditors can only be edited by an Adviser.');
-            }
-        }
-
-        // Filter roles based on user's permission for editing
-        if ($user->role->name === 'Adviser') {
-            $roles = Role::all();
-        } else {
-            // Officers can only change role to Member
-            $roles = Role::where('name', 'Member')->get();
-        }
-
-        $positions = Member::POSITIONS;  // Add positions array
-
-        return view('members.edit', compact('member', 'roles', 'positions'));
+        $user = User::findOrFail($id);
+        $roles = Role::all();
+        return view('members.edit', compact('user', 'roles'));
     }
 
     public function update(Request $request, $id)
     {
-        $member = Member::find($id);
+        $user = User::findOrFail($id);
+        $currentUser = Auth::user();
 
-        if (!$member) {
-            return back()->with('error', '❌ Member not found.');
-        }
-
-        $user = Auth::user();
-
-        // Check if user is authenticated
-        if (!$user || !$user->role) {
+        if (!$currentUser || !$currentUser->role) {
             abort(403, 'Unauthorized.');
         }
 
-        // Only Adviser and Officer can update members
-        if (!in_array($user->role->name, ['Adviser', 'Officer'])) {
+        if (!in_array($currentUser->role->name, ['Adviser', 'Officer'])) {
             abort(403, 'Unauthorized. Only Advisers and Officers can update members.');
         }
 
-        // RESTRICTION: Officers cannot edit Advisers, Officers, or Auditors
-        if ($user->role->name === 'Officer') {
-            $targetRole = $member->user->role->name;
+        if ($currentUser->role->name === 'Officer') {
+            $targetRole = $user->role->name;
             if ($targetRole !== 'Member') {
                 return redirect()->route('members.index')
-                    ->with('error', '❌ ACCESS DENIED\n\nYou are not authorized to edit this member.\n\nAs an Officer, you can only edit regular Members.\n\nAdvisers, Officers, and Auditors can only be edited by an Adviser.');
+                    ->with('error', '❌ ACCESS DENIED: You are not authorized to edit this member.');
             }
         }
 
         $validated = $request->validate([
-            'position' => ['required', 'string', 'max:150'],
-            'joined_at' => ['required', 'date'],
-            'term_start' => ['required', 'date'],
-            'term_end' => ['nullable', 'date', 'after_or_equal:term_start'],
-            'role_id' => ['nullable', 'exists:roles,id'],
-            'position_change_reason' => 'nullable|string|max:500',  // Add this
+            'first_name' => ['required', 'string', 'max:255'],
+            'last_name' => ['required', 'string', 'max:255'],
+            'middle_name' => ['nullable', 'string', 'max:255'],
+            'email' => ['required', 'email', 'unique:users,email,' . $user->id],
+            'student_id' => ['nullable', 'string', 'unique:users,student_id,' . $user->id],
+            'year_level' => ['nullable', 'string'],
+            'role_id' => ['required', 'exists:roles,id'],
+            'position' => ['nullable', 'string', 'max:255'],
+            'is_active' => ['boolean'],
         ]);
 
-        DB::beginTransaction();
+        // Prevent changing role of last adviser
+        if ($user->role && $user->role->name === 'Adviser' && $validated['role_id'] != $user->role_id) {
+            $adviserCount = User::whereHas('role', function($q) {
+                $q->where('name', 'Adviser');
+            })->count();
+            
+            if ($adviserCount <= 1) {
+                return back()->with('error', 'Cannot change role of the last adviser in the system.');
+            }
+        }
 
         try {
-            $oldPosition = $member->position;
-            $newPosition = $validated['position'];
-            $newRoleId = $request->input('role_id');
-
-            // Check if position is being changed
-            if ($oldPosition !== $newPosition) {
-                // Validate if position change is allowed
-                $currentUserMember = $user->member;
-                
-                if (!$currentUserMember) {
-                    return redirect()->back()
-                        ->with('error', 'Your account is not linked to a member record.')
-                        ->withInput();
-                }
-
-                // Validate business rules for position change
-                if (!$this->validatePositionChangeRules($member, $oldPosition, $newPosition, $user)) {
-                    return redirect()->back()
-                        ->with('error', 'This position change violates business rules.')
-                        ->withInput();
-                }
-
-                // Validate reason is provided for position change
-                if (empty($request->position_change_reason)) {
-                    return redirect()->back()
-                        ->with('error', 'Please provide a reason for changing the position.')
-                        ->withInput();
-                }
-
-                // Log the position change
-                PositionChangeLog::create([
-                    'member_id' => $member->id,
-                    'changed_by' => Auth::id(),
-                    'old_position' => $oldPosition,
-                    'new_position' => $newPosition,
-                    'reason' => $request->position_change_reason,
-                    'ip_address' => $request->ip()
+            $fullName = $validated['first_name'] . ' ' . $validated['last_name'];
+            if (!empty($validated['middle_name'])) {
+                $fullName = $validated['first_name'] . ' ' . $validated['middle_name'] . ' ' . $validated['last_name'];
+            }
+            
+            $user->full_name = $fullName;
+            $user->first_name = $validated['first_name'];
+            $user->last_name = $validated['last_name'];
+            $user->middle_name = $validated['middle_name'] ?? null;
+            $user->email = $validated['email'];
+            $user->student_id = $validated['student_id'] ?? null;
+            $user->year_level = $validated['year_level'] ?? null;
+            $user->role_id = $validated['role_id'];
+            $user->position = $validated['position'] ?? $user->position;
+            $user->is_active = $validated['is_active'] ?? $user->is_active;
+            
+            // Only update password if provided
+            if ($request->filled('password')) {
+                $request->validate([
+                    'password' => ['required', 'confirmed', 'min:8'],
                 ]);
-
-                // Update member with position change tracking
-                $member->position = $newPosition;
-                $member->position_changed_at = now();
-                $member->position_changed_by = Auth::id();
+                $user->password = Hash::make($request->password);
             }
-
-            // RESTRICTION: Officers cannot upgrade roles
-            if ($user->role->name === 'Officer') {
-                // If trying to change role
-                if ($newRoleId && $newRoleId != $member->user->role_id) {
-                    $newRole = Role::find($newRoleId);
-
-                    // Officers cannot promote anyone to Adviser, Officer, or Auditor
-                    if ($newRole->name !== 'Member') {
-                        return redirect()->route('members.index')
-                            ->with('error', '❌ ACCESS DENIED\n\nYou are not authorized to promote members to higher roles.\n\nOnly Advisers can create or promote to Adviser, Officer, or Auditor roles.\n\nPlease contact an Adviser if you need to create higher-level accounts.');
-                    }
-                }
-            }
-
-            // Safety Check: Prevent changing the last adviser's role
-            $currentUserRole = $member->user->role->name;
-
-            if ($currentUserRole === 'Adviser') {
-                $adviserCount = User::whereHas('role', function($q) {
-                    $q->where('name', 'Adviser');
-                })->count();
-
-                if ($adviserCount <= 1 && $newRoleId && $newRoleId != $member->user->role_id) {
-                    return back()->with('error', '⚠️⚠️⚠️ CANNOT CHANGE ROLE ⚠️⚠️⚠️\n\nThis is the LAST ADVISER in the system.\n\nYou cannot change the role of the last adviser. There must be at least one adviser to manage the system.\n\nPlease create another adviser first, then you can change this one.');
-                }
-            }
-
-            // Check if position is valid for the new role (if role is changing)
-            if ($newRoleId && $newRoleId != $member->user->role_id) {
-                $newRole = Role::find($newRoleId);
-                $allowedPositions = $this->getAllowedPositions($newRole->name);
-
-                if (!in_array($validated['position'], $allowedPositions)) {
-                    return back()->withErrors(['position' => "Position '{$validated['position']}' is not valid for role '{$newRole->name}'. Allowed positions: " . implode(', ', $allowedPositions)])
-                        ->withInput();
-                }
-            }
-
-            // Update member record (only if position wasn't already updated)
-            if ($oldPosition === $newPosition) {
-                $member->update($validated);
-            } else {
-                $member->joined_at = $validated['joined_at'];
-                $member->term_start = $validated['term_start'];
-                $member->term_end = $validated['term_end'];
+            
+            $user->save();
+            
+            // Update or create member record
+            $member = $user->member;
+            if ($member) {
+                $member->position = $validated['position'] ?? $member->position;
                 $member->save();
             }
 
-            // Also update the user's position if it changed
-            if ($member->user && $member->user->position !== $validated['position']) {
-                $member->user->update([
-                    'position' => $validated['position']
-                ]);
-            }
-
-            // Also update the user's role if changed (and allowed)
-            if ($newRoleId && $newRoleId != $member->user->role_id) {
-                // Double-check for officer trying to upgrade
-                if ($user->role->name === 'Officer') {
-                    $newRole = Role::find($newRoleId);
-                    if ($newRole->name !== 'Member') {
-                        return redirect()->route('members.index')
-                            ->with('error', '❌ ACCESS DENIED\n\nYou are not authorized to change roles.\n\nOnly Advisers can change roles to Adviser, Officer, or Auditor.');
-                    }
-                }
-                $member->user->update([
-                    'role_id' => $newRoleId
-                ]);
-            }
-
-            DB::commit();
-
-            $message = ($oldPosition !== $newPosition) 
-                ? "✅ {$member->user->full_name} has been updated successfully. Position changed from {$oldPosition} to {$newPosition}."
-                : "✅ {$member->user->full_name} has been updated successfully.";
-
             return redirect()->route('members.index')
-                ->with('success', $message);
-
+                ->with('success', "✅ Member {$fullName} updated successfully.");
+                
         } catch (\Exception $e) {
-            DB::rollBack();
-            return back()->with('error', '❌ Failed to update member: ' . $e->getMessage());
+            return back()->with('error', '❌ Failed to update member: ' . $e->getMessage())
+                ->withInput();
         }
     }
 
     public function destroy($id)
     {
-        $member = Member::find($id);
+        $userToDelete = User::findOrFail($id);
+        $currentUser = Auth::user();
 
-        if (!$member) {
-            return back()->with('error', '❌ Member not found.');
+        if (!$currentUser || !$currentUser->role) {
+            return back()->with('error', '❌ Unauthorized.');
         }
 
-        $user = Auth::user();
-
-        // Check if user is authenticated
-        if (!$user || !$user->role) {
-            return back()->with('error', '❌ Unauthorized. Please login again.');
-        }
-
-        // Only Adviser and Officer can delete members
-        if (!in_array($user->role->name, ['Adviser', 'Officer'])) {
+        if (!in_array($currentUser->role->name, ['Adviser', 'Officer'])) {
             return back()->with('error', '❌ Unauthorized. Only Advisers and Officers can delete members.');
         }
 
-        // Check if member has a user
-        if (!$member->user) {
-            return back()->with('error', '❌ Member record is invalid.');
-        }
-
-        // RESTRICTION: Officers cannot delete Advisers, Officers, or Auditors
-        if ($user->role->name === 'Officer') {
-            $userRole = $member->user->role->name;
+        if ($currentUser->role->name === 'Officer') {
+            $userRole = $userToDelete->role->name;
             if ($userRole !== 'Member') {
                 return redirect()->route('members.index')
-                    ->with('error', '❌ ACCESS DENIED\n\nYou are not authorized to delete this member.\n\nAs an Officer, you can only delete regular Members.\n\nAdvisers, Officers, and Auditors can only be deleted by an Adviser.');
+                    ->with('error', '❌ ACCESS DENIED: Officers can only delete regular Members.');
             }
         }
 
-        // Check if trying to delete an adviser
-        if ($member->user->role && $member->user->role->name === 'Adviser') {
+        if ($userToDelete->role && $userToDelete->role->name === 'Adviser') {
             $adviserCount = User::whereHas('role', function($q) {
                 $q->where('name', 'Adviser');
             })->count();
 
             if ($adviserCount <= 1) {
-                return back()->with('error', '⚠️⚠️⚠️ CANNOT DELETE ⚠️⚠️⚠️\n\nThis is the LAST ADVISER in the system.\n\nThere must be at least one adviser to manage the system.\n\nPlease create another adviser first before deleting this one.');
+                return back()->with('error', '⚠️ Cannot delete the last adviser in the system.');
             }
         }
 
         try {
-            $userName = $member->user->full_name;
-            $userRole = $member->user->role->name;
-            $userId = $member->user_id;
-
-            // Delete the member record
-            $member->delete();
-
-            // Delete the associated user
-            if ($userId && $userRecord = User::find($userId)) {
-                $userRecord->delete();
+            $userName = $userToDelete->full_name;
+            $userRole = $userToDelete->role->name;
+            
+            if ($userToDelete->member) {
+                $userToDelete->member->delete();
             }
+            
+            $userToDelete->delete();
 
             return redirect()->route('members.index')
-                ->with('success', "✅ {$userName} ({$userRole}) has been successfully removed from the system.");
-
+                ->with('success', "✅ {$userName} ({$userRole}) has been removed from the system.");
+                
         } catch (\Exception $e) {
             return back()->with('error', '❌ Failed to delete member: ' . $e->getMessage());
         }
     }
 
-    /**
-     * Display position change history for a member.
-     */
-    public function positionHistory($id)
-    {
-        $member = Member::with('user')->findOrFail($id);
-        
-        // Check authorization
-        $user = Auth::user();
-        if ($user->role->name === 'Member' && $member->user_id !== $user->id) {
-            abort(403, 'You can only view your own position history.');
-        }
-        
-        $history = PositionChangeLog::with('changer')
-            ->where('member_id', $id)
-            ->orderBy('created_at', 'desc')
-            ->get();
-            
-        return view('members.position-history', compact('member', 'history'));
-    }
-
-    /**
-     * Members can only view their own record.
-     * Advisers, Officers, and Auditors can view any record.
-     */
-    private function authorizeMemberAccess(Member $member): void
-    {
-        $user = Auth::user();
-
-        if (!$user || !$user->role) {
-            abort(403, 'Unauthorized.');
-        }
-
-        if ($user->role->name === 'Member' && $member->user_id !== $user->id) {
-            abort(403, 'You can only view your own member record.');
-        }
-    }
-
-    /**
-     * Get allowed positions for a given role
-     */
     private function getAllowedPositions($roleName)
     {
         $positions = [
             'Adviser' => ['Adviser'],
-            'Officer' => ['President', 'Secretary', 'Treasurer', 'Auditor'],
+            'Officer' => ['President', 'Vice President', 'Secretary', 'Treasurer', 'Auditor'],
             'Auditor' => ['Auditor'],
             'Member' => ['Member'],
         ];
 
         return $positions[$roleName] ?? [];
-    }
-
-    /**
-     * Validate business rules for position changes
-     */
-    private function validatePositionChangeRules($member, $oldPosition, $newPosition, $changingUser)
-    {
-        // Rule 1: Cannot demote the last officer if no other officers exist
-        if ($oldPosition === 'Officer' && $newPosition !== 'Officer') {
-            $officerCount = Member::where('position', 'Officer')->count();
-            if ($officerCount <= 1) {
-                return false;
-            }
-        }
-        
-        // Rule 2: Cannot demote the last adviser
-        if ($oldPosition === 'Adviser' && $newPosition !== 'Adviser') {
-            $adviserCount = Member::where('position', 'Adviser')->count();
-            if ($adviserCount <= 1) {
-                return false;
-            }
-        }
-        
-        // Rule 3: Cannot demote yourself if you're the only admin/adviser
-        if ($changingUser->id === $member->user_id) {
-            if ($oldPosition === 'Adviser' && $newPosition !== 'Adviser') {
-                return false;
-            }
-        }
-        
-        return true;
     }
 }

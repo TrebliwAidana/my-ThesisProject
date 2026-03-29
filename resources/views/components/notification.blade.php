@@ -1,6 +1,20 @@
 @props(['type' => 'success', 'title' => null, 'message' => null])
 
 @php
+    // CRITICAL: Clear the session immediately when this component is rendered
+    if(session()->has($type)) {
+        session()->forget($type);
+    }
+    
+    // Also clear any other flash message types that might be lingering
+    foreach(['success', 'error', 'warning', 'info'] as $flashType) {
+        if($flashType !== $type && session()->has($flashType)) {
+            session()->forget($flashType);
+        }
+    }
+@endphp
+
+@php
     $config = [
         'success' => [
             'border' => 'border-green-500',

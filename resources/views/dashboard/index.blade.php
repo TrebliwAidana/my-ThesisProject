@@ -5,9 +5,7 @@
 @section('content')
 <div class="space-y-8">
 
-    {{-- ================================================================
-         HEADER - Welcome Section
-    ================================================================ --}}
+    {{-- Header - Welcome Section --}}
     <div class="relative overflow-hidden rounded-2xl bg-gradient-to-r from-indigo-600 to-indigo-800 dark:from-indigo-900 dark:to-indigo-950 p-6 md:p-8">
         <div class="relative z-10">
             <h1 class="text-2xl md:text-3xl font-bold text-white tracking-tight">
@@ -36,11 +34,8 @@
         <div class="absolute top-0 right-0 -mt-8 -mr-8 w-64 h-64 bg-white/5 rounded-full blur-3xl"></div>
     </div>
 
-    {{-- ================================================================
-         STATS GRID - Enhanced with icons and trends
-    ================================================================ --}}
+    {{-- Stats Grid --}}
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-
         {{-- Total Members Card --}}
         <div class="group bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6 hover:shadow-lg transition-all duration-300 hover:scale-[1.02]">
             <div class="flex items-center justify-between mb-4">
@@ -96,12 +91,9 @@
             <p class="text-sm font-medium text-gray-600 dark:text-gray-400">New Members</p>
             <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Joined in {{ now()->format('F Y') }}</p>
         </div>
-
     </div>
 
-    {{-- ================================================================
-         TWO COLUMN LAYOUT - Profile & Recent Activity
-    ================================================================ --}}
+    {{-- Two Column Layout --}}
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {{-- Profile Card --}}
@@ -200,7 +192,7 @@
                         <div class="flex-1 min-w-0">
                             <p class="text-sm font-medium text-gray-900 dark:text-white truncate">{{ $doc->title }}</p>
                             <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                                {{ $doc->uploader->full_name }} · {{ optional($doc->uploaded_at)->diffForHumans() ?? 'N/A' }}
+                                {{ $doc->uploader->full_name ?? 'Unknown' }} · {{ optional($doc->uploaded_at ?? $doc->created_at)->diffForHumans() }}
                             </p>
                         </div>
                     </li>
@@ -239,7 +231,7 @@
                     @endphp
                     <li class="flex items-center justify-between px-6 py-4 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition">
                         <div class="flex-1 min-w-0">
-                            <p class="text-sm font-medium text-gray-900 dark:text-white truncate">{{ Str::limit($budget->desc ?? '—', 50) }}</p>
+                            <p class="text-sm font-medium text-gray-900 dark:text-white truncate">{{ Str::limit($budget->description ?? $budget->desc ?? '—', 50) }}</p>
                             <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5 font-mono">₱{{ number_format($budget->amount, 2) }}</p>
                         </div>
                         <span class="text-xs font-medium px-2.5 py-1 rounded-full ml-4 {{ $statusColors[$budget->status] ?? 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400' }}">

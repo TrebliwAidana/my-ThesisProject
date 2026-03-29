@@ -3,6 +3,92 @@ import Alpine from 'alpinejs'
 
 window.Alpine = Alpine
 
+// Global Animation Functions
+window.animations = {
+    // Animate elements on scroll
+    initScrollAnimations() {
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, { threshold: 0.1 });
+        
+        document.querySelectorAll('.stagger-item, .timeline-item, .card-enter, .fade-in-up').forEach(el => {
+            observer.observe(el);
+        });
+    },
+    
+    // Add hover animations to buttons
+    initButtons() {
+        document.querySelectorAll('button:not(.no-animation), a.btn, .btn-primary, .btn-secondary').forEach(btn => {
+            btn.classList.add('transition-all', 'duration-200', 'transform', 'hover:scale-105', 'active:scale-95');
+        });
+    },
+    
+    // Animate number counters
+    animateNumbers() {
+        document.querySelectorAll('.counter').forEach(counter => {
+            const target = parseInt(counter.getAttribute('data-target'));
+            const current = parseInt(counter.innerText);
+            const increment = target / 50;
+            
+            const updateCount = () => {
+                if (current < target) {
+                    counter.innerText = Math.ceil(current + increment);
+                    setTimeout(updateCount, 20);
+                } else {
+                    counter.innerText = target;
+                }
+            };
+            
+            updateCount();
+        });
+    },
+    
+    // Show toast notification
+    showToast(message, type = 'success') {
+        const toast = document.createElement('div');
+        toast.className = 'fixed bottom-6 right-6 z-50';
+        toast.innerHTML = `
+            <div class="${type === 'success' ? 'bg-emerald-500' : type === 'error' ? 'bg-red-500' : 'bg-blue-500'} 
+                        text-white rounded-lg shadow-lg p-4 flex items-center justify-between gap-3 min-w-[300px] animate-slide-in-right">
+                <div class="flex items-center gap-3">
+                    <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        ${type === 'success' ? 
+                            '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>' :
+                            '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>'
+                        }
+                    </svg>
+                    <p class="text-sm font-medium">${message}</p>
+                </div>
+                <button onclick="this.closest('.toast-notification')?.remove()" class="text-white hover:text-gray-200">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+        `;
+        toast.classList.add('toast-notification');
+        document.body.appendChild(toast);
+        
+        setTimeout(() => {
+            if (toast && toast.parentElement) {
+                toast.style.animation = 'slideOutRight 0.3s ease-out';
+                setTimeout(() => toast.remove(), 300);
+            }
+        }, 5000);
+    },
+    
+    // Initialize all animations
+    init() {
+        this.initScrollAnimations();
+        this.initButtons();
+    }
+};
+
 // Position Change Tracking Alpine Component
 document.addEventListener('alpine:init', () => {
     Alpine.data('positionChangeHandler', (memberData = {}) => ({
@@ -42,6 +128,13 @@ document.addEventListener('alpine:init', () => {
             if (this.originalPosition) {
                 this.selectedPosition = this.originalPosition;
             }
+            // Add animation to the container
+            this.$nextTick(() => {
+                const container = this.$el;
+                if (container) {
+                    container.classList.add('fade-in-up');
+                }
+            });
         },
         
         resetForm() {
@@ -61,7 +154,7 @@ document.addEventListener('alpine:init', () => {
                     form.submit();
                 }
             } catch (error) {
-                this.showToast('Error updating member: ' + error.message, 'error');
+                window.animations.showToast('Error updating member: ' + error.message, 'error');
                 this.isSubmitting = false;
             }
         },
@@ -83,7 +176,7 @@ document.addEventListener('alpine:init', () => {
                 this.historyData = await response.json();
             } catch (error) {
                 console.error('Error loading history:', error);
-                this.showToast('Failed to load position history', 'error');
+                window.animations.showToast('Failed to load position history', 'error');
             } finally {
                 this.historyLoading = false;
             }
@@ -91,35 +184,7 @@ document.addEventListener('alpine:init', () => {
         
         // Utility Methods
         showToast(message, type = 'success') {
-            const toast = document.createElement('div');
-            toast.className = 'fixed bottom-6 right-6 z-50 animate-slide-in-right';
-            toast.innerHTML = `
-                <div class="${type === 'success' ? 'bg-emerald-500' : type === 'error' ? 'bg-red-500' : 'bg-blue-500'} text-white rounded-lg shadow-lg p-4 flex items-center justify-between gap-3 min-w-[300px]">
-                    <div class="flex items-center gap-3">
-                        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            ${type === 'success' ? 
-                                '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>' :
-                                '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>'
-                            }
-                        </svg>
-                        <p class="text-sm font-medium">${message}</p>
-                    </div>
-                    <button onclick="this.closest('.toast-notification')?.remove()" class="text-white hover:text-gray-200">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                        </svg>
-                    </button>
-                </div>
-            `;
-            toast.classList.add('toast-notification');
-            document.body.appendChild(toast);
-            
-            setTimeout(() => {
-                if (toast && toast.parentElement) {
-                    toast.style.animation = 'slideOutRight 0.3s ease-out';
-                    setTimeout(() => toast.remove(), 300);
-                }
-            }, 5000);
+            window.animations.showToast(message, type);
         },
         
         getBadgeClass(position) {
@@ -195,6 +260,72 @@ document.addEventListener('alpine:init', () => {
             });
         }
     }));
+    
+    // Card Animation Component
+    Alpine.data('cardAnimation', () => ({
+        visible: false,
+        init() {
+            this.$nextTick(() => {
+                this.visible = true;
+            });
+        }
+    }));
+    
+    // Table Row Stagger Animation
+    Alpine.data('staggerTable', () => ({
+        rows: [],
+        init() {
+            this.rows = Array.from(this.$el.querySelectorAll('tbody tr'));
+            this.rows.forEach((row, index) => {
+                row.style.opacity = '0';
+                row.style.transform = 'translateY(20px)';
+                setTimeout(() => {
+                    row.style.transition = 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)';
+                    row.style.opacity = '1';
+                    row.style.transform = 'translateY(0)';
+                }, index * 50);
+            });
+        }
+    }));
 });
 
+// Theme Store
+document.addEventListener('alpine:init', () => {
+    Alpine.store('theme', {
+        dark: localStorage.getItem('dark') === 'true',
+        toggle() {
+            this.dark = !this.dark;
+            localStorage.setItem('dark', this.dark);
+            document.documentElement.classList.toggle('dark', this.dark);
+        },
+        init() {
+            if (this.dark) {
+                document.documentElement.classList.add('dark');
+            }
+        }
+    });
+});
+
+// Initialize Alpine
 Alpine.start();
+
+// Initialize global animations when DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+    window.animations.init();
+    
+    // Add page transition class to main content
+    const mainContent = document.querySelector('main');
+    if (mainContent) {
+        mainContent.classList.add('page-transition');
+    }
+    
+    // Animate cards on load
+    document.querySelectorAll('.card').forEach((card, index) => {
+        setTimeout(() => {
+            card.classList.add('card-enter');
+        }, index * 100);
+    });
+});
+
+// Export for use in other files
+export default window.animations;

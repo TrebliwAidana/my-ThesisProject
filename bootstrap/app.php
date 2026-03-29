@@ -14,10 +14,13 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // Register route-level middleware aliases
         $middleware->alias([
-        'auth.custom' => \App\Http\Middleware\AuthMiddleware::class,
-        'role'        => \App\Http\Middleware\RoleMiddleware::class,
-        'prevent-back-history' => \App\Http\Middleware\PreventBackHistory::class, // Add this line
-    ]);
+            'auth.custom' => \App\Http\Middleware\AuthMiddleware::class,
+            'role'        => \App\Http\Middleware\RoleMiddleware::class,
+            'prevent-back-history' => \App\Http\Middleware\PreventBackHistory::class,
+            'verified'    => \App\Http\Middleware\EnsureEmailIsVerified::class, // Add this line for email verification
+        ]);
+          // Add global middleware
+        $middleware->append(\App\Http\Middleware\ClearFlashMessages::class);
 
     })
     ->withExceptions(function (Exceptions $exceptions) {

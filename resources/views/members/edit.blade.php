@@ -16,7 +16,9 @@
         <div class="flex justify-between items-start mt-3">
             <div>
                 <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Edit Member</h1>
-                @if($member && $member->user)
+                @if(isset($user))
+                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">{{ $user->full_name }}</p>
+                @elseif($member && $member->user)
                     <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">{{ $member->user->full_name }}</p>
                 @endif
             </div>
@@ -38,9 +40,10 @@
         @endif
     </div>
 
-    @if($member && $member->user)
+    @if(isset($user) && $user)
     <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 p-6 max-w-2xl mx-auto">
-        <form method="POST" action="{{ route('members.update', $member->id) }}" id="editMemberForm">
+        {{-- FIXED: Changed action to use $user->id instead of $member->id --}}
+        <form method="POST" action="{{ route('members.update', $user->id) }}" id="editMemberForm">
             @csrf 
             @method('PUT')
 
@@ -53,8 +56,8 @@
                         $adviserCount = \App\Models\User::whereHas('role', function($q) {
                             $q->where('name', 'Adviser');
                         })->count();
-                        $isLastAdviser = ($member->user->role->name === 'Adviser' && $adviserCount <= 1);
-                        $currentRoleId = old('role_id', $member->user->role_id);
+                        $isLastAdviser = ($user->role->name === 'Adviser' && $adviserCount <= 1);
+                        $currentRoleId = old('role_id', $user->role_id);
                     @endphp
                     
                     @foreach($roles as $role)
@@ -66,7 +69,7 @@
                 </select>
                 
                 @if($isLastAdviser)
-                    <input type="hidden" name="role_id" value="{{ $member->user->role_id }}">
+                    <input type="hidden" name="role_id" value="{{ $user->role_id }}">
                     <p class="mt-1 text-xs text-amber-600">Role is locked - last adviser in the system.</p>
                 @endif
             </div>
@@ -104,14 +107,14 @@
             {{-- Member Since --}}
             <div class="mb-4">
                 <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Member Since</label>
-                <input type="date" name="joined_at" value="{{ old('joined_at', optional($member->joined_at)->format('Y-m-d')) }}" required
+                <input type="date" name="joined_at" value="{{ old('joined_at', optional($member->joined_at)->format('Y-m-d')) }}"
                        class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
             </div>
 
             {{-- Term Start --}}
             <div class="mb-4">
                 <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Term Start</label>
-                <input type="date" name="term_start" value="{{ old('term_start', optional($member->term_start)->format('Y-m-d')) }}" required
+                <input type="date" name="term_start" value="{{ old('term_start', optional($member->term_start)->format('Y-m-d')) }}"
                        class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
             </div>
 
@@ -147,6 +150,22 @@
         </form>
     </div>
     
+    @elseif($member && $member->user_id)
+    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 max-w-2xl mx-auto">
+        <div class="text-center">
+            <svg class="w-16 h-16 mx-auto text-red-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+            </svg>
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">User Record Missing</h3>
+            <p class="text-gray-600 dark:text-gray-400 mb-4">
+                This member record is linked to a user that no longer exists.
+            </p>
+            <a href="{{ route('members.index') }}" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition">
+                Back to Members
+            </a>
+        </div>
+    </div>
+    
     @else
     <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 text-center">
         <p class="text-gray-500">Invalid member record.</p>
@@ -158,9 +177,9 @@
 <script>
 function editMemberComponent() {
     return {
-        memberId: {{ $member->id }},
-        originalPosition: '{{ $member->position }}',
-        currentPosition: '{{ $member->position }}',
+        memberId: {{ $member->id ?? 0 }},
+        originalPosition: '{{ $member->position ?? $user->position ?? '' }}',
+        currentPosition: '{{ $member->position ?? $user->position ?? '' }}',
         
         init() {
             // Initialize position dropdown
@@ -180,7 +199,7 @@ function editMemberComponent() {
             
             // Set original position display
             const originalDisplay = document.getElementById('originalPositionDisplay');
-            if (originalDisplay) {
+            if (originalDisplay && this.originalPosition) {
                 originalDisplay.textContent = this.originalPosition;
             }
         },
@@ -195,11 +214,9 @@ function editMemberComponent() {
             const selectedOption = roleSelect.options[roleSelect.selectedIndex];
             const roleName = selectedOption ? selectedOption.getAttribute('data-role-name') || selectedOption.textContent : '';
             
-            console.log('Selected Role:', roleName); // Debug log
-            
-            // Define positions based on role (case insensitive)
+            // Define positions based on role
             let positions = [];
-            const roleLower = roleName.toLowerCase();
+            const roleLower = (roleName || '').toLowerCase();
             
             if (roleLower === 'adviser') {
                 positions = ['Adviser'];
@@ -210,11 +227,8 @@ function editMemberComponent() {
             } else if (roleLower === 'member') {
                 positions = ['Member'];
             } else {
-                // Default fallback
                 positions = ['Member'];
             }
-            
-            console.log('Positions:', positions); // Debug log
             
             // Clear and populate position dropdown
             positionSelect.innerHTML = '';
@@ -252,7 +266,6 @@ function editMemberComponent() {
             const newPosition = positionSelect.value;
             
             if (newPosition !== this.originalPosition) {
-                // Show preview, reason, and confirmation
                 if (previewDiv) previewDiv.classList.remove('hidden');
                 if (reasonDiv) reasonDiv.classList.remove('hidden');
                 if (confirmationDiv) confirmationDiv.classList.remove('hidden');
@@ -260,7 +273,6 @@ function editMemberComponent() {
                 if (reasonTextarea) reasonTextarea.required = true;
                 if (confirmCheckbox) confirmCheckbox.required = true;
             } else {
-                // Hide them
                 if (previewDiv) previewDiv.classList.add('hidden');
                 if (reasonDiv) reasonDiv.classList.add('hidden');
                 if (confirmationDiv) confirmationDiv.classList.add('hidden');
@@ -270,7 +282,9 @@ function editMemberComponent() {
         },
         
         openHistoryModal() {
-            window.location.href = `/members/${this.memberId}/position-history`;
+            if (this.memberId) {
+                window.location.href = `/members/${this.memberId}/position-history`;
+            }
         }
     }
 }
@@ -281,7 +295,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (form) {
         form.addEventListener('submit', function(e) {
             const positionSelect = document.getElementById('position');
-            const originalPosition = '{{ $member->position }}';
+            const originalPosition = '{{ $member->position ?? $user->position ?? '' }}';
             const reasonTextarea = document.getElementById('position_change_reason');
             const confirmCheckbox = document.getElementById('confirm_change');
             
