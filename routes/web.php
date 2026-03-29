@@ -38,9 +38,12 @@ Route::middleware('auth.custom')->group(function () {
         Route::get('/', [MemberController::class, 'index'])->name('index');
         Route::get('/create', [MemberController::class, 'create'])->name('create');
         Route::post('/', [MemberController::class, 'store'])->name('store');
+        Route::get('/{id}', [MemberController::class, 'show'])->name('show');
         Route::get('/{id}/edit', [MemberController::class, 'edit'])->name('edit');
         Route::put('/{id}', [MemberController::class, 'update'])->name('update');
         Route::delete('/{id}', [MemberController::class, 'destroy'])->name('destroy');
+        Route::get('/{id}/position-history', [MemberController::class, 'positionHistory'])->name('position-history');
+        Route::get('members/{id}/position-history-data', [MemberController::class, 'getPositionHistoryData'])->name('members.position-history-data');
     });
 
     // Documents — Adviser & Officer
@@ -108,5 +111,14 @@ Route::middleware('auth.custom')->group(function () {
         Route::get('/', [ProfileController::class, 'index'])->name('index');
         Route::put('/', [ProfileController::class, 'updateProfile'])->name('update');
         Route::put('/password', [ProfileController::class, 'updatePassword'])->name('password');
+    
+   
+    
+
+
+    
     });
+
+   
+    
 });

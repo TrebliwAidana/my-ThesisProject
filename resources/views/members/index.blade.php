@@ -29,6 +29,7 @@
                     <th class="text-left px-5 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Status</th>
                     <th class="text-left px-5 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Member Since</th>
                     <th class="text-left px-5 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Term</th>
+                    <th class="text-left px-5 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Last Change</th>
                     <th class="text-right px-5 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Actions</th>
                 </tr>
             </thead>
@@ -57,11 +58,40 @@
                         {{ optional($member->term_start)->format('M d, Y') }} - 
                         {{ optional($member->term_end)->format('M d, Y') ?? 'Present' }}
                     </td>
+                    <td class="px-5 py-3 text-gray-600 dark:text-gray-400 text-xs">
+                        @if($member->position_changed_at)
+                            <div class="flex flex-col">
+                                <span class="text-xs font-medium">
+                                    {{ $member->position_changed_at->diffForHumans() }}
+                                </span>
+                                <span class="text-xs text-gray-400">
+                                    by {{ $member->positionChangedBy->name ?? 'Unknown' }}
+                                </span>
+                            </div>
+                        @else
+                            <span class="text-xs text-gray-400">No changes</span>
+                        @endif
+                    </td>
                     <td class="px-5 py-3 text-right">
                         <div class="flex items-center justify-end gap-2">
-                            <a href="{{ route('members.edit', $member->id) }}" class="text-xs font-medium text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 px-3 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition">
+                            {{-- History Button --}}
+                            <a href="{{ route('members.position-history', $member->id) }}" 
+                               class="text-xs font-medium text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 px-3 py-1 rounded hover:bg-blue-50 dark:hover:bg-blue-900/20 transition"
+                               title="View position change history">
+                                <svg class="w-3.5 h-3.5 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                History
+                            </a>
+                            
+                            {{-- Edit Button --}}
+                            <a href="{{ route('members.edit', $member->id) }}" 
+                               class="text-xs font-medium text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 px-3 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition">
                                 Edit
                             </a>
+                            
+                            {{-- Delete Button (only for authorized users) --}}
+                            @if(in_array(Auth::user()->role->name, ['Adviser', 'Officer']))
                             <form method="POST" action="{{ route('members.destroy', $member->id) }}" 
                                   onsubmit="return confirmDelete('{{ $member->user->full_name }}', '{{ $member->user->role->name }}')">
                                 @csrf
@@ -71,12 +101,13 @@
                                     Remove
                                 </button>
                             </form>
+                            @endif
                         </div>
                     </td>
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="8" class="px-5 py-10 text-center text-gray-400 dark:text-gray-500 text-sm italic">No members found.</td>
+                    <td colspan="9" class="px-5 py-10 text-center text-gray-400 dark:text-gray-500 text-sm italic">No members found.</td>
                 </tr>
                 @endforelse
             </tbody>
@@ -146,8 +177,10 @@
             });
         }
         
-        searchInput.addEventListener('input', performSearch);
-        performSearch();
+        if (searchInput) {
+            searchInput.addEventListener('input', performSearch);
+            performSearch();
+        }
     });
 </script>
 

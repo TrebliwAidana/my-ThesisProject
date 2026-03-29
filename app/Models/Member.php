@@ -6,54 +6,39 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-/**
- * @property int $id
- * @property int $user_id
- * @property string $position
- * @property \Illuminate\Support\Carbon $term_start
- * @property \Illuminate\Support\Carbon|null $term_end
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Budget> $budgets
- * @property-read int|null $budgets_count
- * @property-read mixed $initials
- * @property-read string $status
- * @property-read \App\Models\User $user
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Member active()
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Member inactive()
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Member newModelQuery()
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Member newQuery()
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Member query()
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Member whereCreatedAt($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Member whereId($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Member wherePosition($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Member whereTermEnd($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Member whereTermStart($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Member whereUpdatedAt($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Member whereUserId($value)
- * @property \Illuminate\Support\Carbon|null $joined_at
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Member whereJoinedAt($value)
- * @mixin \Eloquent
- */
 class Member extends Model
 {
-    // ✅ FIXED: Removed HasUuids — migration uses integer id()
+    // Position/Role Constants
+    const POSITION_MEMBER = 'member';
+    const POSITION_OFFICER = 'officer';
+    const POSITION_ADVISER = 'adviser';
+    const POSITION_ADMIN = 'admin';
+    
+    // Available positions with labels
+    const POSITIONS = [
+        self::POSITION_MEMBER => 'Member',
+        self::POSITION_OFFICER => 'Officer',
+        self::POSITION_ADVISER => 'Adviser',
+        self::POSITION_ADMIN => 'Admin',
+    ];
+    
     protected $fillable = [
-        // ✅ FIXED: Synced to match migration columns exactly
         'user_id',
         'position',
         'term_start',
         'term_end',
-        'joined_at', // Add this if you have joined_at in your database
+        'joined_at',
+        'position_changed_at',
+        'position_changed_by',
     ];
 
     protected $casts = [
         'term_start' => 'date',
         'term_end'   => 'date',
-        'joined_at'  => 'date', // Add this if you have joined_at
+        'joined_at'  => 'date',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
-       
+        'position_changed_at' => 'datetime',
     ];
 
     /**
@@ -65,8 +50,23 @@ class Member extends Model
     }
 
     /**
-     * ✅ FIXED: Added budgets() relationship.
-     * Required by MemberController@show which calls $member->load('user', 'budgets')
+     * Get the user who changed this member's position
+     */
+    public function positionChangedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'position_changed_by');
+    }
+
+    /**
+     * Get the position change history for this member
+     */
+    public function positionChangeHistory(): HasMany
+    {
+        return $this->hasMany(PositionChangeLog::class);
+    }
+
+    /**
+     * Budgets relationship
      */
     public function budgets(): HasMany
     {
@@ -108,12 +108,154 @@ class Member extends Model
                      ->where('term_end', '<', now());
     }
 
+    /**
+     * Get member's initials from their user's name
+     */
     public function getInitialsAttribute()
     {
-        return collect(explode(' ', $this->full_name ?? ''))
+        $fullName = $this->user->name ?? '';
+        return collect(explode(' ', $fullName))
             ->filter(fn($n) => strlen($n) > 0)
             ->map(fn($n) => substr($n, 0, 1))
             ->take(2)
             ->implode('');
+    }
+
+    /**
+     * Check if position change is valid
+     * 
+     * @param string $currentPosition The current position of the member
+     * @param string $newPosition The new position to change to
+     * @param \App\Models\User $changingUser The user who is making the change
+     * @param \App\Models\Member|null $targetMember The member being changed (optional, for self-change checks)
+     * @return bool
+     */
+    public static function isValidPositionChange($currentPosition, $newPosition, $changingUser, $targetMember = null)
+    {
+        // Get changing user's member record
+        $changingUserMember = $changingUser->member;
+        
+        if (!$changingUserMember) {
+            return false;
+        }
+        
+        $changingUserPosition = $changingUserMember->position;
+        
+        // Only admin and adviser can change positions
+        if (!in_array($changingUserPosition, [self::POSITION_ADMIN, self::POSITION_ADVISER])) {
+            return false;
+        }
+        
+        // Admin can change any position
+        if ($changingUserPosition === self::POSITION_ADMIN) {
+            return true;
+        }
+        
+        // Adviser cannot change admin positions
+        if ($newPosition === self::POSITION_ADMIN || $currentPosition === self::POSITION_ADMIN) {
+            return false;
+        }
+        
+        // Adviser cannot change their own position
+        if ($targetMember && $changingUser->id === $targetMember->user_id) {
+            return false;
+        }
+        
+        return true;
+    }
+
+    /**
+     * Check if the member is an admin
+     */
+    public function isAdmin(): bool
+    {
+        return $this->position === self::POSITION_ADMIN;
+    }
+
+    /**
+     * Check if the member is an adviser
+     */
+    public function isAdviser(): bool
+    {
+        return $this->position === self::POSITION_ADVISER;
+    }
+
+    /**
+     * Check if the member is an officer
+     */
+    public function isOfficer(): bool
+    {
+        return $this->position === self::POSITION_OFFICER;
+    }
+
+    /**
+     * Check if the member is a regular member
+     */
+    public function isRegularMember(): bool
+    {
+        return $this->position === self::POSITION_MEMBER;
+    }
+
+    /**
+     * Get the position label
+     */
+    public function getPositionLabelAttribute(): string
+    {
+        return self::POSITIONS[$this->position] ?? ucfirst($this->position);
+    }
+
+    /**
+     * Check if the member's position was recently changed (within last X days)
+     */
+    public function wasPositionChangedRecently(int $days = 7): bool
+    {
+        if (!$this->position_changed_at) {
+            return false;
+        }
+        
+        return $this->position_changed_at->diffInDays(now()) <= $days;
+    }
+
+    /**
+     * Get the member's full name from their user
+     */
+    public function getFullNameAttribute()
+    {
+        return $this->user->name ?? 'Unknown';
+    }
+
+    /**
+     * Get the member's email from their user
+     */
+    public function getEmailAttribute()
+    {
+        return $this->user->email ?? '';
+    }
+
+    /**
+     * Check if the member can perform certain actions based on position
+     */
+    public function can(string $permission): bool
+    {
+        // Define permissions based on position
+        $permissions = [
+            self::POSITION_ADMIN => [
+                'manage_all', 'edit_members', 'delete_members', 'change_positions',
+                'view_budgets', 'approve_budgets', 'manage_settings'
+            ],
+            self::POSITION_ADVISER => [
+                'edit_members', 'change_positions', 'view_budgets', 'approve_budgets'
+            ],
+            self::POSITION_OFFICER => [
+                'view_budgets', 'submit_budgets'
+            ],
+            self::POSITION_MEMBER => [
+                'view_own_profile'
+            ],
+        ];
+        
+        $userPermissions = $permissions[$this->position] ?? [];
+        
+        return in_array($permission, $userPermissions);
     }
 }

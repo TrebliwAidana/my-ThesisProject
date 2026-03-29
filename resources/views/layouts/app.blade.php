@@ -3,10 +3,9 @@
     x-data="{
         sidebarOpen: false,
         activeRoute: '{{ Route::currentRouteName() }}',
-        adminOpen: {{ Str::startsWith(Route::currentRouteName(), 'admin.') || in_array(Route::currentRouteName(), ['settings.index','audit.logs']) ? 'true' : 'false' }},
-        dark: localStorage.getItem('dark') === 'true'
+        adminOpen: {{ Str::startsWith(Route::currentRouteName(), 'admin.') || in_array(Route::currentRouteName(), ['settings.index','audit.logs']) ? 'true' : 'false' }}
     }"
-    :class="dark ? 'dark' : ''"
+    :class="$store.theme.dark ? 'dark' : ''"
 >
 <head>
     <meta charset="UTF-8">
@@ -18,8 +17,10 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <script>
+        // Initialize theme before page loads to prevent flash
         (function () {
-            if (localStorage.getItem('dark') === 'true') {
+            const darkMode = localStorage.getItem('dark') === 'true';
+            if (darkMode) {
                 document.documentElement.classList.add('dark');
             }
         })();
@@ -205,15 +206,15 @@
 
         <div class="flex items-center gap-3">
             <button
-                @click="dark = !dark; localStorage.setItem('dark', dark)"
+                @click="$store.theme.toggle()"
                 class="w-8 h-8 rounded-lg flex items-center justify-center text-gray-500 dark:text-gray-400
                        hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                :title="dark ? 'Switch to light mode' : 'Switch to dark mode'"
+                :title="$store.theme.dark ? 'Switch to light mode' : 'Switch to dark mode'"
             >
-                <svg x-show="dark" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg x-show="$store.theme.dark" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707M17.657 17.657l-.707-.707M6.343 6.343l-.707-.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>
                 </svg>
-                <svg x-show="!dark" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg x-show="!$store.theme.dark" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/>
                 </svg>
             </button>
@@ -238,7 +239,7 @@
     </main>
 </div>
 
-{{-- Global Notification Container - Using Uniform Component --}}
+{{-- Global Notification Container --}}
 @if(!request()->routeIs('profile.*'))
 <div id="notification-container" class="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 w-full max-w-md pointer-events-none">
     <div class="pointer-events-auto space-y-2">
@@ -268,6 +269,7 @@
             toggle() {
                 this.dark = !this.dark;
                 localStorage.setItem('dark', this.dark);
+                document.documentElement.classList.toggle('dark', this.dark);
             },
             init() {
                 if (this.dark) {
@@ -275,6 +277,9 @@
                 }
             }
         });
+        
+        // Initialize the store
+        Alpine.store('theme').init();
     });
 </script>
 
