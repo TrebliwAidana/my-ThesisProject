@@ -13,13 +13,35 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    
+    {{-- Flash Data for JavaScript --}}
+    @php
+        $flashData = [];
+        if(session('success')) $flashData['success'] = session('success');
+        if(session('error')) $flashData['error'] = session('error');
+        if(session('warning')) $flashData['warning'] = session('warning');
+        if(session('info')) $flashData['info'] = session('info');
+        
+        // Clear session immediately
+        session()->forget('success');
+        session()->forget('error');
+        session()->forget('warning');
+        session()->forget('info');
+    @endphp
+    
+    @if(!empty($flashData))
+        <meta name="flash-data" content='{{ json_encode($flashData) }}'>
+    @endif
+    
     <title>@yield('title', 'VSULHS_SSLG')</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <script>
-        // Initialize theme before page loads to prevent flash
         (function () {
             const darkMode = localStorage.getItem('dark') === 'true';
             if (darkMode) {
@@ -29,7 +51,6 @@
     </script>
     
     <style>
-        /* Page Transition Animation */
         .page-transition {
             animation: fadeInUp 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
         }
@@ -45,7 +66,6 @@
             }
         }
         
-        /* Card Enter Animation */
         .card-enter {
             animation: slideUp 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
         }
@@ -61,7 +81,6 @@
             }
         }
         
-        /* Staggered Items */
         .stagger-item {
             opacity: 0;
             animation: fadeInUp 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
@@ -78,13 +97,11 @@
         .stagger-item:nth-child(9) { animation-delay: 0.45s; }
         .stagger-item:nth-child(10) { animation-delay: 0.5s; }
         
-        /* Fade In Up */
         .fade-in-up {
             opacity: 0;
             animation: fadeInUp 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
         }
         
-        /* Button Hover Effects */
         .btn-hover {
             transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         }
@@ -97,7 +114,6 @@
             transform: scale(0.95);
         }
         
-        /* Card Hover Effect */
         .card-hover {
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
@@ -107,7 +123,6 @@
             box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
         }
         
-        /* Table Row Hover */
         .table-row-hover {
             transition: all 0.2s ease;
         }
@@ -117,7 +132,6 @@
             transform: translateX(4px);
         }
         
-        /* Timeline Animation */
         .timeline-item {
             opacity: 0;
             transform: translateY(20px);
@@ -129,7 +143,6 @@
             transform: translateY(0);
         }
         
-        /* Modal Animation */
         .modal-enter {
             animation: modalSlideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
         }
@@ -145,34 +158,6 @@
             }
         }
         
-        /* Toast Animations */
-        @keyframes slideInRight {
-            from {
-                transform: translateX(100%);
-                opacity: 0;
-            }
-            to {
-                transform: translateX(0);
-                opacity: 1;
-            }
-        }
-        
-        @keyframes slideOutRight {
-            from {
-                transform: translateX(0);
-                opacity: 1;
-            }
-            to {
-                transform: translateX(100%);
-                opacity: 0;
-            }
-        }
-        
-        .animate-slide-in-right {
-            animation: slideInRight 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-        }
-        
-        /* Loading Spinner */
         .spinner {
             animation: spin 1s linear infinite;
         }
@@ -186,7 +171,6 @@
             }
         }
         
-        /* Skeleton Loading */
         .skeleton {
             background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
             background-size: 200% 100%;
@@ -202,7 +186,6 @@
             }
         }
         
-        /* Dark mode skeleton */
         .dark .skeleton {
             background: linear-gradient(90deg, #1f2937 25%, #374151 50%, #1f2937 75%);
             background-size: 200% 100%;
@@ -234,58 +217,52 @@
     <nav class="flex-1 py-3 overflow-y-auto">
         @php
             $user = auth()->user();
-            $userRole = $user ? $user->role->name ?? 'Member' : 'Guest';
+            $userRole = $user ? $user->role->name ?? 'Guest' : 'Guest';
+            $userAbbr = $user ? $user->role->abbreviation ?? null : null;
             
-            // Menu items with role-based permissions
             $menuItems = [
-                // Dashboard - All roles can see
                 [
                     'label' => 'Dashboard', 
                     'route' => 'dashboard', 
                     'icon' => 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6', 
-                    'roles' => ['Adviser', 'Officer', 'Auditor', 'Member']
+                    'roles' => ['System Administrator', 'Supreme Admin', 'Supreme Officer', 'Org Admin', 'Org Officer', 'Adviser', 'Org Member']
                 ],
                 
-                // Members - Adviser, Officer, Auditor can view
                 [
                     'label' => 'Members', 
                     'route' => 'members.index', 
                     'icon' => 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z', 
-                    'roles' => ['Adviser', 'Officer', 'Auditor']
+                    'roles' => ['System Administrator', 'Supreme Admin', 'Supreme Officer', 'Org Admin', 'Org Officer', 'Adviser']
                 ],
                 
-                // Documents - Adviser, Officer, Auditor can view
                 [
                     'label' => 'Documents', 
                     'route' => 'documents.index', 
                     'icon' => 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z', 
-                    'roles' => ['Adviser', 'Officer', 'Auditor']
+                    'roles' => ['System Administrator', 'Supreme Admin', 'Supreme Officer', 'Org Admin', 'Org Officer', 'Adviser']
                 ],
                 
-                // Budgets - Adviser, Officer, Auditor can view
                 [
                     'label' => 'Budgets', 
                     'route' => 'budgets.index', 
                     'icon' => 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z', 
-                    'roles' => ['Adviser', 'Officer', 'Auditor']
+                    'roles' => ['System Administrator', 'Supreme Admin', 'Supreme Officer', 'Org Admin', 'Org Officer', 'Adviser']
                 ],
             ];
             
-            // Administration menu - Adviser only
             $adminMenu = [
                 'label' => 'Administration',
                 'icon' => 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z',
-                'roles' => ['Adviser'],
+                'roles' => ['System Administrator', 'Supreme Admin', 'Adviser'],
                 'submenu' => [
-                    ['label' => 'User Management', 'route' => 'admin.users.index', 'roles' => ['Adviser']],
-                    ['label' => 'Roles', 'route' => 'admin.roles.index', 'roles' => ['Adviser']],
-                    ['label' => 'Permissions', 'route' => 'admin.permissions.index', 'roles' => ['Adviser']],
-                    ['label' => 'System Settings', 'route' => 'settings.index', 'roles' => ['Adviser']],
-                    ['label' => 'Audit Logs', 'route' => 'audit.logs', 'roles' => ['Adviser']],
+                    ['label' => 'User Management', 'route' => 'admin.users.index', 'roles' => ['System Administrator', 'Supreme Admin', 'Adviser']],
+                    ['label' => 'Roles', 'route' => 'admin.roles.index', 'roles' => ['System Administrator', 'Supreme Admin', 'Adviser']],
+                    ['label' => 'Permissions', 'route' => 'admin.permissions.index', 'roles' => ['System Administrator', 'Supreme Admin', 'Adviser']],
+                    ['label' => 'System Settings', 'route' => 'settings.index', 'roles' => ['System Administrator', 'Supreme Admin', 'Adviser']],
+                    ['label' => 'Audit Logs', 'route' => 'audit.logs', 'roles' => ['System Administrator', 'Supreme Admin']],
                 ]
             ];
             
-            // Filter menu items based on user role
             $filteredMenu = [];
             if ($user) {
                 foreach ($menuItems as $item) {
@@ -295,21 +272,19 @@
                 }
             }
             
-            // My Profile menu - All roles can see
             $profileMenu = [
                 'label' => 'My Profile',
                 'route' => 'profile.index',
                 'icon' => 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z',
-                'roles' => ['Adviser', 'Officer', 'Auditor', 'Member']
+                'roles' => ['System Administrator', 'Supreme Admin', 'Supreme Officer', 'Org Admin', 'Org Officer', 'Adviser', 'Org Member']
             ];
             
-            // Add My Profile to filtered menu (all roles)
             if ($user && in_array($userRole, $profileMenu['roles'])) {
                 $filteredMenu[] = $profileMenu;
             }
         @endphp
 
-        {{-- Regular Menu Items with animation --}}
+        {{-- Regular Menu Items --}}
         @if($user)
             @foreach($filteredMenu as $index => $item)
                 <a href="{{ route($item['route']) }}"
@@ -323,7 +298,7 @@
                 </a>
             @endforeach
 
-            {{-- Administration Menu (Adviser only) --}}
+            {{-- Administration Menu --}}
             @if(in_array($userRole, $adminMenu['roles']))
             <div class="mt-2" style="animation: fadeInUp 0.4s ease-out forwards; animation-delay: {{ count($filteredMenu) * 0.05 }}s; opacity: 0;">
                 <button
@@ -350,12 +325,14 @@
                      x-transition:leave-start="opacity-100"
                      x-transition:leave-end="opacity-0">
                     @foreach($adminMenu['submenu'] as $sub)
+                        @if(in_array($userRole, $sub['roles']))
                         <a href="{{ route($sub['route']) }}"
                            :class="activeRoute === '{{ $sub['route'] }}' ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'"
                            class="flex items-center gap-2.5 pl-11 pr-4 py-2 text-xs font-medium transition-all duration-200 rounded-lg mx-2 my-1 hover:translate-x-1">
                             <span class="w-1.5 h-1.5 rounded-full bg-current opacity-50 flex-shrink-0 transition-all duration-200 group-hover:scale-125"></span>
                             {{ $sub['label'] }}
                         </a>
+                        @endif
                     @endforeach
                 </div>
             </div>
@@ -363,21 +340,24 @@
         @endif
     </nav>
 
-    {{-- User footer with animation --}}
+    {{-- User footer --}}
     @auth
-    <div class="border-t border-gray-200 dark:border-gray-700 px-4 py-3 flex items-center gap-3 flex-shrink-0 animate-slide-up" style="animation: fadeInUp 0.4s ease-out forwards; animation-delay: 0.3s; opacity: 0;">
+    <div class="border-t border-gray-200 dark:border-gray-700 px-4 py-3 flex items-center gap-3 flex-shrink-0" style="animation: fadeInUp 0.4s ease-out forwards; animation-delay: 0.3s; opacity: 0;">
         <div class="w-8 h-8 rounded-full bg-gradient-to-r from-indigo-500 to-indigo-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0 transition-transform duration-200 hover:scale-110">
             {{ strtoupper(substr(auth()->user()->full_name, 0, 2)) }}
         </div>
         <div class="min-w-0">
             <p class="text-gray-700 dark:text-gray-200 text-xs font-semibold truncate">{{ auth()->user()->full_name }}</p>
             <p class="text-gray-500 dark:text-gray-400 text-xs truncate">{{ auth()->user()->role->name }}</p>
+            @if(auth()->user()->role->abbreviation)
+            <p class="text-gray-400 dark:text-gray-500 text-xs truncate">{{ auth()->user()->role->abbreviation }}</p>
+            @endif
         </div>
     </div>
     @endauth
 </aside>
 
-{{-- Mobile overlay with fade animation --}}
+{{-- Mobile overlay --}}
 <div x-show="sidebarOpen" 
      x-transition.opacity.duration.200
      @click="sidebarOpen = false"
@@ -386,7 +366,7 @@
 {{-- ═══════════════════════════ MAIN ═══════════════════════════ --}}
 <div class="flex-1 flex flex-col min-h-screen lg:ml-64">
 
-    {{-- Topbar with slide animation --}}
+    {{-- Topbar --}}
     <nav class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 h-14 flex items-center justify-between px-5
                 fixed top-0 left-0 right-0 z-50 lg:left-64"
          style="animation: slideUp 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;">
@@ -420,6 +400,11 @@
                 <span class="px-3 py-1 rounded-full text-xs font-semibold bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-400 transition-all duration-200 hover:scale-105">
                     {{ auth()->user()->role->name }}
                 </span>
+                @if(auth()->user()->role->abbreviation)
+                <span class="px-2 py-0.5 rounded-full text-xs font-mono bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hidden sm:inline-block">
+                    {{ auth()->user()->role->abbreviation }}
+                </span>
+                @endif
             @endauth
 
             <form method="POST" action="{{ route('logout') }}">
@@ -432,47 +417,14 @@
         </div>
     </nav>
 
-    {{-- Main content with page transition --}}
+    {{-- Main content --}}
     <main class="flex-1 pt-14 p-6 page-transition">
         @yield('content')
     </main>
 </div>
 
-{{-- Global Notification Container with animation --}}
-@if(!request()->routeIs('profile.*'))
-<div id="notification-container" class="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 w-full max-w-md pointer-events-none">
-    <div class="pointer-events-auto space-y-2">
-        @if(session('success'))
-            <x-notification type="success" message="{!! session('success') !!}" />
-            @php session()->forget('success') @endphp
-        @endif
-
-        @if(session('error'))
-            <x-notification type="error" message="{!! session('error') !!}" />
-            @php session()->forget('error') @endphp
-        @endif
-
-        @if(session('warning'))
-            <x-notification type="warning" message="{!! session('warning') !!}" />
-            @php session()->forget('warning') @endphp
-        @endif
-
-        @if(session('info'))
-            <x-notification type="info" message="{!! session('info') !!}" />
-            @php session()->forget('info') @endphp
-        @endif
-    </div>
-</div>
-@endif
-
-{{-- Clear any remaining flash messages after page load --}}
-@php
-    // Final cleanup - clear any flash messages that might have been missed
-    if(session()->has('success')) session()->forget('success');
-    if(session()->has('error')) session()->forget('error');
-    if(session()->has('warning')) session()->forget('warning');
-    if(session()->has('info')) session()->forget('info');
-@endphp
+{{-- EMPTY NOTIFICATION CONTAINER - JavaScript will populate this --}}
+<div id="notification-container" class="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 w-full max-w-md pointer-events-none"></div>
 
 <script>
     document.addEventListener('alpine:init', () => {
@@ -490,23 +442,7 @@
             }
         });
         
-        // Initialize the store
         Alpine.store('theme').init();
-    });
-    
-    // Auto-dismiss flash messages after 5 seconds
-    document.addEventListener('DOMContentLoaded', function() {
-        setTimeout(() => {
-            document.querySelectorAll('#notification-container .pointer-events-auto > div').forEach(el => {
-                if (el && el.parentElement) {
-                    el.style.transition = 'opacity 0.5s';
-                    el.style.opacity = '0';
-                    setTimeout(() => {
-                        if (el && el.parentElement) el.remove();
-                    }, 500);
-                }
-            });
-        }, 5000);
     });
 </script>
 

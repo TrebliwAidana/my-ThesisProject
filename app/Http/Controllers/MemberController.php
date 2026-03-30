@@ -31,7 +31,6 @@ class MemberController extends Controller
             abort(403, 'User role not assigned. Please contact administrator.');
         }
 
-        // Get statistics for dashboard
         $totalMembers = User::count();
         $activeMembers = User::where('is_active', true)->count();
         $totalRoles = Role::count();
@@ -40,20 +39,16 @@ class MemberController extends Controller
             ->where('last_login_at', '>=', now()->subDays(7))
             ->count();
 
-        // For Adviser/Officer/Auditor - show ALL users
-        if ($user->role->name === 'Member') {
-            // Members can only see themselves
+        if ($user->role->name === 'Org Member' || $user->role->abbreviation === 'OM') {
             $users = User::with('role')
                 ->where('id', $user->id)
                 ->paginate(10);
         } else {
-            // Advisers, Officers, and Auditors can see all users
             $users = User::with('role')
                 ->latest()
                 ->paginate(10);
         }
 
-        // Get all roles for filter
         $roles = Role::all();
 
         return view('members.index', compact(
@@ -75,14 +70,15 @@ class MemberController extends Controller
             abort(403, 'Unauthorized.');
         }
 
-        if (!in_array($user->role->name, ['Adviser', 'Officer'])) {
-            abort(403, 'Unauthorized. Only Advisers and Officers can create members.');
+        $allowedRoles = ['Adviser', 'Org Admin', 'Org Officer'];
+        if (!in_array($user->role->name, $allowedRoles) && !in_array($user->role->abbreviation, ['AD', 'OA', 'OO'])) {
+            abort(403, 'Unauthorized. Only Advisers, Org Admins, and Org Officers can create members.');
         }
 
-        if ($user->role->name === 'Adviser') {
+        if ($user->role->name === 'Adviser' || $user->role->abbreviation === 'AD') {
             $roles = Role::all();
         } else {
-            $roles = Role::where('name', 'Member')->get();
+            $roles = Role::where('name', 'Org Member')->orWhere('abbreviation', 'OM')->get();
         }
 
         return view('members.create', compact('roles'));
@@ -96,8 +92,9 @@ class MemberController extends Controller
             abort(403, 'Unauthorized.');
         }
 
-        if (!in_array($user->role->name, ['Adviser', 'Officer'])) {
-            abort(403, 'Unauthorized. Only Advisers and Officers can create members.');
+        $allowedRoles = ['Adviser', 'Org Admin', 'Org Officer'];
+        if (!in_array($user->role->name, $allowedRoles) && !in_array($user->role->abbreviation, ['AD', 'OA', 'OO'])) {
+            abort(403, 'Unauthorized. Only Advisers, Org Admins, and Org Officers can create members.');
         }
 
         $validated = $request->validate([
@@ -113,16 +110,16 @@ class MemberController extends Controller
             'send_welcome_email' => ['nullable', 'boolean'],
         ]);
 
-        if ($user->role->name === 'Officer') {
+        if (in_array($user->role->abbreviation, ['OO', 'OA']) || $user->role->name === 'Org Officer') {
             $selectedRole = Role::find($validated['role_id']);
-            if ($selectedRole->name !== 'Member') {
+            if (!in_array($selectedRole->name, ['Org Member', 'Org Officer']) && $selectedRole->abbreviation !== 'OM') {
                 return redirect()->route('members.index')
-                    ->with('error', '❌ ACCESS DENIED: Officers can only create Member accounts.');
+                    ->with('error', '❌ ACCESS DENIED: Officers can only create Org Member and Org Officer accounts.');
             }
         }
 
         $role = Role::find($validated['role_id']);
-        $allowedPositions = $this->getAllowedPositions($role->name);
+        $allowedPositions = $this->getAllowedPositions($role->name, $role->abbreviation);
 
         if (!in_array($validated['position'], $allowedPositions)) {
             return back()->withErrors(['position' => "Position '{$validated['position']}' is not valid for role '{$role->name}'. Allowed positions: " . implode(', ', $allowedPositions)])
@@ -132,19 +129,16 @@ class MemberController extends Controller
         DB::beginTransaction();
 
         try {
-            // Generate full name
             $fullName = $validated['first_name'] . ' ' . $validated['last_name'];
             if (!empty($validated['middle_name'])) {
                 $fullName = $validated['first_name'] . ' ' . $validated['middle_name'] . ' ' . $validated['last_name'];
             }
             
-            // Generate email if not provided
             $email = $validated['email'] ?? UserHelper::generateUniqueMemberEmail(
                 $validated['first_name'], 
                 $validated['last_name']
             );
             
-            // Default password
             $password = 'password';
             
             $newUser = User::create([
@@ -162,7 +156,6 @@ class MemberController extends Controller
                 'email_verified_at' => now(),
             ]);
 
-            // Create member record
             Member::create([
                 'user_id' => $newUser->id,
                 'position' => $validated['position'],
@@ -198,13 +191,14 @@ class MemberController extends Controller
             abort(403, 'Unauthorized.');
         }
 
-        if (!in_array($currentUser->role->name, ['Adviser', 'Officer'])) {
-            abort(403, 'Unauthorized. Only Advisers and Officers can update members.');
+        $allowedRoles = ['Adviser', 'Org Admin', 'Org Officer'];
+        if (!in_array($currentUser->role->name, $allowedRoles) && !in_array($currentUser->role->abbreviation, ['AD', 'OA', 'OO'])) {
+            abort(403, 'Unauthorized. Only Advisers, Org Admins, and Org Officers can update members.');
         }
 
-        if ($currentUser->role->name === 'Officer') {
+        if (in_array($currentUser->role->abbreviation, ['OO', 'OA']) || $currentUser->role->name === 'Org Officer') {
             $targetRole = $user->role->name;
-            if ($targetRole !== 'Member') {
+            if (!in_array($targetRole, ['Org Member', 'Org Officer']) && $user->role->abbreviation !== 'OM') {
                 return redirect()->route('members.index')
                     ->with('error', '❌ ACCESS DENIED: You are not authorized to edit this member.');
             }
@@ -222,7 +216,6 @@ class MemberController extends Controller
             'is_active' => ['boolean'],
         ]);
 
-        // Prevent changing role of last adviser
         if ($user->role && $user->role->name === 'Adviser' && $validated['role_id'] != $user->role_id) {
             $adviserCount = User::whereHas('role', function($q) {
                 $q->where('name', 'Adviser');
@@ -250,7 +243,6 @@ class MemberController extends Controller
             $user->position = $validated['position'] ?? $user->position;
             $user->is_active = $validated['is_active'] ?? $user->is_active;
             
-            // Only update password if provided
             if ($request->filled('password')) {
                 $request->validate([
                     'password' => ['required', 'confirmed', 'min:8'],
@@ -260,15 +252,19 @@ class MemberController extends Controller
             
             $user->save();
             
-            // Update or create member record
             $member = $user->member;
             if ($member) {
                 $member->position = $validated['position'] ?? $member->position;
                 $member->save();
             }
 
+            // Clear any existing flash data before setting new one
+            session()->forget('success');
+            session()->forget('error');
+            
             return redirect()->route('members.index')
-                ->with('success', "✅ Member {$fullName} updated successfully.");
+                ->with('success', "✅ Member {$fullName} updated successfully.")
+                ->with('_flash', ['success' => "✅ Member {$fullName} updated successfully."]);
                 
         } catch (\Exception $e) {
             return back()->with('error', '❌ Failed to update member: ' . $e->getMessage())
@@ -285,15 +281,16 @@ class MemberController extends Controller
             return back()->with('error', '❌ Unauthorized.');
         }
 
-        if (!in_array($currentUser->role->name, ['Adviser', 'Officer'])) {
-            return back()->with('error', '❌ Unauthorized. Only Advisers and Officers can delete members.');
+        $allowedRoles = ['Adviser', 'Org Admin', 'Org Officer'];
+        if (!in_array($currentUser->role->name, $allowedRoles) && !in_array($currentUser->role->abbreviation, ['AD', 'OA', 'OO'])) {
+            return back()->with('error', '❌ Unauthorized. Only Advisers, Org Admins, and Org Officers can delete members.');
         }
 
-        if ($currentUser->role->name === 'Officer') {
+        if (in_array($currentUser->role->abbreviation, ['OO', 'OA']) || $currentUser->role->name === 'Org Officer') {
             $userRole = $userToDelete->role->name;
-            if ($userRole !== 'Member') {
+            if (!in_array($userRole, ['Org Member', 'Org Officer']) && $userToDelete->role->abbreviation !== 'OM') {
                 return redirect()->route('members.index')
-                    ->with('error', '❌ ACCESS DENIED: Officers can only delete regular Members.');
+                    ->with('error', '❌ ACCESS DENIED: Officers can only delete regular Org Members.');
             }
         }
 
@@ -325,15 +322,104 @@ class MemberController extends Controller
         }
     }
 
-    private function getAllowedPositions($roleName)
+    /**
+     * Display the specified member.
+     */
+    public function show($id)
+    {
+        $user = Auth::user();
+
+        if (!$user || !$user->role) {
+            abort(403, 'Unauthorized.');
+        }
+
+        // Find the member with role and member relationship
+        $member = User::with('role', 'member')->findOrFail($id);
+
+        // Check if user has permission to view this member
+        // System Administrator (role_id = 1) can view any member
+        if ($user->role_id == 1) {
+            // Allow full access
+        } 
+        // Users can view their own profile
+        elseif ($user->id == $member->id) {
+            // Allow access to own profile
+        }
+        // Org Admins and Org Officers can view members in their organization
+        elseif (in_array($user->role->abbreviation, ['OA', 'OO'])) {
+            // Check if member belongs to same organization
+            if ($member->organization_id != ($user->organization_id ?? null)) {
+                abort(403, 'Unauthorized to view this member.');
+            }
+        }
+        else {
+            abort(403, 'Unauthorized to view this member.');
+        }
+
+        // Get member statistics
+        $documentsCount = $member->documents()->count();
+        $budgetsCount = $member->budgets()->count();
+        $memberSince = $member->created_at->format('F d, Y');
+
+        return view('members.show', compact('member', 'documentsCount', 'budgetsCount', 'memberSince'));
+    }
+
+    private function getAllowedPositions($roleName, $abbreviation = null)
     {
         $positions = [
+            'System Administrator' => ['System Administrator'],
+            'Supreme Admin' => ['Supreme Admin'],
+            'Supreme Officer' => ['Supreme Officer'],
+            'Org Admin' => ['President', 'Chairperson'],
+            'Org Officer' => ['Secretary', 'Treasurer', 'Auditor', 'PIO', 'Vice President'],
             'Adviser' => ['Adviser'],
-            'Officer' => ['President', 'Vice President', 'Secretary', 'Treasurer', 'Auditor'],
-            'Auditor' => ['Auditor'],
-            'Member' => ['Member'],
+            'Org Member' => ['Member'],
         ];
 
-        return $positions[$roleName] ?? [];
+        if ($abbreviation) {
+            $abbrevPositions = [
+                'SysAdmin' => ['System Administrator'],
+                'SA' => ['Supreme Admin'],
+                'SO' => ['Supreme Officer'],
+                'OA' => ['President', 'Chairperson'],
+                'OO' => ['Secretary', 'Treasurer', 'Auditor', 'PIO', 'Vice President'],
+                'AD' => ['Adviser'],
+                'OM' => ['Member'],
+            ];
+            return $abbrevPositions[$abbreviation] ?? $positions[$roleName] ?? ['Member'];
+        }
+
+        return $positions[$roleName] ?? ['Member'];
+    }
+
+        /**
+     * Deactivate a member account (Admin only)
+     */
+    public function deactivate($id)
+    {
+        $user = User::findOrFail($id);
+        
+        // Prevent deactivating yourself
+        if ($user->id == auth()->id()) {
+            return response()->json(['error' => 'You cannot deactivate your own account.'], 403);
+        }
+        
+        $user->is_active = false;
+        $user->save();
+        
+        return response()->json(['success' => true, 'message' => 'Account deactivated successfully.']);
+    }
+
+    /**
+     * Activate a member account (Admin only)
+     */
+    public function activate($id)
+    {
+        $user = User::findOrFail($id);
+        
+        $user->is_active = true;
+        $user->save();
+        
+        return response()->json(['success' => true, 'message' => 'Account activated successfully.']);
     }
 }

@@ -221,11 +221,32 @@ class User extends Authenticatable
      */
     public function hasPermission($permission)
     {
-        if (!$permission) return true;
-
-        $roleName = $this->role?->name;
+        // System Administrator (role_id = 1) has ALL permissions
+        if ($this->role_id == 1) {
+            return true;
+        }
+        
+        // Also check by role name for safety
+        if ($this->role && $this->role->name === 'System Administrator') {
+            return true;
+        }
+        
+        // If no role, deny access
+        if (!$this->role) {
+            return false;
+        }
+        
+        // Get permissions from config
+        $roleName = $this->role->name;
         $permissions = config("permissions.roles.$roleName", []);
-
+        
+        // Add hierarchy inheritance from parent role
+        if ($this->role->parent) {
+            $parentPermissions = config("permissions.roles.{$this->role->parent->name}", []);
+            $permissions = array_merge($permissions, $parentPermissions);
+        }
+        
+        // Check if user has the permission
         return in_array($permission, $permissions);
     }
 

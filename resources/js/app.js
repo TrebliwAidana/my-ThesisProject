@@ -1,9 +1,208 @@
 import './bootstrap';
-import Alpine from 'alpinejs'
+import Alpine from 'alpinejs';
 
-window.Alpine = Alpine
+window.Alpine = Alpine;
 
-// Global Animation Functions
+// ============================================
+// NOTIFICATION MANAGER
+// ============================================
+class NotificationManager {
+    constructor() {
+        this.container = document.getElementById('notification-container');
+        this.notifications = [];
+        this.init();
+    }
+    
+    init() {
+        this.checkFlashData();
+        
+        // Handle page restore from cache (back/forward)
+        window.addEventListener('pageshow', (event) => {
+            if (event.persisted) {
+                this.clearAll();
+                this.checkFlashData();
+            }
+        });
+        
+        // Clear on page unload
+        window.addEventListener('beforeunload', () => {
+            this.clearAll();
+        });
+    }
+    
+    checkFlashData() {
+        const flashData = document.querySelector('meta[name="flash-data"]');
+        if (flashData && flashData.content) {
+            try {
+                const data = JSON.parse(flashData.content);
+                if (data.success) this.show('success', data.success);
+                if (data.error) this.show('error', data.error);
+                if (data.warning) this.show('warning', data.warning);
+                if (data.info) this.show('info', data.info);
+                flashData.remove();
+            } catch(e) {
+                console.error('Failed to parse flash data:', e);
+            }
+        }
+    }
+    
+    show(type, message, duration = 5000) {
+        // Prevent duplicate notifications
+        const existing = this.notifications.find(n => n.message === message && n.type === type);
+        if (existing) return;
+        
+        const id = Date.now() + Math.random();
+        const notification = this.createNotification(type, message, id);
+        
+        this.container.appendChild(notification);
+        this.notifications.push({ id, type, message });
+        
+        const timeoutId = setTimeout(() => {
+            this.remove(id);
+        }, duration);
+        
+        this.notifications = this.notifications.map(n => 
+            n.id === id ? { ...n, timeoutId } : n
+        );
+    }
+    
+    createNotification(type, message, id) {
+        const colors = {
+            success: 'green',
+            error: 'red',
+            warning: 'amber',
+            info: 'blue'
+        };
+        
+        const icons = {
+            success: 'M5 13l4 4L19 7',
+            error: 'M6 18L18 6M6 6l12 12',
+            warning: 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z',
+            info: 'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z'
+        };
+        
+        const titles = {
+            success: 'Success!',
+            error: 'Error!',
+            warning: 'Warning!',
+            info: 'Information'
+        };
+        
+        const color = colors[type] || 'blue';
+        const title = titles[type] || 'Notification';
+        
+        const div = document.createElement('div');
+        div.className = `mb-2 rounded-xl shadow-lg overflow-hidden border-l-4 border-${color}-500 bg-white dark:bg-gray-800 transform transition-all duration-300`;
+        div.setAttribute('data-notification-id', id);
+        div.style.animation = 'slideInRight 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards';
+        
+        div.innerHTML = `
+            <div class="p-4">
+                <div class="flex items-start gap-3">
+                    <div class="flex-shrink-0">
+                        <div class="w-8 h-8 rounded-full bg-${color}-100 dark:bg-${color}-900/50 flex items-center justify-center">
+                            <svg class="w-4 h-4 text-${color}-600 dark:text-${color}-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${icons[type]}"></path>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="flex-1">
+                        <p class="text-sm font-semibold text-gray-900 dark:text-white">${title}</p>
+                        <p class="text-sm text-gray-600 dark:text-gray-300 mt-0.5">${this.escapeHtml(message)}</p>
+                    </div>
+                    <div class="flex-shrink-0">
+                        <button onclick="window.notificationManager.remove(${id})" class="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="h-1 bg-${color}-500 animate-progress" style="width: 100%; animation: progressShrink 5s linear forwards;"></div>
+        `;
+        
+        return div;
+    }
+    
+    remove(id) {
+        const notification = this.container.querySelector(`[data-notification-id="${id}"]`);
+        if (notification && notification.parentElement) {
+            notification.style.animation = 'slideOutRight 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards';
+            setTimeout(() => {
+                if (notification && notification.parentElement) {
+                    notification.remove();
+                    this.notifications = this.notifications.filter(n => n.id !== id);
+                }
+            }, 300);
+        }
+    }
+    
+    clearAll() {
+        this.notifications.forEach(n => {
+            if (n.timeoutId) clearTimeout(n.timeoutId);
+        });
+        this.notifications = [];
+        const notifications = this.container.querySelectorAll('[data-notification-id]');
+        notifications.forEach(notification => notification.remove());
+    }
+    
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+}
+
+// Add CSS animations
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes progressShrink {
+        from { width: 100%; }
+        to { width: 0%; }
+    }
+    .animate-progress {
+        animation: progressShrink 5s linear forwards;
+    }
+    
+    @keyframes slideInRight {
+        from {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+    
+    @keyframes slideOutRight {
+        from {
+            transform: translateX(0);
+            opacity: 1;
+        }
+        to {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+    }
+`;
+document.head.appendChild(style);
+
+// Initialize notification manager
+window.notificationManager = new NotificationManager();
+
+// Global notification helper
+window.notify = {
+    success: (msg) => window.notificationManager?.show('success', msg),
+    error: (msg) => window.notificationManager?.show('error', msg),
+    warning: (msg) => window.notificationManager?.show('warning', msg),
+    info: (msg) => window.notificationManager?.show('info', msg)
+};
+
+// ============================================
+// GLOBAL ANIMATIONS
+// ============================================
 window.animations = {
     // Animate elements on scroll
     initScrollAnimations() {
@@ -50,62 +249,33 @@ window.animations = {
     
     // Show toast notification
     showToast(message, type = 'success') {
-        const toast = document.createElement('div');
-        toast.className = 'fixed bottom-6 right-6 z-50';
-        toast.innerHTML = `
-            <div class="${type === 'success' ? 'bg-emerald-500' : type === 'error' ? 'bg-red-500' : 'bg-blue-500'} 
-                        text-white rounded-lg shadow-lg p-4 flex items-center justify-between gap-3 min-w-[300px] animate-slide-in-right">
-                <div class="flex items-center gap-3">
-                    <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        ${type === 'success' ? 
-                            '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>' :
-                            '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>'
-                        }
-                    </svg>
-                    <p class="text-sm font-medium">${message}</p>
-                </div>
-                <button onclick="this.closest('.toast-notification')?.remove()" class="text-white hover:text-gray-200">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                    </svg>
-                </button>
-            </div>
-        `;
-        toast.classList.add('toast-notification');
-        document.body.appendChild(toast);
-        
-        setTimeout(() => {
-            if (toast && toast.parentElement) {
-                toast.style.animation = 'slideOutRight 0.3s ease-out';
-                setTimeout(() => toast.remove(), 300);
-            }
-        }, 5000);
+        window.notificationManager.show(type, message);
     },
     
     // Initialize all animations
     init() {
         this.initScrollAnimations();
         this.initButtons();
+        this.animateNumbers();
     }
 };
 
-// Position Change Tracking Alpine Component
+// ============================================
+// ALPINE COMPONENTS
+// ============================================
 document.addEventListener('alpine:init', () => {
+    // Position Change Tracking Component
     Alpine.data('positionChangeHandler', (memberData = {}) => ({
-        // Data
         memberId: memberData.id || null,
         originalPosition: memberData.position || '',
         selectedPosition: memberData.position || '',
         reason: '',
         confirmChange: false,
         isSubmitting: false,
-        
-        // History Modal Data
         historyModalOpen: false,
         historyLoading: false,
         historyData: [],
         
-        // Computed properties
         get isPositionChanged() {
             return this.selectedPosition !== this.originalPosition;
         },
@@ -117,23 +287,16 @@ document.addEventListener('alpine:init', () => {
         
         get changePreview() {
             if (!this.isPositionChanged) return null;
-            return {
-                from: this.originalPosition,
-                to: this.selectedPosition
-            };
+            return { from: this.originalPosition, to: this.selectedPosition };
         },
         
-        // Methods
         init() {
             if (this.originalPosition) {
                 this.selectedPosition = this.originalPosition;
             }
-            // Add animation to the container
             this.$nextTick(() => {
                 const container = this.$el;
-                if (container) {
-                    container.classList.add('fade-in-up');
-                }
+                if (container) container.classList.add('fade-in-up');
             });
         },
         
@@ -145,21 +308,16 @@ document.addEventListener('alpine:init', () => {
         
         async submitForm() {
             if (!this.canSubmit) return;
-            
             this.isSubmitting = true;
-            
             try {
                 const form = document.getElementById('editMemberForm');
-                if (form) {
-                    form.submit();
-                }
+                if (form) form.submit();
             } catch (error) {
                 window.animations.showToast('Error updating member: ' + error.message, 'error');
                 this.isSubmitting = false;
             }
         },
         
-        // History Modal Methods
         async openHistoryModal() {
             this.historyModalOpen = true;
             await this.loadHistoryData();
@@ -182,7 +340,6 @@ document.addEventListener('alpine:init', () => {
             }
         },
         
-        // Utility Methods
         showToast(message, type = 'success') {
             window.animations.showToast(message, type);
         },
@@ -220,28 +377,16 @@ document.addEventListener('alpine:init', () => {
         timeAgo(date) {
             if (!date) return '';
             const seconds = Math.floor((new Date() - new Date(date)) / 1000);
-            
-            const intervals = {
-                year: 31536000,
-                month: 2592000,
-                week: 604800,
-                day: 86400,
-                hour: 3600,
-                minute: 60
-            };
-            
+            const intervals = { year: 31536000, month: 2592000, week: 604800, day: 86400, hour: 3600, minute: 60 };
             for (const [unit, secondsInUnit] of Object.entries(intervals)) {
                 const interval = Math.floor(seconds / secondsInUnit);
-                if (interval >= 1) {
-                    return `${interval} ${unit}${interval === 1 ? '' : 's'} ago`;
-                }
+                if (interval >= 1) return `${interval} ${unit}${interval === 1 ? '' : 's'} ago`;
             }
-            
             return 'just now';
         }
     }));
     
-    // Timeline Observer for scroll animations
+    // Timeline Observer Component
     Alpine.data('timelineObserver', () => ({
         init() {
             this.$nextTick(() => {
@@ -253,10 +398,7 @@ document.addEventListener('alpine:init', () => {
                         }
                     });
                 }, { threshold: 0.1 });
-                
-                document.querySelectorAll('.timeline-item').forEach(item => {
-                    observer.observe(item);
-                });
+                document.querySelectorAll('.timeline-item').forEach(item => observer.observe(item));
             });
         }
     }));
@@ -271,7 +413,7 @@ document.addEventListener('alpine:init', () => {
         }
     }));
     
-    // Table Row Stagger Animation
+    // Stagger Table Component
     Alpine.data('staggerTable', () => ({
         rows: [],
         init() {
@@ -289,7 +431,9 @@ document.addEventListener('alpine:init', () => {
     }));
 });
 
-// Theme Store
+// ============================================
+// THEME STORE
+// ============================================
 document.addEventListener('alpine:init', () => {
     Alpine.store('theme', {
         dark: localStorage.getItem('dark') === 'true',
@@ -299,33 +443,27 @@ document.addEventListener('alpine:init', () => {
             document.documentElement.classList.toggle('dark', this.dark);
         },
         init() {
-            if (this.dark) {
-                document.documentElement.classList.add('dark');
-            }
+            if (this.dark) document.documentElement.classList.add('dark');
         }
     });
+    
+    Alpine.store('theme').init();
 });
 
-// Initialize Alpine
+// ============================================
+// INITIALIZE ALPINE AND ANIMATIONS
+// ============================================
 Alpine.start();
 
-// Initialize global animations when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
     window.animations.init();
     
-    // Add page transition class to main content
     const mainContent = document.querySelector('main');
-    if (mainContent) {
-        mainContent.classList.add('page-transition');
-    }
+    if (mainContent) mainContent.classList.add('page-transition');
     
-    // Animate cards on load
     document.querySelectorAll('.card').forEach((card, index) => {
-        setTimeout(() => {
-            card.classList.add('card-enter');
-        }, index * 100);
+        setTimeout(() => card.classList.add('card-enter'), index * 100);
     });
 });
 
-// Export for use in other files
 export default window.animations;

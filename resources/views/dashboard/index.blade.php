@@ -18,6 +18,14 @@
                     </svg>
                     {{ $user->role->name }}
                 </span>
+                @if($user->role->abbreviation)
+                <span class="inline-flex items-center gap-1.5 px-3 py-1 bg-white/20 rounded-full text-sm text-white">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                    </svg>
+                    {{ $user->role->abbreviation }}
+                </span>
+                @endif
                 @if($user->position)
                 <span class="inline-flex items-center gap-1.5 px-3 py-1 bg-white/20 rounded-full text-sm text-white">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -25,6 +33,16 @@
                     </svg>
                     {{ $user->position }}
                 </span>
+                @endif
+                @if(isset($userBadges) && count($userBadges) > 0)
+                    @foreach($userBadges as $badge)
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1 bg-{{ $badge['color'] }}-500/30 rounded-full text-sm text-white">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"></path>
+                        </svg>
+                        {{ $badge['text'] }}
+                    </span>
+                    @endforeach
                 @endif
             </div>
             <p class="text-indigo-100 text-sm md:text-base mt-4 max-w-2xl">
@@ -64,7 +82,7 @@
             <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Currently active in organization</p>
         </div>
 
-        {{-- Officers Card --}}
+        {{-- Leaders & Officers Card --}}
         <div class="group bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6 hover:shadow-lg transition-all duration-300 hover:scale-[1.02]">
             <div class="flex items-center justify-between mb-4">
                 <div class="w-12 h-12 bg-sky-50 dark:bg-sky-900/50 rounded-xl flex items-center justify-center">
@@ -74,8 +92,8 @@
                 </div>
                 <span class="text-3xl font-bold text-gray-800 dark:text-white">{{ $officersCount }}</span>
             </div>
-            <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Officers & Advisers</p>
-            <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Leadership team members</p>
+            <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Leaders & Officers</p>
+            <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Administrators, Advisers, and Officers</p>
         </div>
 
         {{-- New Members This Month Card --}}
@@ -120,10 +138,15 @@
                         </div>
                         <h4 class="text-lg font-bold text-gray-900 dark:text-white">{{ $user->full_name }}</h4>
                         <p class="text-sm text-gray-500 dark:text-gray-400">{{ $user->email }}</p>
-                        <div class="flex gap-2 mt-3">
+                        <div class="flex flex-wrap gap-2 mt-3 justify-center">
                             <span class="px-3 py-1 bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-400 rounded-full text-xs font-medium">
                                 Active
                             </span>
+                            @if($user->role->abbreviation)
+                            <span class="px-3 py-1 bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-400 rounded-full text-xs font-medium">
+                                {{ $user->role->abbreviation }}
+                            </span>
+                            @endif
                         </div>
                     </div>
 
@@ -132,13 +155,19 @@
                             <span class="text-sm text-gray-500 dark:text-gray-400">Role</span>
                             <span class="text-sm font-medium text-gray-900 dark:text-white">{{ $user->role->name }}</span>
                         </div>
+                        @if($user->role->abbreviation)
+                        <div class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-700">
+                            <span class="text-sm text-gray-500 dark:text-gray-400">Abbreviation</span>
+                            <span class="text-sm font-medium text-gray-900 dark:text-white">{{ $user->role->abbreviation }}</span>
+                        </div>
+                        @endif
                         <div class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-700">
                             <span class="text-sm text-gray-500 dark:text-gray-400">Position</span>
-                            <span class="text-sm font-medium text-gray-900 dark:text-white">{{ $user->member?->position ?? '—' }}</span>
+                            <span class="text-sm font-medium text-gray-900 dark:text-white">{{ $user->member?->position ?? $user->position ?? '—' }}</span>
                         </div>
                         <div class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-700">
                             <span class="text-sm text-gray-500 dark:text-gray-400">Member Since</span>
-                            <span class="text-sm font-medium text-gray-900 dark:text-white">{{ optional($user->member?->joined_at ?? $user->member?->term_start)->format('M d, Y') ?? '—' }}</span>
+                            <span class="text-sm font-medium text-gray-900 dark:text-white">{{ optional($user->member?->joined_at ?? $user->member?->term_start ?? $user->created_at)->format('M d, Y') ?? '—' }}</span>
                         </div>
                         <div class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-700">
                             <span class="text-sm text-gray-500 dark:text-gray-400">Current Term</span>
@@ -226,12 +255,14 @@
                         $statusColors = [
                             'approved' => 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400',
                             'rejected' => 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400',
-                            'pending' => 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400'
+                            'pending' => 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400',
+                            'reviewed' => 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400',
+                            'disbursed' => 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400'
                         ];
                     @endphp
                     <li class="flex items-center justify-between px-6 py-4 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition">
                         <div class="flex-1 min-w-0">
-                            <p class="text-sm font-medium text-gray-900 dark:text-white truncate">{{ Str::limit($budget->description ?? $budget->desc ?? '—', 50) }}</p>
+                            <p class="text-sm font-medium text-gray-900 dark:text-white truncate">{{ Str::limit($budget->description ?? $budget->desc ?? $budget->title ?? '—', 50) }}</p>
                             <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5 font-mono">₱{{ number_format($budget->amount, 2) }}</p>
                         </div>
                         <span class="text-xs font-medium px-2.5 py-1 rounded-full ml-4 {{ $statusColors[$budget->status] ?? 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400' }}">

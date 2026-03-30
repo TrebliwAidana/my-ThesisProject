@@ -11,17 +11,16 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
-
         // Register route-level middleware aliases
         $middleware->alias([
             'auth.custom' => \App\Http\Middleware\AuthMiddleware::class,
-            'role'        => \App\Http\Middleware\RoleMiddleware::class,
+            'role' => \App\Http\Middleware\RoleMiddleware::class,
             'prevent-back-history' => \App\Http\Middleware\PreventBackHistory::class,
-            'verified'    => \App\Http\Middleware\EnsureEmailIsVerified::class, // Add this line for email verification
+            'verified' => \App\Http\Middleware\EnsureEmailIsVerified::class,
         ]);
-          // Add global middleware
-        $middleware->append(\App\Http\Middleware\ClearFlashMessages::class);
-
+        
+        // Add global middleware (applied to all routes)
+        $middleware->append(\App\Http\Middleware\ClearOldFlashMessages::class);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //

@@ -100,15 +100,12 @@ Route::middleware('guest')->group(function () {
 });
 
 // ============= EMAIL VERIFICATION ROUTES - MUST BE OUTSIDE AUTH MIDDLEWARE =============
-// These routes need to be accessible without authentication
 Route::get('/email/verify', [EmailVerificationController::class, 'notice'])->name('verification.notice');
 Route::get('/email/verify/{id}/{hash}', [EmailVerificationController::class, 'verify'])->name('verification.verify');
 Route::post('/email/verification-resend', [EmailVerificationController::class, 'resend'])->name('verification.resend');
 
 // Authenticated routes (basic auth)
 Route::middleware('auth.custom')->group(function () {
-    
-    // Logout (always accessible)
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 });
 
@@ -118,8 +115,8 @@ Route::middleware(['auth.custom', 'verified'])->group(function () {
     // Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
-    // Members — Adviser & Officer
-    Route::middleware('role:Adviser,Officer')->prefix('members')->name('members.')->group(function () {
+    // Members — System Administrator, Adviser, Org Admin, Org Officer
+    Route::middleware('role:System Administrator,Adviser,Org Admin,Org Officer')->prefix('members')->name('members.')->group(function () {
         Route::get('/', [MemberController::class, 'index'])->name('index');
         Route::get('/create', [MemberController::class, 'create'])->name('create');
         Route::post('/', [MemberController::class, 'store'])->name('store');
@@ -129,10 +126,16 @@ Route::middleware(['auth.custom', 'verified'])->group(function () {
         Route::delete('/{id}', [MemberController::class, 'destroy'])->name('destroy');
         Route::get('/{id}/position-history', [MemberController::class, 'positionHistory'])->name('position-history');
         Route::get('/{id}/position-history-data', [MemberController::class, 'getPositionHistoryData'])->name('position-history-data');
+        Route::post('/{id}/deactivate', [MemberController::class, 'deactivate'])->name('deactivate');
+        Route::post('/{id}/activate', [MemberController::class, 'activate'])->name('activate');
+        Route::post('/{id}/deactivate', [MemberController::class, 'deactivate'])->name('deactivate');
+        Route::post('/{id}/activate', [MemberController::class, 'activate'])->name('activate');   
+        Route::get('/{id}/position-history', [MemberController::class, 'positionHistory'])->name('position-history');
+        Route::get('/{id}/position-history-data', [MemberController::class, 'getPositionHistoryData'])->name('position-history-data');
     });
 
-    // Documents — Adviser & Officer
-    Route::middleware('role:Adviser,Officer')->prefix('documents')->name('documents.')->group(function () {
+    // Documents — System Administrator, Adviser, Org Admin, Org Officer
+    Route::middleware('role:System Administrator,Adviser,Org Admin,Org Officer')->prefix('documents')->name('documents.')->group(function () {
         Route::get('/', [DocumentController::class, 'index'])->name('index');
         Route::get('/upload', [DocumentController::class, 'create'])->name('create');
         Route::post('/', [DocumentController::class, 'store'])->name('store');
@@ -140,8 +143,8 @@ Route::middleware(['auth.custom', 'verified'])->group(function () {
         Route::delete('/{id}', [DocumentController::class, 'destroy'])->name('destroy');
     });
 
-    // Budgets — Adviser, Officer, Auditor
-    Route::middleware('role:Adviser,Officer,Auditor')->prefix('budgets')->name('budgets.')->group(function () {
+    // Budgets — System Administrator, Adviser, Org Admin, Org Officer
+    Route::middleware('role:System Administrator,Adviser,Org Admin,Org Officer')->prefix('budgets')->name('budgets.')->group(function () {
         Route::get('/', [BudgetController::class, 'index'])->name('index');
         Route::get('/create', [BudgetController::class, 'create'])->name('create');
         Route::post('/', [BudgetController::class, 'store'])->name('store');
@@ -153,8 +156,8 @@ Route::middleware(['auth.custom', 'verified'])->group(function () {
         Route::delete('/{budget}', [BudgetController::class, 'destroy'])->name('destroy');
     });
 
-    // Admin routes (Adviser only)
-    Route::middleware('role:Adviser')->prefix('admin')->name('admin.')->group(function () {
+    // Admin routes (System Administrator, Supreme Admin, Adviser)
+    Route::middleware('role:System Administrator,Supreme Admin,Adviser')->prefix('admin')->name('admin.')->group(function () {
         // Users Management
         Route::prefix('users')->name('users.')->group(function () {
             Route::get('/', [AdminController::class, 'users'])->name('index');
@@ -183,20 +186,20 @@ Route::middleware(['auth.custom', 'verified'])->group(function () {
         });
     });
 
-    // Settings — Adviser only
+    // Settings — System Administrator, Supreme Admin, Adviser
     Route::get('/settings', [SettingsController::class, 'index'])
         ->name('settings.index')
-        ->middleware('role:Adviser');
+        ->middleware('role:System Administrator,Supreme Admin,Adviser');
 
-    // Audit Logs — Adviser only
+    // Audit Logs — System Administrator, Supreme Admin
     Route::get('/audit-logs', [AuditLogController::class, 'index'])
         ->name('audit.logs')
-        ->middleware('role:Adviser');
+        ->middleware('role:System Administrator,Supreme Admin');
 
     // Theme update endpoint
     Route::post('/admin/settings/theme', [SettingsController::class, 'updateTheme'])
         ->name('settings.theme.update')
-        ->middleware('role:Adviser');
+        ->middleware('role:System Administrator,Supreme Admin,Adviser');
     
     // Profile routes (for all authenticated users)
     Route::prefix('profile')->name('profile.')->group(function () {
@@ -214,3 +217,26 @@ Route::post('/clear-flash-messages', function() {
     session()->forget('_flash');
     return response()->json(['success' => true]);
 })->name('clear-flash');
+
+// Debug route to check permissions
+Route::get('/debug-my-permissions', function () {
+    $user = auth()->user();
+    
+    return [
+        'user' => [
+            'id' => $user->id,
+            'name' => $user->full_name,
+            'email' => $user->email,
+            'role_id' => $user->role_id,
+            'role_name' => $user->role->name ?? 'No role',
+            'role_abbreviation' => $user->role->abbreviation ?? 'No abbreviation',
+        ],
+        'hasPermission tests' => [
+            'members.view' => method_exists($user, 'hasPermission') ? $user->hasPermission('members.view') : 'Method not found',
+            'members.create' => method_exists($user, 'hasPermission') ? $user->hasPermission('members.create') : 'Method not found',
+            'members.edit' => method_exists($user, 'hasPermission') ? $user->hasPermission('members.edit') : 'Method not found',
+            'members.delete' => method_exists($user, 'hasPermission') ? $user->hasPermission('members.delete') : 'Method not found',
+        ],
+        'role_permissions' => $user->role->permissions ?? 'No permissions set',
+    ];
+})->middleware('auth');

@@ -36,5 +36,35 @@ class RoleMiddleware
         }
 
         return $next($request);
+
+         $allowed = false;
+        foreach ($roles as $allowedRole) {
+            if ($this->hasRoleOrParent($userRole, $allowedRole)) {
+                $allowed = true;
+                break;
+            }
+        }
+        
+        if ($allowed) {
+            return $next($request);
+        }
+        
+        abort(403, 'Unauthorized');
+    }
+
+    private function hasRoleOrParent($userRole, $allowedRole)
+    {
+        // Get role from database with parent relationship
+        $role = \App\Models\Role::where('name', $userRole)->with('parent')->first();
+        
+        if ($role->name === $allowedRole) {
+            return true;
+        }
+        
+        if ($role->parent && $role->parent->name === $allowedRole) {
+            return true;
+        }
+        
+        return false;
     }
 }

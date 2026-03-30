@@ -15,16 +15,37 @@ use Illuminate\Support\Str;
 /**
  * AdminController
  * Handles: User management, Role management, Permission management.
- * Access: Admin only (enforced in routes/web.php via role:Admin middleware).
+ * Access: System Administrator, Supreme Admin, Adviser only.
  */
 class AdminController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware(['auth.custom']);
+        $this->middleware(function ($request, $next) {
+            $user = auth()->user();
+            $allowedRoles = ['System Administrator', 'Supreme Admin', 'Adviser'];
+            $allowedAbbreviations = ['SysAdmin', 'SA', 'AD'];
+            
+            if (!$user || !$user->role) {
+                abort(403, 'Unauthorized.');
+            }
+            
+            if (!in_array($user->role->name, $allowedRoles) && !in_array($user->role->abbreviation, $allowedAbbreviations)) {
+                abort(403, 'Unauthorized. Only System Administrators, Supreme Admins, and Advisers can access admin functions.');
+            }
+            
+            return $next($request);
+        });
+    }
+
     // =========================================================================
     // USERS
     // =========================================================================
 
     public function users()
     {
+        $user = auth()->user();
         $totalUsers = User::count();
         $activeUsers = User::where('is_active', true)->count();
         $totalRoles = Role::count();
@@ -33,7 +54,17 @@ class AdminController extends Controller
             ->where('last_login_at', '>=', now()->subDays(7))
             ->count();
         
-        $users = User::with('role')->latest()->paginate(10);
+        if ($user->role->name === 'Adviser' || $user->role->abbreviation === 'AD') {
+            $users = User::with('role')
+                ->whereHas('role', function($query) {
+                    $query->whereIn('name', ['Org Admin', 'Org Officer', 'Org Member', 'Guest']);
+                })
+                ->latest()
+                ->paginate(10);
+        } else {
+            $users = User::with('role')->latest()->paginate(10);
+        }
+        
         $roles = Role::all();
         
         return view('admin.users.index', compact(
@@ -49,12 +80,21 @@ class AdminController extends Controller
 
     public function createUser()
     {
-        $roles = Role::all();
+        $user = auth()->user();
+        
+        if ($user->role->name === 'Adviser' || $user->role->abbreviation === 'AD') {
+            $roles = Role::whereIn('name', ['Org Admin', 'Org Officer', 'Org Member', 'Guest'])->get();
+        } else {
+            $roles = Role::all();
+        }
+        
         return view('admin.users.create', compact('roles'));
     }
 
     public function storeUser(Request $request)
     {
+        $currentUser = auth()->user();
+        
         $validated = $request->validate([
             'first_name' => ['required', 'string', 'max:255'],
             'last_name' => ['required', 'string', 'max:255'],
@@ -67,6 +107,16 @@ class AdminController extends Controller
             'is_active' => ['boolean'],
             'send_welcome_email' => ['nullable', 'boolean'],
         ]);
+        
+        $selectedRole = Role::find($validated['role_id']);
+        
+        if ($currentUser->role->name === 'Adviser' || $currentUser->role->abbreviation === 'AD') {
+            $allowedRoles = ['Org Admin', 'Org Officer', 'Org Member', 'Guest'];
+            if (!in_array($selectedRole->name, $allowedRoles)) {
+                return redirect()->route('admin.users.index')
+                    ->with('error', '❌ ACCESS DENIED: Advisers can only create Org Admin, Org Officer, Org Member, and Guest accounts.');
+            }
+        }
 
         DB::beginTransaction();
         
@@ -129,13 +179,35 @@ class AdminController extends Controller
     public function editUser(int $id)
     {
         $user = User::findOrFail($id);
-        $roles = Role::all();
+        $currentUser = auth()->user();
+        
+        if ($currentUser->role->name === 'Adviser' || $currentUser->role->abbreviation === 'AD') {
+            $allowedRoles = ['Org Admin', 'Org Officer', 'Org Member', 'Guest'];
+            if (!in_array($user->role->name, $allowedRoles)) {
+                abort(403, 'Unauthorized to edit this user.');
+            }
+        }
+        
+        if ($currentUser->role->name === 'Adviser' || $currentUser->role->abbreviation === 'AD') {
+            $roles = Role::whereIn('name', ['Org Admin', 'Org Officer', 'Org Member', 'Guest'])->get();
+        } else {
+            $roles = Role::all();
+        }
+        
         return view('admin.users.edit', compact('user', 'roles'));
     }
 
     public function updateUser(Request $request, int $id)
     {
         $user = User::findOrFail($id);
+        $currentUser = auth()->user();
+
+        if ($currentUser->role->name === 'Adviser' || $currentUser->role->abbreviation === 'AD') {
+            $allowedRoles = ['Org Admin', 'Org Officer', 'Org Member', 'Guest'];
+            if (!in_array($user->role->name, $allowedRoles)) {
+                abort(403, 'Unauthorized to update this user.');
+            }
+        }
 
         $validated = $request->validate([
             'first_name' => ['required', 'string', 'max:255'],
@@ -147,8 +219,17 @@ class AdminController extends Controller
             'year_level' => ['nullable', 'string'],
             'is_active' => ['nullable', 'boolean'],
         ]);
+        
+        $selectedRole = Role::find($validated['role_id']);
+        
+        if ($currentUser->role->name === 'Adviser' || $currentUser->role->abbreviation === 'AD') {
+            $allowedRoles = ['Org Admin', 'Org Officer', 'Org Member', 'Guest'];
+            if (!in_array($selectedRole->name, $allowedRoles)) {
+                return redirect()->route('admin.users.index')
+                    ->with('error', '❌ ACCESS DENIED: Advisers can only assign Org Admin, Org Officer, Org Member, and Guest roles.');
+            }
+        }
 
-        // Prevent changing role of last adviser
         if ($user->role && $user->role->name === 'Adviser' && $validated['role_id'] != $user->role_id) {
             $adviserCount = User::whereHas('role', function($q) {
                 $q->where('name', 'Adviser');
@@ -172,7 +253,6 @@ class AdminController extends Controller
             $user->year_level = $validated['year_level'] ?? null;
             $user->is_active = $validated['is_active'] ?? $user->is_active;
             
-            // Only update password if provided
             if ($request->filled('password')) {
                 $request->validate([
                     'password' => ['required', 'confirmed', 'min:8'],
@@ -182,7 +262,6 @@ class AdminController extends Controller
             
             $user->save();
             
-            // Update or create member record
             $member = $user->member;
             if ($member) {
                 $member->position = $validated['position'] ?? $member->position;
@@ -201,9 +280,17 @@ class AdminController extends Controller
     public function destroyUser(int $id)
     {
         $user = User::findOrFail($id);
+        $currentUser = auth()->user();
         
-        if ($user->id === auth()->id()) {
+        if ($user->id === $currentUser->id) {
             return back()->with('error', 'You cannot delete your own account.');
+        }
+        
+        if ($currentUser->role->name === 'Adviser' || $currentUser->role->abbreviation === 'AD') {
+            $allowedRoles = ['Org Admin', 'Org Officer', 'Org Member', 'Guest'];
+            if (!in_array($user->role->name, $allowedRoles)) {
+                return back()->with('error', '❌ ACCESS DENIED: Advisers can only delete Org Admin, Org Officer, Org Member, and Guest accounts.');
+            }
         }
         
         if ($user->role && $user->role->name === 'Adviser') {
@@ -285,7 +372,7 @@ class AdminController extends Controller
             'description' => ['nullable', 'string'],
         ]);
         
-        $defaultRoles = ['Adviser', 'Officer', 'Auditor', 'Member'];
+        $defaultRoles = ['System Administrator', 'Supreme Admin', 'Supreme Officer', 'Org Admin', 'Org Officer', 'Adviser', 'Org Member', 'Guest'];
         if (in_array($role->name, $defaultRoles)) {
             return back()->with('error', 'Cannot edit default system roles.');
         }
@@ -308,7 +395,7 @@ class AdminController extends Controller
     {
         $role = Role::findOrFail($id);
         
-        $defaultRoles = ['Adviser', 'Officer', 'Auditor', 'Member'];
+        $defaultRoles = ['System Administrator', 'Supreme Admin', 'Supreme Officer', 'Org Admin', 'Org Officer', 'Adviser', 'Org Member', 'Guest'];
         if (in_array($role->name, $defaultRoles)) {
             return back()->with('error', 'Cannot delete default system roles.');
         }
@@ -372,6 +459,7 @@ class AdminController extends Controller
             'users_by_role' => Role::withCount('users')->get()->map(function($role) {
                 return [
                     'name' => $role->name,
+                    'abbreviation' => $role->abbreviation,
                     'count' => $role->users_count
                 ];
             }),
