@@ -5,8 +5,8 @@
 
 @section('content')
 <div class="max-w-2xl">
-    <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm">
-        <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+    <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gold-200 dark:border-gold-800 overflow-hidden shadow-sm">
+        <div class="px-5 py-4 border-b border-gray-100 dark:border-gold-800 bg-gray-50 dark:bg-gray-800/50">
             <h2 class="text-sm font-semibold text-gray-900 dark:text-white">Create New User</h2>
             <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Add a new user to the system</p>
         </div>
@@ -20,7 +20,7 @@
                     First Name <span class="text-red-500">*</span>
                 </label>
                 <input type="text" name="first_name" value="{{ old('first_name') }}" required 
-                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
+                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-500 dark:bg-gray-700 dark:text-white"
                     placeholder="Enter first name">
                 @error('first_name')
                     <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
@@ -33,7 +33,7 @@
                     Middle Name <span class="text-gray-400 text-xs font-normal">(Optional)</span>
                 </label>
                 <input type="text" name="middle_name" value="{{ old('middle_name') }}" 
-                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
+                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-500 dark:bg-gray-700 dark:text-white"
                     placeholder="Enter middle name">
                 @error('middle_name')
                     <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
@@ -46,7 +46,7 @@
                     Last Name <span class="text-red-500">*</span>
                 </label>
                 <input type="text" name="last_name" value="{{ old('last_name') }}" required 
-                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
+                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-500 dark:bg-gray-700 dark:text-white"
                     placeholder="Enter last name">
                 @error('last_name')
                     <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
@@ -59,7 +59,7 @@
                     Email Address <span class="text-red-500">*</span>
                 </label>
                 <input type="email" name="email" value="{{ old('email') }}" required 
-                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
+                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-500 dark:bg-gray-700 dark:text-white"
                     placeholder="username@gmail.com">
                 
                 {{-- Hint Message --}}
@@ -86,7 +86,7 @@
                     Role <span class="text-red-500">*</span>
                 </label>
                 <select name="role_id" required 
-                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white">
+                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-500 dark:bg-gray-700 dark:text-white">
                     <option value="">Select a role</option>
                     @foreach($roles as $role)
                         <option value="{{ $role->id }}" {{ old('role_id') == $role->id ? 'selected' : '' }}>
@@ -105,7 +105,7 @@
                     Position <span class="text-gray-400 text-xs font-normal">(Optional)</span>
                 </label>
                 <input type="text" name="position" value="{{ old('position') }}" 
-                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
+                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-500 dark:bg-gray-700 dark:text-white"
                     placeholder="e.g., President, Secretary, Adviser">
                 @error('position')
                     <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
@@ -118,7 +118,7 @@
                     Student ID <span class="text-gray-400 text-xs font-normal">(Optional)</span>
                 </label>
                 <input type="text" name="student_id" value="{{ old('student_id') }}" 
-                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
+                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-500 dark:bg-gray-700 dark:text-white"
                     placeholder="Enter student ID number (e.g., 2020-12345)">
                 <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Enter a valid student ID number if applicable</p>
                 @error('student_id')
@@ -132,7 +132,7 @@
                     Year Level <span class="text-gray-400 text-xs font-normal">(Optional)</span>
                 </label>
                 <select name="year_level" 
-                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white">
+                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-500 dark:bg-gray-700 dark:text-white">
                     <option value="">Select grade level</option>
                     <option value="Grade 7" {{ old('year_level') == 'Grade 7' ? 'selected' : '' }}>Grade 7</option>
                     <option value="Grade 8" {{ old('year_level') == 'Grade 8' ? 'selected' : '' }}>Grade 8</option>
@@ -152,7 +152,7 @@
                     Password <span class="text-red-500">*</span>
                 </label>
                 <input type="password" name="password" required 
-                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
+                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-500 dark:bg-gray-700 dark:text-white"
                     placeholder="Enter password">
                 <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Minimum 8 characters</p>
                 @error('password')
@@ -166,7 +166,7 @@
                     Confirm Password <span class="text-red-500">*</span>
                 </label>
                 <input type="password" name="password_confirmation" required 
-                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
+                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-500 dark:bg-gray-700 dark:text-white"
                     placeholder="Confirm password">
             </div>
             
@@ -174,7 +174,7 @@
             <div>
                 <label class="flex items-center gap-2 cursor-pointer">
                     <input type="checkbox" name="is_active" value="1" {{ old('is_active', '1') == '1' ? 'checked' : '' }}
-                        class="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500">
+                        class="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-gold-500">
                     <span class="text-sm text-gray-700 dark:text-gray-300">Active</span>
                 </label>
                 <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Inactive users cannot log in</p>
@@ -184,9 +184,9 @@
             </div>
             
             {{-- Action Buttons --}}
-            <div class="flex gap-3 pt-4 border-t border-gray-100 dark:border-gray-700">
+            <div class="flex gap-3 pt-4 border-t border-gray-100 dark:border-gold-800">
                 <button type="submit" 
-                    class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white transition-all duration-200 shadow-sm hover:shadow-md">
+                    class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-lg bg-primary-600 hover:bg-gold-500 text-white transition-all duration-200 shadow-sm hover:shadow-md">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
                     </svg>

@@ -19,8 +19,8 @@
         </div>
     </div>
     
-    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 overflow-hidden">
-        <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gold-800 overflow-hidden">
+        <div class="px-6 py-4 border-b border-gold-200 dark:border-gold-800 bg-gray-50 dark:bg-gray-800/50">
             <h2 class="text-sm font-semibold text-gray-900 dark:text-white">Position Change History</h2>
         </div>
         
@@ -82,7 +82,7 @@
         </div>
         
         @if(isset($positionLogs) && method_exists($positionLogs, 'hasPages') && $positionLogs->hasPages())
-        <div class="px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+        <div class="px-6 py-4 border-t border-gold-200 dark:border-gold-800">
             {{ $positionLogs->links() }}
         </div>
         @endif

@@ -1,7 +1,7 @@
 <tr class="hover:bg-gray-50 transition">
     <!-- Avatar + Name -->
     <td class="px-6 py-4 flex items-center gap-4">
-        <div class="w-10 h-10 rounded-full bg-indigo-500 flex items-center justify-center text-white font-bold">
+        <div class="w-10 h-10 rounded-full bg-primary-500 flex items-center justify-center text-white font-bold">
             {{ $initials }}
         </div>
 
@@ -37,7 +37,7 @@
     <td class="px-6 py-4 text-right">
         <button 
             onclick="openMemberModal('{{ $name }}', '{{ $email }}', '{{ $role }}')"
-            class="text-indigo-600 hover:text-indigo-800 text-sm font-medium"
+            class="text-primary-600 hover:text-primary-800 text-sm font-medium"
         >
             View
         </button>

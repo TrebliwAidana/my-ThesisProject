@@ -42,7 +42,7 @@
             @csrf
             <input type="hidden" name="email" value="{{ session('verification_email') }}">
             <button type="submit" 
-                    class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 rounded-lg transition">
+                    class="w-full bg-primary-600 hover:bg-gold-500 text-white font-semibold py-2 rounded-lg transition">
                 Resend Verification Email
             </button>
         </form>

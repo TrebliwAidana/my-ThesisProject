@@ -59,7 +59,7 @@
     @endif
 
     {{-- Form card --}}
-    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gold-200 dark:border-gold-800 p-6">
 
         @if($role->is_system)
             {{-- System role: all fields disabled --}}
@@ -75,24 +75,24 @@
             <div class="space-y-4">
                 <div>
                     <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Role Name</label>
-                    <input type="text" value="{{ $role->name }}" disabled class="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-4 py-2.5 text-sm bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed">
+                    <input type="text" value="{{ $role->name }}" disabled class="w-full border border-gold-200 dark:border-gray-600 rounded-lg px-4 py-2.5 text-sm bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed">
                 </div>
                 <div>
                     <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Abbreviation</label>
-                    <input type="text" value="{{ $role->abbreviation }}" disabled class="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-4 py-2.5 text-sm bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed">
+                    <input type="text" value="{{ $role->abbreviation }}" disabled class="w-full border border-gold-200 dark:border-gray-600 rounded-lg px-4 py-2.5 text-sm bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed">
                 </div>
                 <div>
                     <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Description</label>
-                    <textarea disabled rows="3" class="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-4 py-2.5 text-sm bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed">{{ $role->description }}</textarea>
+                    <textarea disabled rows="3" class="w-full border border-gold-200 dark:border-gray-600 rounded-lg px-4 py-2.5 text-sm bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed">{{ $role->description }}</textarea>
                 </div>
                 <div>
                     <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Level</label>
-                    <input type="text" value="Level {{ $role->level }}" disabled class="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-4 py-2.5 text-sm bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed">
+                    <input type="text" value="Level {{ $role->level }}" disabled class="w-full border border-gold-200 dark:border-gray-600 rounded-lg px-4 py-2.5 text-sm bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed">
                 </div>
                 <div>
                     <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">System Role</label>
-                    <div class="flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-lg">
-                        <input type="checkbox" disabled checked class="mt-0.5 w-4 h-4 rounded border-gray-300 text-indigo-600 cursor-not-allowed">
+                    <div class="flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 border border-gold-200 dark:border-gray-600 rounded-lg">
+                        <input type="checkbox" disabled checked class="mt-0.5 w-4 h-4 rounded border-gray-300 text-primary-600 cursor-not-allowed">
                         <span class="text-sm text-gray-700 dark:text-gray-300">This role is marked as a system role</span>
                     </div>
                 </div>
@@ -117,7 +117,7 @@
                            value="{{ old('name', $role->name) }}"
                            required maxlength="100"
                            class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white
-                                  rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500
+                                  rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500
                                   {{ $errors->has('name') ? 'border-red-400' : '' }}">
                     @error('name') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
                 </div>
@@ -131,7 +131,7 @@
                            value="{{ old('abbreviation', $role->abbreviation) }}"
                            maxlength="20"
                            class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white
-                                  rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500
+                                  rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500
                                   {{ $errors->has('abbreviation') ? 'border-red-400' : '' }}">
                     @error('abbreviation') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
                 </div>
@@ -144,7 +144,7 @@
                     <textarea id="description" name="description" rows="3"
                               maxlength="500"
                               class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white
-                                     rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500
+                                     rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500
                                      resize-none {{ $errors->has('description') ? 'border-red-400' : '' }}">{{ old('description', $role->description) }}</textarea>
                     @error('description') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
                 </div>
@@ -156,7 +156,7 @@
                     </label>
                     <select id="level" name="level" required
                             class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white
-                                   rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500
+                                   rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500
                                    {{ $errors->has('level') ? 'border-red-400' : '' }}">
                         @for($i = 2; $i <= 7; $i++)
                             <option value="{{ $i }}" {{ old('level', $role->level) == $i ? 'selected' : '' }}>
@@ -181,11 +181,11 @@
                     <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
                         System Role
                     </label>
-                    <div class="flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-lg">
+                    <div class="flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 border border-gold-200 dark:border-gray-600 rounded-lg">
                         <input type="hidden" name="is_system" value="0">
                         <input type="checkbox" id="is_system" name="is_system" value="1"
                                {{ old('is_system', $role->is_system) ? 'checked' : '' }}
-                               class="mt-0.5 w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                               class="mt-0.5 w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-gold-500">
                         <div>
                             <label for="is_system" class="text-sm text-gray-700 dark:text-gray-300 cursor-pointer font-medium">
                                 Mark as system role
@@ -199,12 +199,12 @@
                     @error('is_system') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
                 </div>
 
-                <hr class="border-gray-100 dark:border-gray-700 mb-5">
+                <hr class="border-gray-100 dark:border-gold-800 mb-5">
 
                 {{-- Buttons --}}
                 <div class="flex gap-3">
                     <button type="submit"
-                            class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold
+                            class="flex-1 bg-primary-600 hover:bg-gold-500 text-white text-sm font-semibold
                                    px-5 py-2.5 rounded-lg transition flex items-center justify-center gap-2">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"

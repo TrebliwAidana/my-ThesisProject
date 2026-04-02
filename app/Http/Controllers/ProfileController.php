@@ -31,7 +31,15 @@ class ProfileController extends Controller
             'middle_name' => 'nullable|string|max:255',
             'student_id' => 'nullable|string|max:50|unique:users,student_id,' . $user->id,
             'year_level' => 'nullable|string|max:50',
+            'gender' => 'nullable|string|in:Male,Female,Other',
+            'phone' => 'nullable|string|max:20|unique:users,phone,' . $user->id,
+            'birthday' => 'nullable|date',
         ]);
+
+        // Year level clearing based on role and position
+        if ($this->shouldClearYearLevel($user->role_id, $user->position)) {
+            $validated['year_level'] = null;
+        }
 
         $user->full_name = $validated['full_name'];
         $user->email = $validated['email'];
@@ -50,6 +58,19 @@ class ProfileController extends Controller
         }
         if (isset($validated['year_level'])) {
             $user->year_level = $validated['year_level'];
+        }
+        if (isset($validated['gender'])) {
+            $user->gender = $validated['gender'];
+        }
+        if (isset($validated['phone'])) {
+            // Format phone: remove non-digits, add +63 prefix, keep 10 digits
+            $phone = preg_replace('/[^0-9]/', '', $validated['phone']);
+            if (substr($phone, 0, 2) == '63') $phone = substr($phone, 2);
+            if (substr($phone, 0, 1) == '0') $phone = substr($phone, 1);
+            $user->phone = '+63' . substr($phone, 0, 10);
+        }
+        if (isset($validated['birthday'])) {
+            $user->birthday = $validated['birthday'];
         }
         
         $user->save();
@@ -119,5 +140,21 @@ class ProfileController extends Controller
         ];
         
         return response()->json($stats);
+    }
+
+    // -------------------------------------------------------------------------
+    // Helper
+    // -------------------------------------------------------------------------
+
+    private function shouldClearYearLevel($roleId, $position)
+    {
+        $alwaysNonStudent = [1, 6, 8];
+        if (in_array($roleId, $alwaysNonStudent)) {
+            return true;
+        }
+        if ($roleId == 2 && $position !== 'SSLG President') {
+            return true;
+        }
+        return false;
     }
 }

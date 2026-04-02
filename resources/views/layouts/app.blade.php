@@ -148,14 +148,14 @@
 {{-- ══════════════════════ SIDEBAR ══════════════════════ --}}
 <aside
     :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'"
-    class="bg-white dark:bg-gray-800 fixed z-40 top-0 left-0 h-full transform transition-transform duration-200 lg:translate-x-0 flex flex-col border-r border-gray-200 dark:border-gray-700 sidebar-transition"
+    class="bg-white dark:bg-gray-800 fixed z-40 top-0 left-0 h-full transform transition-transform duration-200 lg:translate-x-0 flex flex-col border-r border-gold-200 dark:border-gold-800 sidebar-transition"
     :style="sidebarCollapsed ? 'width: 4rem' : 'width: 16rem'"
 >
-    {{-- Brand & Toggle Button --}}
-    <div class="flex items-center justify-between h-14 px-3 border-b border-gray-200 dark:border-gray-700 flex-shrink-0"
+    {{-- Brand & Toggle Button (X button removed) --}}
+    <div class="flex items-center justify-between h-14 px-3 border-b border-gold-200 dark:border-gold-800 flex-shrink-0"
          :class="sidebarCollapsed ? 'justify-center' : 'justify-between'">
         <div x-show="!sidebarCollapsed" class="text-left">
-            <span class="text-indigo-600 dark:text-indigo-400 font-semibold text-sm tracking-wide block">VSULHS_SSLG</span>
+            <span class="text-gold-600 dark:text-primary-400 font-semibold text-sm tracking-wide block">VSULHS_SSLG</span>
             <span class="text-gray-500 dark:text-gray-400 text-xs block mt-0.5">Student Gov Portal</span>
         </div>
         <button @click="sidebarCollapsed = !sidebarCollapsed"
@@ -166,13 +166,6 @@
             </svg>
             <svg x-show="sidebarCollapsed" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"/>
-            </svg>
-        </button>
-        <button @click="sidebarOpen = false"
-                class="lg:hidden text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
-                x-show="!sidebarCollapsed">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
             </svg>
         </button>
     </div>
@@ -247,7 +240,7 @@
             @foreach($filteredMenu as $index => $item)
                 <a href="{{ route($item['route']) }}"
                    :class="activeRoute === '{{ $item['route'] }}'
-                       ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
+                       ? 'bg-gold-50 dark:bg-gold-900/30 text-gold-600 dark:text-gold-400'
                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'"
                    class="flex items-center gap-3 px-4 py-2.5 text-sm font-medium rounded-lg mx-2 my-1 transition-colors duration-150 hover:translate-x-1"
                    :title="sidebarCollapsed ? '{{ $item['label'] }}' : ''">
@@ -263,7 +256,7 @@
                 <div class="mt-2">
                     <button @click="adminOpen = !adminOpen"
                             :class="adminOpen
-                                ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
+                                ? 'bg-gold-50 dark:bg-gold-900/30 text-gold-600 dark:text-gold-400'
                                 : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'"
                             class="w-full flex items-center justify-between px-4 py-2.5 text-sm font-medium rounded-lg mx-2 transition-colors duration-150 hover:translate-x-1"
                             :title="sidebarCollapsed ? '{{ $adminMenu['label'] }}' : ''">
@@ -291,7 +284,7 @@
                             @if(in_array($userRole, $sub['roles']))
                                 <a href="{{ route($sub['route']) }}"
                                    :class="activeRoute === '{{ $sub['route'] }}'
-                                       ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
+                                       ? 'bg-gold-50 dark:bg-gold-900/30 text-gold-600 dark:text-gold-400'
                                        : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'"
                                    class="flex items-center gap-2.5 pl-11 pr-4 py-2 text-xs font-medium rounded-lg mx-2 my-1 transition-colors duration-150 hover:translate-x-1"
                                    :title="sidebarCollapsed ? '{{ $sub['label'] }}' : ''">
@@ -308,9 +301,9 @@
 
     {{-- User footer --}}
     @auth
-        <div class="border-t border-gray-200 dark:border-gray-700 px-3 py-3 flex items-center gap-3 flex-shrink-0"
+        <div class="border-t border-gold-200 dark:border-gold-800 px-3 py-3 flex items-center gap-3 flex-shrink-0"
              :class="sidebarCollapsed ? 'justify-center' : 'justify-start'">
-            <div class="w-8 h-8 rounded-full bg-gradient-to-r from-indigo-500 to-indigo-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+            <div class="w-8 h-8 rounded-full bg-gradient-to-r from-primary-500 to-primary-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
                 {{ strtoupper(substr(auth()->user()->full_name, 0, 2)) }}
             </div>
             <div x-show="!sidebarCollapsed" class="min-w-0 sidebar-content">
@@ -324,19 +317,19 @@
     @endauth
 </aside>
 
-{{-- Mobile overlay --}}
+{{-- Mobile overlay with backdrop blur --}}
 <div x-show="sidebarOpen"
      x-transition.opacity.duration.200
      @click="sidebarOpen = false"
-     class="fixed inset-0 bg-black/40 z-30 lg:hidden"></div>
+     class="fixed inset-0 bg-black/40 backdrop-blur-sm z-30 lg:hidden"></div>
 
 {{-- ══════════════════════ MAIN ══════════════════════ --}}
 <div class="flex-1 flex flex-col min-h-screen transition-all duration-300"
      :class="sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64'">
 
-    {{-- Topbar --}}
-    <nav class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 h-14 flex items-center
-                justify-between px-5 fixed top-0 left-0 right-0 z-50"
+    {{-- Topbar with shadow --}}
+    <nav class="bg-white dark:bg-gray-800 border-b border-gold-200 dark:border-gold-800 h-14 flex items-center
+                justify-between px-5 fixed top-0 left-0 right-0 z-50 shadow-sm"
          :class="sidebarCollapsed ? 'lg:left-16' : 'lg:left-64'">
         <div class="flex items-center gap-3">
             <button @click="sidebarOpen = !sidebarOpen"
@@ -366,7 +359,7 @@
 
             @auth
                 <span class="text-sm text-gray-600 dark:text-gray-400 hidden sm:block">{{ auth()->user()->full_name }}</span>
-                <span class="px-3 py-1 rounded-full text-xs font-semibold bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-400">
+                <span class="px-3 py-1 rounded-full text-xs font-semibold bg-primary-100 dark:bg-primary-900/50 text-primary-700 dark:text-primary-400">
                     {{ auth()->user()->role->name }}
                 </span>
                 @if(auth()->user()->role->abbreviation)

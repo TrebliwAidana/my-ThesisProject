@@ -15,7 +15,7 @@
     <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Modify your budget request before submission</p>
 </div>
 
-<div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 max-w-2xl mx-auto">
+<div class="bg-white dark:bg-gray-800 rounded-xl border border-gold-200 dark:border-gold-800 p-6 max-w-2xl mx-auto">
     <form method="POST" action="{{ route('budgets.update', $budget) }}" enctype="multipart/form-data">
         @csrf
         @method('PUT')
@@ -40,14 +40,14 @@
         <div class="mb-4">
             <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Budget Title</label>
             <input type="text" name="title" value="{{ old('title', $budget->title) }}" required
-                   class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition">
+                   class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent transition">
         </div>
 
         {{-- Description --}}
         <div class="mb-4">
             <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Description</label>
             <textarea name="description" rows="4"
-                      class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
+                      class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent transition"
                       placeholder="Provide details about this budget request...">{{ old('description', $budget->description) }}</textarea>
         </div>
 
@@ -56,12 +56,12 @@
             <div>
                 <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Amount (₱)</label>
                 <input type="number" name="amount" value="{{ old('amount', $budget->amount) }}" required step="0.01" min="0"
-                       class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition">
+                       class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent transition">
             </div>
             <div>
                 <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Category</label>
                 <select name="category" required
-                        class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition">
+                        class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent transition">
                     <option value="">Select Category</option>
                     @foreach($categories as $category)
                         <option value="{{ $category->name }}" {{ old('category', $budget->category) == $category->name ? 'selected' : '' }}>
@@ -82,14 +82,14 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path>
                     </svg>
                     <span class="text-sm text-gray-600 dark:text-gray-400">Current file attached</span>
-                    <a href="{{ asset('storage/' . $budget->attachment_path) }}" target="_blank" class="text-xs text-indigo-600 hover:text-indigo-700 dark:text-indigo-400">
+                    <a href="{{ asset('storage/' . $budget->attachment_path) }}" target="_blank" class="text-xs text-primary-600 hover:text-primary-700 dark:text-primary-400">
                         View
                     </a>
                 </div>
             </div>
             @endif
             <input type="file" name="attachment" 
-                   class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 dark:file:bg-indigo-900/50 dark:file:text-indigo-400">
+                   class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100 dark:file:bg-primary-900/50 dark:file:text-primary-400">
             <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Accepted formats: PDF, DOC, DOCX, XLSX (Max: 5MB). Leave empty to keep current file.</p>
         </div>
 
@@ -110,9 +110,9 @@
         </div>
 
         {{-- Buttons --}}
-        <div class="flex gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+        <div class="flex gap-3 pt-4 border-t border-gold-200 dark:border-gold-800">
             <button type="submit"
-                    class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold px-5 py-2.5 rounded-lg transition">
+                    class="flex-1 bg-primary-600 hover:bg-gold-500 text-white text-sm font-semibold px-5 py-2.5 rounded-lg transition">
                 Update Budget Request
             </button>
             <a href="{{ route('budgets.show', $budget) }}"

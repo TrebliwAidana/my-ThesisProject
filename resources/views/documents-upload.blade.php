@@ -8,7 +8,7 @@
     <h1 class="text-2xl font-bold text-gray-900 mt-2">Upload Document</h1>
 </div>
 
-<div class="bg-white rounded-xl border border-gray-200 p-6 max-w-xl">
+<div class="bg-white rounded-xl border border-gold-200 p-6 max-w-xl">
     <form method="POST" action="{{ route('documents.store') }}" enctype="multipart/form-data">
         @csrf
 

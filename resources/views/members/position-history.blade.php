@@ -22,11 +22,11 @@
         </div>
     </div>
 
-    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gold-200 dark:border-gold-800">
         <div class="p-6">
             <!-- Loading State -->
             <div x-show="loading" class="text-center py-12">
-                <svg class="animate-spin h-12 w-12 mx-auto text-indigo-600" fill="none" viewBox="0 0 24 24">
+                <svg class="animate-spin h-12 w-12 mx-auto text-primary-600" fill="none" viewBox="0 0 24 24">
                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
@@ -37,7 +37,7 @@
             <div x-show="!loading">
                 <!-- History Items -->
                 <template x-for="(log, index) in historyData" :key="index">
-                    <div class="mb-6 pb-6 border-b border-gray-200 dark:border-gray-700 last:border-0">
+                    <div class="mb-6 pb-6 border-b border-gold-200 dark:border-gold-800 last:border-0">
                         <div class="flex items-start gap-4">
                             <!-- Timeline Icon -->
                             <div class="flex-shrink-0">
@@ -72,7 +72,7 @@
                                     <span x-show="log.ip_address"> • IP: <span x-text="log.ip_address"></span></span>
                                 </p>
                                 
-                                <div x-show="log.reason" class="mt-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg border-l-4 border-indigo-500">
+                                <div x-show="log.reason" class="mt-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg border-l-4 border-primary-500">
                                     <p class="text-sm text-gray-700 dark:text-gray-300">
                                         <span class="font-medium">Reason:</span> 
                                         <span x-text="log.reason"></span>
@@ -90,7 +90,7 @@
                     </svg>
                     <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-1">No Position Changes Yet</h3>
                     <p class="text-gray-500 dark:text-gray-400">This member hasn't had any position changes recorded.</p>
-                    <a href="{{ route('members.edit', $member->id ?? $member->user_id) }}" class="inline-flex items-center gap-2 mt-4 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition">
+                    <a href="{{ route('members.edit', $member->id ?? $member->user_id) }}" class="inline-flex items-center gap-2 mt-4 px-4 py-2 bg-primary-600 hover:bg-gold-500 text-white text-sm font-medium rounded-lg transition">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
                         </svg>
@@ -99,11 +99,11 @@
                 </div>
                 
                 <!-- Summary Statistics -->
-                <div x-show="historyData.length > 0" class="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
+                <div x-show="historyData.length > 0" class="mt-8 pt-6 border-t border-gold-200 dark:border-gold-800">
                     <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Summary Statistics</h4>
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                         <div class="text-center p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                            <p class="text-2xl font-bold text-indigo-600 dark:text-indigo-400" x-text="historyData.length"></p>
+                            <p class="text-2xl font-bold text-primary-600 dark:text-primary-400" x-text="historyData.length"></p>
                             <p class="text-xs text-gray-500 dark:text-gray-400">Total Changes</p>
                         </div>
                         <div class="text-center p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
@@ -188,8 +188,8 @@ function positionHistoryComponent(memberId) {
             
             const pos = position.toLowerCase();
             const classes = {
-                'system administrator': 'bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-400',
-                'supreme admin': 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/50 dark:text-indigo-400',
+                'system administrator': 'bg-gold-100 text-gold-800 dark:bg-gold-900/50 dark:text-gold-400',
+                'supreme admin': 'bg-primary-100 text-primary-800 dark:bg-primary-900/50 dark:text-primary-400',
                 'supreme officer': 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-400',
                 'org admin': 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-400',
                 'org officer': 'bg-sky-100 text-sky-800 dark:bg-sky-900/50 dark:text-sky-400',
@@ -205,16 +205,16 @@ function positionHistoryComponent(memberId) {
         },
         
         getTimelineBadgeClass(oldPosition, newPosition) {
-            if (!oldPosition || !newPosition) return 'bg-indigo-500';
+            if (!oldPosition || !newPosition) return 'bg-primary-500';
             
             const oldPos = oldPosition.toLowerCase();
             const newPos = newPosition.toLowerCase();
             
-            if (newPos.includes('admin') || newPos.includes('system') || newPos.includes('supreme')) return 'bg-purple-500';
+            if (newPos.includes('admin') || newPos.includes('system') || newPos.includes('supreme')) return 'bg-gold-500';
             if (oldPos.includes('member') && (newPos.includes('officer') || newPos.includes('admin'))) return 'bg-emerald-500';
             if ((oldPos.includes('officer') || oldPos.includes('admin')) && newPos.includes('member')) return 'bg-amber-500';
             if (newPos.includes('adviser')) return 'bg-orange-500';
-            return 'bg-indigo-500';
+            return 'bg-primary-500';
         },
         
         formatDate(date) {

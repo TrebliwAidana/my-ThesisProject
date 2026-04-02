@@ -5,10 +5,10 @@
 
 @section('content')
 <div class="max-w-2xl">
-    <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm"
+    <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gold-200 dark:border-gold-800 overflow-hidden shadow-sm"
          x-data="roleForm()">
 
-        <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+        <div class="px-5 py-4 border-b border-gray-100 dark:border-gold-800 bg-gray-50 dark:bg-gray-800/50">
             <h2 class="text-sm font-semibold text-gray-900 dark:text-white">Create New Role</h2>
             <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Define a new role in the system hierarchy</p>
         </div>
@@ -22,7 +22,7 @@
                     Role Name <span class="text-red-500">*</span>
                 </label>
                 <input type="text" name="name" value="{{ old('name') }}" required
-                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
+                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-500 dark:bg-gray-700 dark:text-white"
                     placeholder="Enter role name">
                 @error('name') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
             </div>
@@ -33,7 +33,7 @@
                     Abbreviation
                 </label>
                 <input type="text" name="abbreviation" value="{{ old('abbreviation') }}"
-                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
+                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-500 dark:bg-gray-700 dark:text-white"
                     placeholder="e.g., SA, OA, OM">
                 @error('abbreviation') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
             </div>
@@ -44,7 +44,7 @@
                     Description
                 </label>
                 <textarea name="description" rows="3"
-                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
+                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-500 dark:bg-gray-700 dark:text-white"
                     placeholder="Describe this role...">{{ old('description') }}</textarea>
                 @error('description') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
             </div>
@@ -54,7 +54,7 @@
                 <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
                     Parent Role (Hierarchy)
                 </label>
-                <select x-model="selectedParent" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white">
+                <select x-model="selectedParent" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-500 dark:bg-gray-700 dark:text-white">
                     <option value="">None (Top Level)</option>
                     @foreach($roles as $role)
                         @if($role->level <= 6)
@@ -70,10 +70,10 @@
             </div>
 
             {{-- Computed Level & Hidden Input --}}
-            <div class="p-3 bg-gray-50 dark:bg-gray-700/30 rounded-lg border border-gray-200 dark:border-gray-600">
+            <div class="p-3 bg-gray-50 dark:bg-gray-700/30 rounded-lg border border-gold-200 dark:border-gray-600">
                 <p class="text-xs text-gray-600 dark:text-gray-300">
                     Computed Level:
-                    <span class="font-semibold text-indigo-600 dark:text-indigo-400" x-text="computedLevel"></span>
+                    <span class="font-semibold text-primary-600 dark:text-primary-400" x-text="computedLevel"></span>
                 </p>
                 <input type="hidden" name="level" x-model="computedLevel">
                 <div x-show="computedLevel == 1 && !isSystem" class="mt-2 text-xs text-amber-600 dark:text-amber-400">
@@ -91,11 +91,11 @@
                 <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
                     System Role
                 </label>
-                <div class="flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-lg">
+                <div class="flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 border border-gold-200 dark:border-gray-600 rounded-lg">
                     <input type="hidden" name="is_system" value="0">
                     <input type="checkbox" id="is_system" name="is_system" value="1"
                            x-model="isSystem"
-                           class="mt-0.5 w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                           class="mt-0.5 w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-gold-500">
                     <div>
                         <label for="is_system" class="text-sm text-gray-700 dark:text-gray-300 cursor-pointer font-medium">
                             Mark as system role
@@ -112,9 +112,9 @@
             </div>
 
             {{-- Buttons --}}
-            <div class="flex gap-3 pt-4 border-t border-gray-100 dark:border-gray-700">
+            <div class="flex gap-3 pt-4 border-t border-gray-100 dark:border-gold-800">
                 <button type="submit"
-                    class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white transition-all duration-200 shadow-sm hover:shadow-md">
+                    class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-lg bg-primary-600 hover:bg-gold-500 text-white transition-all duration-200 shadow-sm hover:shadow-md">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
                     </svg>

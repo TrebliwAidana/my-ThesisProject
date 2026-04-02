@@ -9,7 +9,7 @@
 
 @section('content')
 <div x-data="memberEditForm()" x-init="init()" class="max-w-3xl mx-auto">
-    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 p-6">
+    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gold-800 p-6">
         <form method="POST" action="{{ route('members.update', $member->id) }}">
             @csrf
             @method('PUT')
@@ -104,7 +104,7 @@
 
             <div class="mb-4">
                 <label class="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" x-model="changePassword" class="rounded border-gray-300 text-indigo-600">
+                    <input type="checkbox" x-model="changePassword" class="rounded border-gray-300 text-primary-600">
                     <span class="text-sm text-gray-700 dark:text-gray-300">Change Password</span>
                 </label>
                 <div x-show="changePassword" x-cloak>
@@ -129,7 +129,7 @@
             </div>
 
             <div class="flex gap-3">
-                <button type="submit" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg transition">Update Member</button>
+                <button type="submit" class="flex-1 bg-primary-600 hover:bg-gold-500 text-white font-semibold py-2 px-4 rounded-lg transition">Update Member</button>
                 <a href="{{ route('members.index') }}" class="flex-1 text-center bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 font-semibold py-2 px-4 rounded-lg transition">Cancel</a>
             </div>
         </form>

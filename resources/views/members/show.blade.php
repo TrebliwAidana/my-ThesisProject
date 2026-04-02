@@ -23,19 +23,19 @@
     
     {{-- Profile Card --}}
     <div class="lg:col-span-1">
-        <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm">
-            <div class="bg-gradient-to-r from-indigo-600 to-indigo-700 px-6 py-6">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gold-200 dark:border-gold-800 overflow-hidden shadow-sm">
+            <div class="bg-gradient-to-r from-primary-600 to-primary-700 px-6 py-6">
                 <div class="flex flex-col items-center text-center">
                     <div class="w-24 h-24 rounded-full bg-white/20 flex items-center justify-center text-white text-4xl font-bold shadow-lg mb-3">
                         {{ strtoupper(substr($member->full_name, 0, 2)) }}
                     </div>
                     <h2 class="text-xl font-bold text-white">{{ $member->full_name }}</h2>
-                    <p class="text-indigo-200 text-sm mt-1">{{ $member->position ?? 'No position' }}</p>
+                    <p class="text-primary-200 text-sm mt-1">{{ $member->position ?? 'No position' }}</p>
                     <div class="mt-3 flex flex-wrap gap-2 justify-center">
                         @php
                             $roleColors = [
-                                'System Administrator' => 'bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300',
-                                'Supreme Admin' => 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300',
+                                'System Administrator' => 'bg-gold-100 text-gold-700 dark:bg-gold-900/50 dark:text-gold-300',
+                                'Supreme Admin' => 'bg-primary-100 text-primary-700 dark:bg-primary-900/50 dark:text-primary-300',
                                 'Supreme Officer' => 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300',
                                 'Org Admin' => 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300',
                                 'Org Officer' => 'bg-sky-100 text-sky-700 dark:bg-sky-900/50 dark:text-sky-300',
@@ -57,15 +57,15 @@
             </div>
 
             <div class="p-6 space-y-4">
-                <div class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-700">
+                <div class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gold-800">
                     <span class="text-sm text-gray-500 dark:text-gray-400">Email</span>
                     <span class="text-sm font-medium text-gray-900 dark:text-white">{{ $member->email }}</span>
                 </div>
-                <div class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-700">
+                <div class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gold-800">
                     <span class="text-sm text-gray-500 dark:text-gray-400">Member Since</span>
                     <span class="text-sm font-medium text-gray-900 dark:text-white">{{ $memberSince }}</span>
                 </div>
-                <div class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-700">
+                <div class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gold-800">
                     <span class="text-sm text-gray-500 dark:text-gray-400">Status</span>
                     <span class="text-sm font-medium">
                         @if($member->is_active)
@@ -82,32 +82,32 @@
                     </span>
                 </div>
                 @if($member->student_id)
-                <div class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-700">
+                <div class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gold-800">
                     <span class="text-sm text-gray-500 dark:text-gray-400">Student ID</span>
                     <span class="text-sm font-medium text-gray-900 dark:text-white">{{ $member->student_id }}</span>
                 </div>
                 @endif
                 @if($member->year_level)
-                <div class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-700">
+                <div class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gold-800">
                     <span class="text-sm text-gray-500 dark:text-gray-400">Year Level</span>
                     <span class="text-sm font-medium text-gray-900 dark:text-white">{{ $member->year_level }}</span>
                 </div>
                 @endif
                 {{-- New Fields: Gender, Phone, Birthday --}}
                 @if($member->gender)
-                <div class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-700">
+                <div class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gold-800">
                     <span class="text-sm text-gray-500 dark:text-gray-400">Gender</span>
                     <span class="text-sm font-medium text-gray-900 dark:text-white">{{ $member->gender }}</span>
                 </div>
                 @endif
                 @if($member->phone)
-                <div class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-700">
+                <div class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gold-800">
                     <span class="text-sm text-gray-500 dark:text-gray-400">Phone</span>
                     <span class="text-sm font-medium text-gray-900 dark:text-white">{{ $member->phone }}</span>
                 </div>
                 @endif
                 @if($member->birthday)
-                <div class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-700">
+                <div class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gold-800">
                     <span class="text-sm text-gray-500 dark:text-gray-400">Birthday</span>
                     <span class="text-sm font-medium text-gray-900 dark:text-white">{{ $member->birthday->format('F d, Y') }}</span>
                 </div>
@@ -119,11 +119,11 @@
             </div>
 
             {{-- Action Buttons --}}
-            <div class="px-6 py-4 border-t border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+            <div class="px-6 py-4 border-t border-gray-100 dark:border-gold-800 bg-gray-50 dark:bg-gray-800/50">
                 <div class="grid grid-cols-2 gap-3">
                     {{-- Edit Profile Button --}}
                     <a href="{{ route('members.edit', $member->id) }}" 
-                       class="flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition">
+                       class="flex items-center justify-center gap-2 bg-primary-600 hover:bg-gold-500 text-white text-sm font-semibold px-4 py-2 rounded-lg transition">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
                         </svg>
@@ -180,7 +180,7 @@
     {{-- Stats Cards --}}
     <div class="lg:col-span-2 space-y-6">
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6">
+            <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gold-200 dark:border-gold-800 p-6">
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-sm text-gray-500 dark:text-gray-400">Documents Uploaded</p>
@@ -193,7 +193,7 @@
                     </div>
                 </div>
             </div>
-            <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6">
+            <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gold-200 dark:border-gold-800 p-6">
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-sm text-gray-500 dark:text-gray-400">Budgets Created</p>
@@ -209,17 +209,17 @@
         </div>
 
         {{-- Recent Activity --}}
-        <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-            <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gold-200 dark:border-gold-800 overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-100 dark:border-gold-800 bg-gray-50 dark:bg-gray-800/50">
                 <h3 class="font-semibold text-gray-900 dark:text-white">Recent Activity</h3>
             </div>
             <div class="divide-y divide-gray-100 dark:divide-gray-700">
                 @forelse($recentActivity ?? [] as $activity)
                 <div class="p-4 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition">
                     <div class="flex items-center gap-3">
-                        <div class="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center">
+                        <div class="w-8 h-8 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center">
                             @if($activity['type'] === 'document')
-                                <svg class="w-4 h-4 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg class="w-4 h-4 text-primary-600 dark:text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                                 </svg>
                             @elseif($activity['type'] === 'budget')

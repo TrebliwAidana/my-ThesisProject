@@ -12,7 +12,7 @@
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
     {{-- Budget Details --}}
-    <div class="bg-white rounded-xl border border-gray-200 p-6">
+    <div class="bg-white rounded-xl border border-gold-200 p-6">
         <h2 class="text-sm font-semibold text-gray-700 mb-4 pb-2 border-b border-gray-100">Budget Details</h2>
         <dl class="space-y-3">
             <div class="flex justify-between text-sm">
@@ -60,7 +60,7 @@
     </div>
 
     {{-- Review Form --}}
-    <div class="bg-white rounded-xl border border-gray-200 p-6">
+    <div class="bg-white rounded-xl border border-gold-200 p-6">
         <h2 class="text-sm font-semibold text-gray-700 mb-4 pb-2 border-b border-gray-100">Update Review</h2>
         <form method="POST" action="{{ route('budgets.review', $budget->id) }}">
             @csrf @method('PATCH')

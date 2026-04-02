@@ -18,7 +18,7 @@
         </div>
         @if($canManageRoles)
             <a href="{{ route('admin.roles.create') }}"
-               class="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition shadow-sm">
+               class="inline-flex items-center gap-2 bg-primary-600 hover:bg-gold-500 text-white text-sm font-semibold px-4 py-2 rounded-lg transition shadow-sm">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                 </svg>
@@ -45,7 +45,7 @@
     <form method="GET" action="{{ route('admin.roles.index') }}" class="flex gap-2">
         <input type="text" name="search" value="{{ request('search') }}"
                placeholder="Search by name or abbreviation..."
-               class="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white">
+               class="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-500 dark:bg-gray-700 dark:text-white">
         <button type="submit" class="px-4 py-2 bg-gray-200 dark:bg-gray-700 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
@@ -57,11 +57,11 @@
     </form>
 
     {{-- Roles Table --}}
-    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 overflow-hidden">
+    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gold-800 overflow-hidden">
         <div class="overflow-x-auto">
             <table class="w-full text-sm">
                 <thead>
-                    <tr class="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800 border-b border-gray-200 dark:border-gray-700">
+                    <tr class="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800 border-b border-gold-200 dark:border-gold-800">
                         <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wide">ID</th>
                         <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wide">Role</th>
                         <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wide">Abbreviation</th>
@@ -98,7 +98,7 @@
                             {{-- Role Name --}}
                             <td class="px-6 py-4">
                                 <div class="flex items-center gap-2">
-                                    <div class="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center text-xs font-bold text-indigo-700 dark:text-indigo-300">
+                                    <div class="w-8 h-8 rounded-lg bg-primary-100 dark:bg-primary-900/40 flex items-center justify-center text-xs font-bold text-primary-700 dark:text-primary-300">
                                         {{ strtoupper(substr($role->name, 0, 2)) }}
                                     </div>
                                     <span class="font-medium text-gray-900 dark:text-white">{{ $role->name }}</span>
@@ -133,7 +133,7 @@
 
                             {{-- Users count (eager-loaded) --}}
                             <td class="px-6 py-4">
-                                <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 text-sm font-semibold">
+                                <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 text-sm font-semibold">
                                     {{ $role->users_count ?? $role->users()->count() }}
                                 </span>
                             </td>
@@ -151,7 +151,7 @@
                                             {{-- Edit --}}
                                             <button type="button"
                                                     onclick="window.location.href='{{ route('admin.roles.edit', $role->id) }}'"
-                                                    class="p-1.5 text-gray-500 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-lg hover:bg-indigo-50 dark:hover:bg-gray-700 transition-colors"
+                                                    class="p-1.5 text-gray-500 hover:text-primary-600 dark:hover:text-primary-400 rounded-lg hover:bg-primary-50 dark:hover:bg-gray-700 transition-colors"
                                                     title="Edit role">
                                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -203,7 +203,7 @@
 
         {{-- Pagination --}}
         @if(isset($roles) && method_exists($roles, 'links'))
-            <div class="px-6 py-4 border-t border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+            <div class="px-6 py-4 border-t border-gray-100 dark:border-gold-800 bg-gray-50 dark:bg-gray-800/50">
                 {{ $roles->links() }}
             </div>
         @endif

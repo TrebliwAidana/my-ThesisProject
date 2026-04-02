@@ -226,7 +226,7 @@ class AdminController extends Controller
             'phone.unique' => 'This phone number is already in use.',
         ]);
 
-        // Format phone number (add +63 prefix, keep 10 digits)
+        // Format phone
         if (!empty($validated['phone'])) {
             $phone = preg_replace('/[^0-9]/', '', $validated['phone']);
             if (substr($phone, 0, 2) == '63') $phone = substr($phone, 2);
@@ -235,9 +235,13 @@ class AdminController extends Controller
         }
 
         $selectedRole = Role::findOrFail($validated['role_id']);
-        $allowedPositions = $this->getAllowedPositions($selectedRole->name, $selectedRole->abbreviation);
 
-        // Position validation
+        // Year level clearing based on role and position
+        if ($this->shouldClearYearLevel($selectedRole->id, $validated['position'] ?? '')) {
+            $validated['year_level'] = null;
+        }
+
+        $allowedPositions = $this->getAllowedPositions($selectedRole->name, $selectedRole->abbreviation);
         if (!empty($allowedPositions)) {
             if (empty($validated['position'])) {
                 return back()->withErrors(['position' => 'Position is required for this role.'])->withInput();
@@ -249,20 +253,17 @@ class AdminController extends Controller
             $validated['position'] = null;
         }
 
-        // Build full name
+        if ($selectedRole->id == 1) {
+            $validated['position'] = null;
+        }
+
         $fullName = trim(
             $validated['first_name'] . ' ' .
             ($validated['middle_name'] ? $validated['middle_name'] . ' ' : '') .
             $validated['last_name']
         );
 
-        // Generate random password if none provided
         $password = $validated['password'] ?? Str::random(10);
-
-        // System Admin gets no position
-        if ($selectedRole->id == 1) {
-            $validated['position'] = null;
-        }
 
         $user = User::create([
             'first_name'  => $validated['first_name'],
@@ -328,8 +329,13 @@ class AdminController extends Controller
         }
 
         $selectedRole = Role::findOrFail($validated['role_id']);
-        $allowedPositions = $this->getAllowedPositions($selectedRole->name, $selectedRole->abbreviation);
 
+        // Year level clearing
+        if ($this->shouldClearYearLevel($selectedRole->id, $validated['position'] ?? '')) {
+            $validated['year_level'] = null;
+        }
+
+        $allowedPositions = $this->getAllowedPositions($selectedRole->name, $selectedRole->abbreviation);
         if (!empty($allowedPositions)) {
             if (empty($validated['position'])) {
                 return back()->withErrors(['position' => 'Position is required for this role.'])->withInput();
@@ -341,7 +347,7 @@ class AdminController extends Controller
             $validated['position'] = null;
         }
 
-        // Protect predefined roles: cannot change role of the last user
+        // Protect predefined roles when changing role
         if ($user->role_id != $validated['role_id']) {
             $oldRole = Role::find($user->role_id);
             if ($oldRole && $oldRole->is_predefined) {
@@ -458,8 +464,21 @@ class AdminController extends Controller
     }
 
     // -------------------------------------------------------------------------
-    // Helper: get allowed positions for a role
+    // Helpers
     // -------------------------------------------------------------------------
+
+    private function shouldClearYearLevel($roleId, $position)
+    {
+        $alwaysNonStudent = [1, 6, 8]; // System Admin, Club Adviser, Guest
+        if (in_array($roleId, $alwaysNonStudent)) {
+            return true;
+        }
+        if ($roleId == 2 && $position !== 'SSLG President') {
+            return true; // Supreme Admin but not SSLG President
+        }
+        return false;
+    }
+
     private function getAllowedPositions(string $roleName, ?string $abbreviation = null): array
     {
         $byAbbrev = [

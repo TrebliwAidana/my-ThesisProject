@@ -92,6 +92,9 @@ class User extends Authenticatable implements MustVerifyEmail
         'last_login_at',
         'theme',
         'remember_token',
+        'gender', 
+        'phone',
+        'birthday',
     ];
 
     protected $hidden = [
@@ -106,6 +109,7 @@ class User extends Authenticatable implements MustVerifyEmail
             'password' => 'hashed',
             'is_active' => 'boolean',
             'last_login_at' => 'datetime',
+            'birthday' => 'date',
         ];
     }
 
@@ -459,5 +463,42 @@ class User extends Authenticatable implements MustVerifyEmail
     public function positionChangeLogs()
     {
         return $this->hasMany(PositionChangeLog::class, 'member_id');
+    }
+    public function setFirstNameAttribute($value)
+    {
+        $this->attributes['first_name'] = ucwords(strtolower(trim($value)));
+    }
+    public function setLastNameAttribute($value)
+    {
+        $this->attributes['last_name'] = ucwords(strtolower(trim($value)));
+    }
+
+    public function setMiddleNameAttribute($value)
+    {
+        if ($value) {
+            $this->attributes['middle_name'] = ucwords(strtolower(trim($value)));
+        } else {
+            $this->attributes['middle_name'] = null;
+        }
+    }
+        /**
+     * Determine if the user is a student (has a student role).
+     */
+    public function isStudent(): bool
+    {
+        // Non-student role IDs or names
+        $nonStudentRoles = [
+            'System Administrator',
+            'Club Adviser',
+            'Guest',
+        ];
+
+        // Also check by abbreviation if needed
+        $nonStudentAbbr = ['SysAdmin', 'CA', 'Guest'];
+
+        return !(
+            in_array($this->role?->name, $nonStudentRoles) ||
+            in_array($this->role?->abbreviation, $nonStudentAbbr)
+        );
     }
 }

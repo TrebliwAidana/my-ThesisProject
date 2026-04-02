@@ -18,10 +18,10 @@
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
     {{-- Budget Information --}}
     <div class="lg:col-span-2">
-        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 overflow-hidden">
-            <div class="bg-gradient-to-r from-indigo-600 to-indigo-700 px-6 py-4">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gold-800 overflow-hidden">
+            <div class="bg-gradient-to-r from-primary-600 to-primary-700 px-6 py-4">
                 <h2 class="text-white font-semibold text-lg">Budget Request Details</h2>
-                <p class="text-indigo-200 text-sm mt-1">Please review the information below before making a decision</p>
+                <p class="text-primary-200 text-sm mt-1">Please review the information below before making a decision</p>
             </div>
 
             <div class="p-6 space-y-4">
@@ -46,7 +46,7 @@
                     <p class="text-gray-700 dark:text-gray-300 mt-1 leading-relaxed">{{ $budget->description ?? 'No description provided.' }}</p>
                 </div>
 
-                <div class="grid grid-cols-2 gap-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                <div class="grid grid-cols-2 gap-4 pt-4 border-t border-gold-200 dark:border-gold-800">
                     <div>
                         <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Requested By</label>
                         <p class="text-gray-900 dark:text-white mt-1">{{ $budget->requester->full_name ?? 'N/A' }}</p>
@@ -63,7 +63,7 @@
                 <div>
                     <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Attachment</label>
                     <a href="{{ asset('storage/' . $budget->attachment_path) }}" target="_blank" 
-                       class="inline-flex items-center gap-2 mt-1 text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300">
+                       class="inline-flex items-center gap-2 mt-1 text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                         </svg>
@@ -77,8 +77,8 @@
 
     {{-- Review Form --}}
     <div class="lg:col-span-1">
-        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 overflow-hidden sticky top-6">
-            <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gold-800 overflow-hidden sticky top-6">
+            <div class="px-6 py-4 border-b border-gold-200 dark:border-gold-800">
                 <h3 class="font-semibold text-gray-900 dark:text-white">Review Decision</h3>
                 <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Approve or reject this budget request</p>
             </div>
@@ -90,7 +90,7 @@
                 <div class="mb-4">
                     <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Remarks (Optional)</label>
                     <textarea name="review_remarks" rows="4" 
-                              class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
+                              class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent transition"
                               placeholder="Add any comments or notes about this request...">{{ old('review_remarks') }}</textarea>
                     <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">These remarks will be visible to the requester</p>
                 </div>

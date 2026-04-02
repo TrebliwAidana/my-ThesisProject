@@ -11,8 +11,8 @@
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
     {{-- Permissions list --}}
-    <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm">
-        <div class="px-5 py-3 border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+    <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gold-200 dark:border-gold-800 overflow-hidden shadow-sm">
+        <div class="px-5 py-3 border-b border-gray-100 dark:border-gold-800 bg-gray-50 dark:bg-gray-800/50">
             <h2 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">All Permissions</h2>
         </div>
         <div class="max-h-[600px] overflow-y-auto">
@@ -29,8 +29,8 @@
                         @forelse ($perm->roles as $role)
                             @php
                                 $roleColors = [
-                                    'System Administrator' => 'bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300',
-                                    'Supreme Admin' => 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300',
+                                    'System Administrator' => 'bg-gold-100 text-gold-700 dark:bg-gold-900/50 dark:text-gold-300',
+                                    'Supreme Admin' => 'bg-primary-100 text-primary-700 dark:bg-primary-900/50 dark:text-primary-300',
                                     'Supreme Officer' => 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300',
                                     'Org Admin' => 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300',
                                     'Org Officer' => 'bg-sky-100 text-sky-700 dark:bg-sky-900/50 dark:text-sky-300',
@@ -63,8 +63,8 @@
     </div>
 
     {{-- Sync permissions to role --}}
-    <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
-        <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4 pb-2 border-b border-gray-100 dark:border-gray-700">
+    <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gold-200 dark:border-gold-800 p-6 shadow-sm">
+        <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4 pb-2 border-b border-gray-100 dark:border-gold-800">
             Sync Role Permissions
         </h2>
         <form method="POST" action="{{ route('admin.permissions.sync') }}">
@@ -73,7 +73,7 @@
             <div class="mb-4">
                 <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Select Role</label>
                 <select name="role_id" required
-                        class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition">
+                        class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent transition">
                     <option value="">— Choose a role —</option>
                     @foreach ($roles as $role)
                         <option value="{{ $role->id }}">{{ $role->name }} @if($role->abbreviation)({{ $role->abbreviation }})@endif</option>
@@ -84,12 +84,12 @@
 
             <div class="mb-6">
                 <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Permissions</label>
-                <div class="space-y-2 max-h-96 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-lg p-3 bg-gray-50 dark:bg-gray-900/30">
+                <div class="space-y-2 max-h-96 overflow-y-auto border border-gold-200 dark:border-gold-800 rounded-lg p-3 bg-gray-50 dark:bg-gray-900/30">
                     @foreach ($permissions as $perm)
                     <label class="flex items-center gap-2 text-sm cursor-pointer group hover:bg-gray-100 dark:hover:bg-gray-700/50 p-1 rounded transition">
                         <input type="checkbox" name="permission_ids[]" value="{{ $perm->id }}"
-                               class="rounded border-gray-300 dark:border-gray-600 text-indigo-600 focus:ring-indigo-500 transition">
-                        <span class="text-gray-700 dark:text-gray-300 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition">
+                               class="rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-gold-500 transition">
+                        <span class="text-gray-700 dark:text-gray-300 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition">
                             {{ str_replace('_', ' ', $perm->name) }}
                         </span>
                     </label>
@@ -105,7 +105,7 @@
 
             <div class="flex items-center gap-3">
                 <button type="submit"
-                        class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold px-5 py-2 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md transform hover:scale-[1.02]">
+                        class="bg-primary-600 hover:bg-gold-500 text-white text-sm font-semibold px-5 py-2 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md transform hover:scale-[1.02]">
                     Sync Permissions
                 </button>
                 <button type="reset"

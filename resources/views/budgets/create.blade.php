@@ -9,7 +9,7 @@
 
 @section('content')
 <div x-data="userCreateForm()" x-init="init()" class="max-w-3xl mx-auto">
-    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 p-6">
+    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gold-800 p-6">
         <form method="POST" action="{{ route('admin.users.store') }}">
             @csrf
 
@@ -20,14 +20,14 @@
                         First Name <span class="text-red-500">*</span>
                     </label>
                     <input type="text" name="first_name" value="{{ old('first_name') }}" required
-                           class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                           class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500">
                 </div>
                 <div class="mb-4">
                     <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
                         Last Name <span class="text-red-500">*</span>
                     </label>
                     <input type="text" name="last_name" value="{{ old('last_name') }}" required
-                           class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                           class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500">
                 </div>
             </div>
 
@@ -37,14 +37,14 @@
                     Middle Name <span class="text-gray-400">(Optional)</span>
                 </label>
                 <input type="text" name="middle_name" value="{{ old('middle_name') }}"
-                       class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                       class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500">
             </div>
 
             {{-- Email --}}
             <div class="mb-4">
                 <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Email <span class="text-red-500">*</span></label>
                 <input type="email" name="email" value="{{ old('email') }}" required
-                       class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                       class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500">
                 <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">A verification email will be sent to this address.</p>
             </div>
 
@@ -52,7 +52,7 @@
             <div class="mb-4">
                 <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Student ID</label>
                 <input type="text" name="student_id" value="{{ old('student_id') }}"
-                       class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                       class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500"
                        placeholder="2020-12345">
                 <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Format: YYYY-XXXXX (e.g., 2020-12345)</p>
             </div>
@@ -88,7 +88,7 @@
                 <div class="flex">
                     <span class="inline-flex items-center px-3 rounded-l-lg border border-r-0 border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-500">+63</span>
                     <input type="tel" name="phone" value="{{ old('phone') }}" maxlength="10" placeholder="9123456789"
-                           class="flex-1 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-r-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                           class="flex-1 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-r-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500"
                            oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0,10)">
                 </div>
                 <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Enter 10-digit number (e.g., 9123456789). The country code (+63) will be added automatically.</p>
@@ -98,7 +98,7 @@
             <div class="mb-4">
                 <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Birthday</label>
                 <input type="date" name="birthday" value="{{ old('birthday') }}"
-                       class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                       class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500">
             </div>
 
             {{-- Role Selection --}}
@@ -131,7 +131,7 @@
             {{-- Password (optional) --}}
             <div class="mb-4">
                 <label class="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" x-model="setPassword" class="rounded border-gray-300 text-indigo-600">
+                    <input type="checkbox" x-model="setPassword" class="rounded border-gray-300 text-primary-600">
                     <span class="text-sm text-gray-700 dark:text-gray-300">Set a custom password (optional)</span>
                 </label>
                 <div x-show="setPassword" x-cloak>
@@ -164,7 +164,7 @@
             </div>
 
             <div class="flex gap-3">
-                <button type="submit" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg transition">Create User</button>
+                <button type="submit" class="flex-1 bg-primary-600 hover:bg-gold-500 text-white font-semibold py-2 px-4 rounded-lg transition">Create User</button>
                 <a href="{{ route('admin.users.index') }}" class="flex-1 text-center bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 font-semibold py-2 px-4 rounded-lg transition">Cancel</a>
             </div>
         </form>

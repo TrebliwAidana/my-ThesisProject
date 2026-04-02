@@ -83,7 +83,7 @@
     </div>
     @if(in_array(Auth::user()->role->name, ['Adviser', 'Officer']))
     <a href="{{ route('budgets.create') }}" 
-       class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition">
+       class="bg-primary-600 hover:bg-gold-500 text-white text-sm font-semibold px-4 py-2 rounded-lg transition">
         + New Budget Request
     </a>
     @endif
@@ -91,7 +91,7 @@
 
 {{-- Stats Cards --}}
 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
-    <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+    <div class="bg-white dark:bg-gray-800 rounded-lg border border-gold-200 dark:border-gold-800 p-4">
         <div class="flex items-center justify-between">
             <div class="w-8 h-8 bg-yellow-50 dark:bg-yellow-900/50 rounded-lg flex items-center justify-center">
                 <svg class="w-4 h-4 text-yellow-600 dark:text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -103,7 +103,7 @@
         <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">Pending</p>
     </div>
 
-    <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+    <div class="bg-white dark:bg-gray-800 rounded-lg border border-gold-200 dark:border-gold-800 p-4">
         <div class="flex items-center justify-between">
             <div class="w-8 h-8 bg-blue-50 dark:bg-blue-900/50 rounded-lg flex items-center justify-center">
                 <svg class="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -115,7 +115,7 @@
         <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">Reviewed</p>
     </div>
 
-    <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+    <div class="bg-white dark:bg-gray-800 rounded-lg border border-gold-200 dark:border-gold-800 p-4">
         <div class="flex items-center justify-between">
             <div class="w-8 h-8 bg-green-50 dark:bg-green-900/50 rounded-lg flex items-center justify-center">
                 <svg class="w-4 h-4 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -127,7 +127,7 @@
         <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">Approved</p>
     </div>
 
-    <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+    <div class="bg-white dark:bg-gray-800 rounded-lg border border-gold-200 dark:border-gold-800 p-4">
         <div class="flex items-center justify-between">
             <div class="w-8 h-8 bg-red-50 dark:bg-red-900/50 rounded-lg flex items-center justify-center">
                 <svg class="w-4 h-4 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -139,7 +139,7 @@
         <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">Rejected</p>
     </div>
 
-    <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+    <div class="bg-white dark:bg-gray-800 rounded-lg border border-gold-200 dark:border-gold-800 p-4">
         <div class="flex items-center justify-between">
             <div class="w-8 h-8 bg-gray-50 dark:bg-gray-700/50 rounded-lg flex items-center justify-center">
                 <svg class="w-4 h-4 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -153,14 +153,14 @@
 </div>
 
 {{-- Filters --}}
-<div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 mb-6">
+<div class="bg-white dark:bg-gray-800 rounded-xl border border-gold-200 dark:border-gold-800 p-5 mb-6">
     <form method="GET" action="{{ route('budgets.index') }}" class="flex flex-wrap gap-3">
         <div class="flex-1 min-w-[200px]">
             <input type="text" name="search" placeholder="Search by title..." 
                    value="{{ request('search') }}"
-                   class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-700 dark:text-white text-sm">
+                   class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-gold-500 focus:border-transparent dark:bg-gray-700 dark:text-white text-sm">
         </div>
-        <select name="status" class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white text-sm">
+        <select name="status" class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-gold-500 dark:bg-gray-700 dark:text-white text-sm">
             <option value="">All Status</option>
             <option value="pending" {{ request('status') == 'pending' ? 'selected' : '' }}>Pending</option>
             <option value="reviewed" {{ request('status') == 'reviewed' ? 'selected' : '' }}>Reviewed</option>
@@ -168,7 +168,7 @@
             <option value="rejected" {{ request('status') == 'rejected' ? 'selected' : '' }}>Rejected</option>
             <option value="disbursed" {{ request('status') == 'disbursed' ? 'selected' : '' }}>Disbursed</option>
         </select>
-        <select name="category" class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white text-sm">
+        <select name="category" class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-gold-500 dark:bg-gray-700 dark:text-white text-sm">
             <option value="">All Categories</option>
             @foreach($categories as $category)
             <option value="{{ $category->name }}" {{ request('category') == $category->name ? 'selected' : '' }}>
@@ -176,7 +176,7 @@
             </option>
             @endforeach
         </select>
-        <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm transition">
+        <button type="submit" class="px-4 py-2 bg-primary-600 hover:bg-gold-500 text-white rounded-lg text-sm transition">
             Filter
         </button>
         @if(request()->anyFilled(['search', 'status', 'category']))
@@ -188,10 +188,10 @@
 </div>
 
 {{-- Budgets Table --}}
-<div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+<div class="bg-white dark:bg-gray-800 rounded-xl border border-gold-200 dark:border-gold-800 overflow-hidden">
     <div class="overflow-x-auto">
         <table class="w-full text-sm">
-            <thead class="bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
+            <thead class="bg-gray-50 dark:bg-gray-700 border-b border-gold-200 dark:border-gray-600">
                 叉
                     <th class="text-left px-5 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Title</th>
                     <th class="text-left px-5 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Amount</th>
@@ -228,7 +228,7 @@
                     <td class="px-5 py-3 text-right">
                         <div class="flex items-center justify-end gap-2">
                             <a href="{{ route('budgets.show', $budget) }}" 
-                               class="text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300" 
+                               class="text-primary-600 hover:text-primary-800 dark:text-primary-400 dark:hover:text-primary-300" 
                                title="View Details">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
@@ -237,7 +237,7 @@
                             </a>
                             @if($budget->status == 'pending' && $budget->requested_by == Auth::id())
                             <a href="{{ route('budgets.edit', $budget) }}" 
-                               class="text-gray-600 hover:text-indigo-600 dark:text-gray-400 dark:hover:text-indigo-400" 
+                               class="text-gray-600 hover:text-primary-600 dark:text-gray-400 dark:hover:text-primary-400" 
                                title="Edit">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
@@ -268,7 +268,7 @@
     </div>
     
     @if($budgets->hasPages())
-    <div class="px-5 py-3 border-t border-gray-100 dark:border-gray-700">
+    <div class="px-5 py-3 border-t border-gray-100 dark:border-gold-800">
         {{ $budgets->links() }}
     </div>
     @endif
