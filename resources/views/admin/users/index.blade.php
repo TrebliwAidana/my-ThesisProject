@@ -5,24 +5,33 @@
 
 @section('content')
 <style>
-    /* Prevent table cells from wrapping on larger screens */
-    .admin-users-table th,
-    .admin-users-table td {
-        white-space: nowrap;
-        padding: 0.75rem 1.5rem;
+    /* Custom pagination styling */
+    .pagination {
+        @apply flex justify-center space-x-1;
     }
-
-    /* On smaller screens, allow some wrapping for better readability */
-    @media (max-width: 768px) {
-        .admin-users-table td {
-            white-space: normal;
-            min-width: 120px;
-        }
+    .pagination .page-item {
+        @apply list-none;
+    }
+    .pagination .page-link {
+        @apply px-3 py-1.5 text-sm rounded-lg transition-all duration-200;
+        @apply bg-white text-gray-700 border border-gold-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gold-800;
+    }
+    .pagination .page-link:hover:not(.active) {
+        @apply bg-gold-100 dark:bg-gold-900/30 border-gold-300 dark:border-gold-700;
+    }
+    .pagination .active .page-link {
+        @apply bg-primary-600 text-white border-primary-600 dark:bg-primary-700 dark:border-primary-700;
+    }
+    .pagination .active .page-link:hover {
+        @apply bg-primary-700;
+    }
+    .pagination .disabled .page-link {
+        @apply opacity-50 cursor-not-allowed;
     }
 </style>
 
 <div class="space-y-6">
-    {{-- Statistics Cards (unchanged) --}}
+    {{-- Statistics Cards --}}
     <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gold-200 dark:border-gold-800 p-4">
             <div class="flex items-center justify-between">
@@ -70,10 +79,10 @@
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-sm text-gray-500 dark:text-gray-400">Recent Logins (7d)</p>
-                    <p class="text-2xl font-bold text-gold-600 dark:text-gold-400">{{ $recentLogins }}</p>
+                    <p class="text-2xl font-bold text-purple-600 dark:text-purple-400">{{ $recentLogins }}</p>
                 </div>
-                <div class="w-10 h-10 bg-gold-100 dark:bg-gold-900/50 rounded-lg flex items-center justify-center">
-                    <svg class="w-5 h-5 text-gold-600 dark:text-gold-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="w-10 h-10 bg-purple-100 dark:bg-purple-900/50 rounded-lg flex items-center justify-center">
+                    <svg class="w-5 h-5 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                     </svg>
                 </div>
@@ -81,42 +90,59 @@
         </div>
     </div>
 
-    {{-- Actions Bar with GET form (server‑side filtering) --}}
+    {{-- Actions Bar --}}
     <div class="flex flex-wrap items-center justify-between gap-4">
         <div class="flex items-center gap-3">
             <a href="{{ route('admin.users.create') }}" class="bg-primary-600 hover:bg-gold-500 text-white text-sm font-semibold px-4 py-2 rounded-lg transition transform hover:scale-105 active:scale-95">
                 + Add New User
             </a>
-            <a href="{{ route('admin.roles.index') }}" class="border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition">
+            <a href="{{ route('admin.roles.index') }}" class="border border-gold-300 dark:border-gold-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition">
                 Manage Roles
             </a>
         </div>
 
-        <form method="GET" action="{{ route('admin.users.index') }}" class="flex items-center gap-3">
+        <form method="GET" action="{{ route('admin.users.index') }}" id="filter-form" class="flex items-center gap-3">
             <div class="relative">
-                <input type="text" name="search" value="{{ request('search') }}" placeholder="Search users..." 
-                       class="pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gold-500 w-64">
+                <input type="text"
+                       name="search"
+                       id="search-input"
+                       list="user-suggestions"
+                       value="{{ request('search') }}"
+                       placeholder="Search users..."
+                       class="pl-10 pr-4 py-2 border border-gold-200 dark:border-gold-800 dark:bg-gray-700 dark:text-white rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gold-500 w-64">
+                <datalist id="user-suggestions">
+                    @foreach($users as $user)
+                        <option value="{{ $user->full_name }}"></option>
+                        <option value="{{ $user->email }}"></option>
+                    @endforeach
+                </datalist>
                 <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                 </svg>
+                @if(request()->filled('search'))
+                <a href="{{ route('admin.users.index', array_merge(request()->except('search'), ['search' => ''])) }}"
+                   class="absolute inset-y-0 right-0 pr-3 flex items-center">
+                    <svg class="w-4 h-4 text-gray-400 hover:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </a>
+                @endif
             </div>
 
-            <select name="role" class="border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2 text-sm">
+            <select name="role" class="border border-gold-200 dark:border-gold-800 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500">
                 <option value="">All Roles</option>
                 @foreach($roles as $role)
-                    <option value="{{ $role->name }}" {{ request('role') == $role->name ? 'selected' : '' }}>
-                        {{ $role->name }}
-                    </option>
+                    <option value="{{ $role->name }}" {{ request('role') == $role->name ? 'selected' : '' }}>{{ $role->name }}</option>
                 @endforeach
             </select>
 
-            <select name="status" class="border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2 text-sm">
+            <select name="status" class="border border-gold-200 dark:border-gold-800 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500">
                 <option value="">All Status</option>
                 <option value="active" {{ request('status') == 'active' ? 'selected' : '' }}>Active</option>
                 <option value="inactive" {{ request('status') == 'inactive' ? 'selected' : '' }}>Inactive</option>
             </select>
 
-            <select name="verification" class="border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2 text-sm">
+            <select name="verification" class="border border-gold-200 dark:border-gold-800 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500">
                 <option value="">All Verification</option>
                 <option value="verified" {{ request('verification') == 'verified' ? 'selected' : '' }}>Verified</option>
                 <option value="unverified" {{ request('verification') == 'unverified' ? 'selected' : '' }}>Unverified</option>
@@ -125,17 +151,19 @@
             <button type="submit" class="bg-primary-600 hover:bg-gold-500 text-white text-sm font-semibold px-4 py-2 rounded-lg transition">
                 Apply Filters
             </button>
+            @if(request()->hasAny(['search', 'role', 'status', 'verification']))
             <a href="{{ route('admin.users.index') }}" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 text-sm">
                 Reset
             </a>
+            @endif
         </form>
     </div>
 
-    {{-- Users Table (unchanged structure) --}}
+    {{-- Users Table --}}
     <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gold-200 dark:border-gold-800 overflow-hidden">
         <div class="overflow-x-auto">
             <table class="w-full text-sm admin-users-table">
-                <thead class="bg-gray-50 dark:bg-gray-700 border-b border-gold-200 dark:border-gray-600">
+                <thead class="bg-gray-50 dark:bg-gray-700 border-b border-gold-200 dark:border-gold-600">
                     <tr>
                         <th class="text-left px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">User</th>
                         <th class="text-left px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Email</th>
@@ -206,7 +234,7 @@
                         </td>
                         <td class="px-6 py-4 text-right">
                             <div class="flex items-center justify-end gap-2">
-                                <a href="{{ route('admin.users.edit', $user->id) }}" class="border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 px-3 py-1 rounded text-xs transition">Edit</a>
+                                <a href="{{ route('admin.users.edit', $user->id) }}" class="border border-gold-300 dark:border-gold-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 px-3 py-1 rounded text-xs transition">Edit</a>
                                 @if($user->id !== auth()->id())
                                 <form method="POST" action="{{ route('admin.users.destroy', $user->id) }}" onsubmit="return confirm('Are you sure you want to delete {{ $user->full_name }}?')">
                                     @csrf
@@ -219,7 +247,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="8" class="px-6 py-8 text-center text-gray-500 dark:text-gray-400">No users found.</td>
+                        <td colspan="8" class="px-6 py-8 text-center text-gray-500 dark:text-gray-400">No users found. </td>
                     </tr>
                     @endforelse
                 </tbody>
@@ -235,33 +263,6 @@
 </div>
 
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // --- Flash message handling (unchanged) ---
-        const flashMessages = document.querySelectorAll('.flash-message');
-        flashMessages.forEach(msg => {
-            setTimeout(() => {
-                msg.style.transition = 'opacity 0.5s';
-                msg.style.opacity = '0';
-                setTimeout(() => msg.remove(), 500);
-            }, 5000);
-        });
-
-        // When the page is restored from bfcache (back/forward), clear any lingering flash messages
-        window.addEventListener('pageshow', function(event) {
-            if (event.persisted) {
-                fetch('/clear-flash-messages', {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                        'Content-Type': 'application/json'
-                    }
-                }).then(() => {
-                    document.querySelectorAll('.flash-message').forEach(el => el.remove());
-                }).catch(console.error);
-            }
-        });
-    });
-
     function sendVerification(userId) {
         if (confirm('Send verification email to this user?')) {
             fetch(`/admin/users/${userId}/send-verification`, {
@@ -285,5 +286,19 @@
             });
         }
     }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const searchInput = document.getElementById('search-input');
+        if (searchInput) {
+            let timeout = null;
+            searchInput.addEventListener('input', function() {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => {
+                    document.getElementById('filter-form').submit();
+                }, 500);
+            });
+        }
+    });
 </script>
+
 @endsection

@@ -34,7 +34,7 @@ class Member extends Model
     | Keyed by role_id. Used for validation in booted() and in the controller.
     */
     public const VALID_POSITIONS = [
-        1 => ['System Administrator'],
+        1 => []],
         2 => ['SSLG President', 'SSLG Adviser', 'Student Affairs Head'],
         3 => ['SSLG Secretary', 'SSLG Treasurer', 'SSLG PIO'],
         4 => ['Organization President', 'Organization Vice President'],

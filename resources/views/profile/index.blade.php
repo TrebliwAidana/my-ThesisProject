@@ -29,9 +29,13 @@
     </div>
 @endif
 
-<div class="mb-6">
-    <h1 class="text-2xl font-bold text-gray-900 dark:text-white">My Profile</h1>
-    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Manage your personal information and password</p>
+{{-- Emerald Gradient Header --}}
+<div class="relative overflow-hidden rounded-2xl bg-gradient-to-r from-primary-600 to-primary-700 dark:from-primary-800 dark:to-primary-900 p-6 mb-6">
+    <div class="relative z-10">
+        <h1 class="text-2xl font-bold text-white">My Profile</h1>
+        <p class="text-primary-100 text-sm mt-1">Manage your personal information and password</p>
+    </div>
+    <div class="absolute top-0 right-0 -mt-8 -mr-8 w-64 h-64 bg-white/5 rounded-full blur-3xl"></div>
 </div>
 
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">

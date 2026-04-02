@@ -1,11 +1,11 @@
 @extends('layouts.app')
 
-@section('title', 'Edit History - ' . ($user->full_name ?? $memberRecord->user->full_name ?? 'Member'))
+@section('title', 'Edit History - ' . ($user->full_name ?? 'Member'))
 
 @section('content')
 <div class="max-w-4xl mx-auto">
     <div class="mb-6">
-        <a href="{{ route('members.edit', $user->id ?? $memberRecord->user_id) }}" class="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 transition">
+        <a href="{{ route('members.edit', $user->id) }}" class="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 transition">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
             </svg>
@@ -14,8 +14,11 @@
         
         <div class="mt-3">
             <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Edit History</h1>
-            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">{{ $user->full_name ?? $memberRecord->user->full_name ?? 'Member' }}</p>
-            <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Current Role: {{ $user->role->name ?? 'N/A' }} | Current Position: {{ $user->position ?? 'N/A' }}</p>
+            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">{{ $user->full_name }}</p>
+            <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                Current Role: {{ $user->role->name ?? 'N/A' }} | 
+                Current Position: {{ $user->position ?? 'N/A' }}
+            </p>
         </div>
     </div>
     
@@ -34,7 +37,7 @@
                                 Position Change
                             </span>
                             <span class="text-xs text-gray-500 dark:text-gray-400">
-                                {{ \Carbon\Carbon::parse($log->created_at)->format('M d, Y H:i:s') }}
+                                {{ $log->created_at->format('M d, Y H:i:s') }}
                             </span>
                         </div>
                         
@@ -81,7 +84,7 @@
             @endforelse
         </div>
         
-        @if(isset($positionLogs) && method_exists($positionLogs, 'hasPages') && $positionLogs->hasPages())
+        @if($positionLogs->hasPages())
         <div class="px-6 py-4 border-t border-gold-200 dark:border-gold-800">
             {{ $positionLogs->links() }}
         </div>

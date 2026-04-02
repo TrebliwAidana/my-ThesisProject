@@ -45,36 +45,17 @@
     ];
 @endphp
 
-{{-- Header --}}
-<div class="mb-6">
-    <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-        <div>
-            <h1 class="text-2xl md:text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 dark:from-white dark:to-gray-300 bg-clip-text text-transparent">
-                Members
-            </h1>
-            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1 flex items-center gap-1">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                </svg>
-                Manage organization members by role
-            </p>
-        </div>
-        <div class="flex flex-col sm:flex-row gap-3">
-            @if($isSystemAdmin || $currentUser->hasPermission('members.create'))
-            <a href="{{ route('members.create') }}"
-               class="inline-flex items-center justify-center gap-2 bg-primary-600 hover:bg-gold-500 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-[1.02]">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-                </svg>
-                Add Member
-            </a>
-            @endif
-        </div>
+{{-- Emerald Gradient Header --}}
+<div class="relative overflow-hidden rounded-2xl bg-gradient-to-r from-primary-600 to-primary-700 dark:from-primary-800 dark:to-primary-900 p-6 mb-6">
+    <div class="relative z-10">
+        <h1 class="text-2xl font-bold text-white">Members</h1>
+        <p class="text-primary-100 text-sm mt-1">Manage organization members by role</p>
     </div>
+    <div class="absolute top-0 right-0 -mt-8 -mr-8 w-64 h-64 bg-white/5 rounded-full blur-3xl"></div>
 </div>
 
-{{-- Statistics Cards (dashboard style) --}}
-<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-6">
+{{-- Statistics Cards (filtered) --}}
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5 mb-6">
     <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gold-200 dark:border-gold-800 p-6 shadow-sm hover:shadow-lg transition-all duration-300 text-center">
         <div class="flex items-center justify-center mb-3">
             <div class="w-12 h-12 bg-purple-50 dark:bg-purple-900/30 rounded-xl flex items-center justify-center">
@@ -83,7 +64,7 @@
                 </svg>
             </div>
         </div>
-        <p class="text-2xl font-bold text-gray-800 dark:text-white">{{ $totalStats['system_admin'] }}</p>
+        <p class="text-2xl font-bold text-gray-800 dark:text-white">{{ $filteredStats['system_admin'] }}</p>
         <p class="text-sm font-medium text-gray-600 dark:text-gray-400 mt-1">System Admins</p>
         <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Full system control</p>
     </div>
@@ -96,7 +77,7 @@
                 </svg>
             </div>
         </div>
-        <p class="text-2xl font-bold text-gray-800 dark:text-white">{{ $totalStats['supreme'] }}</p>
+        <p class="text-2xl font-bold text-gray-800 dark:text-white">{{ $filteredStats['supreme'] }}</p>
         <p class="text-sm font-medium text-gray-600 dark:text-gray-400 mt-1">Supreme Level</p>
         <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Level 3 and above</p>
     </div>
@@ -109,9 +90,22 @@
                 </svg>
             </div>
         </div>
-        <p class="text-2xl font-bold text-gray-800 dark:text-white">{{ $totalStats['leaders'] }}</p>
+        <p class="text-2xl font-bold text-gray-800 dark:text-white">{{ $filteredStats['leaders'] }}</p>
         <p class="text-sm font-medium text-gray-600 dark:text-gray-400 mt-1">Org Leaders</p>
         <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Admins and Officers</p>
+    </div>
+
+    <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gold-200 dark:border-gold-800 p-6 shadow-sm hover:shadow-lg transition-all duration-300 text-center">
+        <div class="flex items-center justify-center mb-3">
+            <div class="w-12 h-12 bg-amber-50 dark:bg-amber-900/30 rounded-xl flex items-center justify-center">
+                <svg class="w-6 h-6 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                </svg>
+            </div>
+        </div>
+        <p class="text-2xl font-bold text-gray-800 dark:text-white">{{ $filteredStats['advisers'] }}</p>
+        <p class="text-sm font-medium text-gray-600 dark:text-gray-400 mt-1">Club Advisers</p>
+        <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Organization advisers</p>
     </div>
 
     <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gold-200 dark:border-gold-800 p-6 shadow-sm hover:shadow-lg transition-all duration-300 text-center">
@@ -122,28 +116,38 @@
                 </svg>
             </div>
         </div>
-        <p class="text-2xl font-bold text-gray-800 dark:text-white">{{ $totalStats['members'] }}</p>
+        <p class="text-2xl font-bold text-gray-800 dark:text-white">{{ $filteredStats['members'] }}</p>
         <p class="text-sm font-medium text-gray-600 dark:text-gray-400 mt-1">Regular Members</p>
         <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Organization members</p>
     </div>
 </div>
 
-{{-- Filters Form --}}
-<form method="GET" action="{{ route('members.index') }}" id="filter-form" class="mb-6 space-y-4">
-    <div class="flex flex-wrap gap-3">
+{{-- Search & Filter Form with Add Member button inline --}}
+<form method="GET" action="{{ route('members.index') }}" id="filter-form" class="mb-6">
+    <div class="flex flex-wrap gap-3 items-end">
+        {{-- Search Input with datalist --}}
         <div class="relative flex-1 sm:flex-initial">
             <input type="text"
                    name="search"
+                   id="search-input"
+                   list="member-suggestions"
                    value="{{ request('search') }}"
                    placeholder="Search by name, email, role..."
                    class="w-full sm:w-80 pl-11 pr-11 py-2.5 text-sm border border-gold-200 dark:border-gold-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent dark:bg-gray-800 dark:text-gray-200 bg-gray-50 dark:bg-gray-800/50">
+            <datalist id="member-suggestions">
+                @foreach($users as $member)
+                    <option value="{{ $member->full_name }}"></option>
+                    <option value="{{ $member->email }}"></option>
+                @endforeach
+            </datalist>
             <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
                 <svg class="h-4.5 w-4.5 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                 </svg>
             </div>
             @if(request()->filled('search'))
-            <a href="{{ route('members.index', array_merge(request()->except('search'), ['search' => ''])) }}" class="absolute inset-y-0 right-0 pr-3.5 flex items-center">
+            <a href="{{ route('members.index', array_merge(request()->except('search'), ['search' => ''])) }}"
+               class="absolute inset-y-0 right-0 pr-3.5 flex items-center">
                 <svg class="h-4.5 w-4.5 text-gray-400 hover:text-gray-600 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                 </svg>
@@ -151,77 +155,95 @@
             @endif
         </div>
 
+        {{-- Status Dropdown --}}
         <select name="status" class="border border-gold-200 dark:border-gold-800 rounded-xl px-4 py-2.5 text-sm bg-gray-50 dark:bg-gray-800/50 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-gold-500">
             <option value="">All Status</option>
             <option value="active" {{ request('status') == 'active' ? 'selected' : '' }}>Active</option>
             <option value="inactive" {{ request('status') == 'inactive' ? 'selected' : '' }}>Inactive</option>
         </select>
 
+        {{-- Verification Dropdown --}}
         <select name="verification" class="border border-gold-200 dark:border-gold-800 rounded-xl px-4 py-2.5 text-sm bg-gray-50 dark:bg-gray-800/50 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-gold-500">
             <option value="">All Verification</option>
             <option value="verified" {{ request('verification') == 'verified' ? 'selected' : '' }}>Verified</option>
             <option value="unverified" {{ request('verification') == 'unverified' ? 'selected' : '' }}>Unverified</option>
         </select>
 
+        {{-- Apply Filters Button --}}
         <button type="submit" class="bg-primary-600 hover:bg-gold-500 text-white px-4 py-2.5 rounded-xl text-sm font-medium transition shadow-sm hover:shadow-md transform hover:scale-[1.02] active:scale-[0.98]">
             Apply Filters
         </button>
+
+        {{-- Add Member Button (inline, right-aligned) --}}
+        @if($isSystemAdmin || $currentUser->hasPermission('members.create'))
+        <a href="{{ route('members.create') }}"
+           class="inline-flex items-center justify-center gap-2 bg-primary-600 hover:bg-gold-500 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-[1.02] ml-auto">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+            </svg>
+            Add Member
+        </a>
+        @endif
+
+        {{-- Clear All Filters (only if filters active) --}}
         @if(request()->hasAny(['search', 'status', 'verification', 'role']) && request()->input('role') != 'all')
-        <a href="{{ route('members.index') }}" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 px-4 py-2.5 rounded-xl text-sm transition">Clear Filters</a>
+        <a href="{{ route('members.index') }}" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 px-4 py-2.5 rounded-xl text-sm transition">
+            Clear Filters
+        </a>
         @endif
     </div>
 </form>
 
-{{-- Role Filter Tabs --}}
+{{-- Role Filter Tabs (gold active) --}}
 <div class="border-b border-gold-200 dark:border-gold-800 mb-6">
     <nav class="flex flex-wrap gap-4">
         <a href="{{ route('members.index', array_merge(request()->except('role'), ['role' => 'all'])) }}"
            class="px-4 py-2 text-sm font-medium border-b-2 {{ $roleFilter == 'all' ? 'border-gold-500 text-gold-600 dark:text-gold-400' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400' }}">
             All Members
-            <span class="ml-1 text-xs bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded-full">{{ $totalStats['all'] }}</span>
+            <span class="ml-1 text-xs bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded-full">{{ $filteredStats['all'] }}</span>
         </a>
         <a href="{{ route('members.index', array_merge(request()->except('role'), ['role' => 'admin'])) }}"
            class="px-4 py-2 text-sm font-medium border-b-2 {{ $roleFilter == 'admin' ? 'border-gold-500 text-gold-600 dark:text-gold-400' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400' }}">
             System Admin
-            <span class="ml-1 text-xs bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded-full">{{ $totalStats['system_admin'] }}</span>
+            <span class="ml-1 text-xs bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded-full">{{ $filteredStats['system_admin'] }}</span>
         </a>
         <a href="{{ route('members.index', array_merge(request()->except('role'), ['role' => 'supreme'])) }}"
            class="px-4 py-2 text-sm font-medium border-b-2 {{ $roleFilter == 'supreme' ? 'border-gold-500 text-gold-600 dark:text-gold-400' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400' }}">
             Supreme
-            <span class="ml-1 text-xs bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded-full">{{ $totalStats['supreme'] }}</span>
+            <span class="ml-1 text-xs bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded-full">{{ $filteredStats['supreme'] }}</span>
         </a>
         <a href="{{ route('members.index', array_merge(request()->except('role'), ['role' => 'org-leader'])) }}"
            class="px-4 py-2 text-sm font-medium border-b-2 {{ $roleFilter == 'org-leader' ? 'border-gold-500 text-gold-600 dark:text-gold-400' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400' }}">
             Org Leaders
-            <span class="ml-1 text-xs bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded-full">{{ $totalStats['leaders'] }}</span>
+            <span class="ml-1 text-xs bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded-full">{{ $filteredStats['leaders'] }}</span>
         </a>
         <a href="{{ route('members.index', array_merge(request()->except('role'), ['role' => 'adviser'])) }}"
            class="px-4 py-2 text-sm font-medium border-b-2 {{ $roleFilter == 'adviser' ? 'border-gold-500 text-gold-600 dark:text-gold-400' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400' }}">
             Club Advisers
-            <span class="ml-1 text-xs bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded-full">{{ $totalStats['advisers'] }}</span>
+            <span class="ml-1 text-xs bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded-full">{{ $filteredStats['advisers'] }}</span>
         </a>
         <a href="{{ route('members.index', array_merge(request()->except('role'), ['role' => 'member'])) }}"
            class="px-4 py-2 text-sm font-medium border-b-2 {{ $roleFilter == 'member' ? 'border-gold-500 text-gold-600 dark:text-gold-400' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400' }}">
             Members
-            <span class="ml-1 text-xs bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded-full">{{ $totalStats['members'] }}</span>
+            <span class="ml-1 text-xs bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded-full">{{ $filteredStats['members'] }}</span>
         </a>
     </nav>
 </div>
 
-{{-- Members Table (unchanged from previous working version) --}}
+{{-- Members Table with Emerald Header --}}
 <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gold-200 dark:border-gold-800 overflow-hidden">
     <div class="overflow-x-auto">
         <table class="w-full text-sm">
             <thead>
-                <tr class="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800 border-b border-gold-200 dark:border-gold-800">
-                    <th class="text-left px-6 py-4 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Member</th>
-                    <th class="text-left px-6 py-4 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Email</th>
-                    <th class="text-left px-6 py-4 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Role</th>
-                    <th class="text-left px-6 py-4 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Verified</th>
-                    <th class="text-left px-6 py-4 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Status</th>
-                    <th class="text-left px-6 py-4 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Level</th>
-                    <th class="text-left px-6 py-4 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Joined</th>
-                    <th class="text-right px-6 py-4 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Actions</th>
+                <tr class="bg-primary-600 dark:bg-primary-700 text-white border-b border-gold-200 dark:border-gold-800">
+                    <th class="text-left px-6 py-4 text-xs font-semibold uppercase tracking-wider">Member</th>
+                    <th class="text-left px-6 py-4 text-xs font-semibold uppercase tracking-wider">Email</th>
+                    <th class="text-left px-6 py-4 text-xs font-semibold uppercase tracking-wider">Role</th>
+                    <th class="text-left px-6 py-4 text-xs font-semibold uppercase tracking-wider">Verified</th>
+                    <th class="text-left px-6 py-4 text-xs font-semibold uppercase tracking-wider">Status</th>
+                    <th class="text-left px-6 py-4 text-xs font-semibold uppercase tracking-wider">Level</th>
+                    <th class="text-left px-6 py-4 text-xs font-semibold uppercase tracking-wider">Joined</th>
+                    <th class="text-right px-6 py-4 text-xs font-semibold uppercase tracking-wider">Actions</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
@@ -291,38 +313,20 @@
                     </td>
                     <td class="px-6 py-4 text-right">
                         <div class="flex items-center justify-end gap-2">
-                            <a href="{{ route('members.show', $member->id) }}"
-                               class="p-1.5 text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400 transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
-                               title="View member" aria-label="View member details">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
-                                </svg>
+                            <a href="{{ route('members.show', $member->id) }}" class="p-1.5 text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400 transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700" title="View member" aria-label="View member details">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
                             </a>
                             @if($isSystemAdmin || $currentUser->hasPermission('members.edit'))
-                            <a href="{{ route('members.edit', $member->id) }}"
-                               class="p-1.5 text-gray-500 hover:text-primary-600 dark:text-gray-400 dark:hover:text-primary-400 transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
-                               title="Edit member" aria-label="Edit member">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
-                                </svg>
+                            <a href="{{ route('members.edit', $member->id) }}" class="p-1.5 text-gray-500 hover:text-primary-600 dark:text-gray-400 dark:hover:text-primary-400 transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700" title="Edit member" aria-label="Edit member">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
                             </a>
                             @endif
-                            <a href="{{ route('members.edit-history', $member->id) }}"
-                               class="p-1.5 text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400 transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
-                               title="View history" aria-label="View edit history">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                </svg>
+                            <a href="{{ route('members.edit-history', $member->id) }}" class="p-1.5 text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400 transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700" title="View history" aria-label="View edit history">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                             </a>
                             @if(($isSystemAdmin || $currentUser->hasPermission('members.delete')) && $member->id !== auth()->id())
-                            <button type="button"
-                                    onclick="confirmDelete('{{ $member->id }}', '{{ $member->full_name }}', '{{ $member->role->name }}')"
-                                    class="p-1.5 text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
-                                    title="Remove member" aria-label="Delete member">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                                </svg>
+                            <button type="button" onclick="confirmDelete('{{ $member->id }}', '{{ $member->full_name }}', '{{ $member->role->name }}')" class="p-1.5 text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700" title="Remove member" aria-label="Delete member">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                             </button>
                             @endif
                         </div>
@@ -332,9 +336,7 @@
                 <tr>
                     <td colspan="8" class="px-6 py-12 text-center">
                         <div class="flex flex-col items-center gap-3">
-                            <svg class="w-12 h-12 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                            </svg>
+                            <svg class="w-12 h-12 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
                             <p class="text-gray-500 dark:text-gray-400 text-sm italic">No members found.</p>
                             @if(request()->hasAny(['search', 'status', 'verification']) || (request()->has('role') && request()->role != 'all'))
                             <a href="{{ route('members.index') }}" class="text-primary-600 hover:underline text-sm">Clear all filters</a>
@@ -357,12 +359,10 @@
 <script>
     function confirmDelete(userId, userName, userRole) {
         const systemRoles = ['System Administrator', 'Supreme Admin', 'Supreme Officer'];
-
         if (systemRoles.includes(userRole)) {
             alert(`⚠️ Cannot delete "${userName}".\n\nThis user has a system role (${userRole}) which is required for the system to function properly.`);
             return;
         }
-
         if (userRole === 'Club Adviser') {
             const message = `⚠️ WARNING: You are about to delete ${userName}, who is a CLUB ADVISER.\n\nMake sure this is NOT the last club adviser in the system!\n\nDeleting the last club adviser will lock you out of admin features.\n\nAre you absolutely sure you want to continue?`;
             if (confirm(message)) {
@@ -375,6 +375,19 @@
             }
         }
     }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const searchInput = document.getElementById('search-input');
+        if (searchInput) {
+            let timeout = null;
+            searchInput.addEventListener('input', function() {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => {
+                    document.getElementById('filter-form').submit();
+                }, 500);
+            });
+        }
+    });
 </script>
 
 @foreach($users as $member)

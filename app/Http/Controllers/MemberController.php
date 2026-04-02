@@ -125,13 +125,14 @@ class MemberController extends Controller
     }
 
     // -------------------------------------------------------------------------
-    // Index
+    // Index (with filtered statistics)
     // -------------------------------------------------------------------------
 
     public function index(Request $request)
     {
         $query = User::with('role');
 
+        // Search
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
@@ -140,6 +141,7 @@ class MemberController extends Controller
             });
         }
 
+        // Role filter
         $roleFilter = $request->get('role', 'all');
         if ($roleFilter !== 'all') {
             switch ($roleFilter) {
@@ -161,16 +163,34 @@ class MemberController extends Controller
             }
         }
 
-        $users = $query->paginate(15)->appends($request->except('page'));
+        // Status filter
+        if ($request->filled('status')) {
+            $isActive = $request->status === 'active';
+            $query->where('is_active', $isActive);
+        }
 
-        $totalStats = [
-            'system_admin' => User::whereHas('role', fn($q) => $q->where('name', 'System Administrator'))->count(),
-            'supreme'      => User::whereHas('role', fn($q) => $q->where('level', '<=', 3))->count(),
-            'leaders'      => User::whereHas('role', fn($q) => $q->whereIn('name', ['Org Admin', 'Org Officer']))->count(),
-            'members'      => User::whereHas('role', fn($q) => $q->where('name', 'Org Member'))->count(),
-            'advisers'     => User::whereHas('role', fn($q) => $q->where('name', 'Club Adviser'))->count(),
-            'all'          => User::count(),
+        // Verification filter
+        if ($request->filled('verification')) {
+            if ($request->verification === 'verified') {
+                $query->whereNotNull('email_verified_at');
+            } elseif ($request->verification === 'unverified') {
+                $query->whereNull('email_verified_at');
+            }
+        }
+
+        // Clone the query for statistics before pagination
+        $statsQuery = clone $query;
+        $filteredStats = [
+            'system_admin' => (clone $statsQuery)->whereHas('role', fn($q) => $q->where('name', 'System Administrator'))->count(),
+            'supreme'      => (clone $statsQuery)->whereHas('role', fn($q) => $q->where('level', '<=', 3))->count(),
+            'leaders'      => (clone $statsQuery)->whereHas('role', fn($q) => $q->whereIn('name', ['Org Admin', 'Org Officer']))->count(),
+            'members'      => (clone $statsQuery)->whereHas('role', fn($q) => $q->where('name', 'Org Member'))->count(),
+            'advisers'     => (clone $statsQuery)->whereHas('role', fn($q) => $q->where('name', 'Club Adviser'))->count(),
+            'all'          => (clone $statsQuery)->count(),
         ];
+
+        // Paginate
+        $users = $query->paginate(15)->appends($request->except('page'));
 
         $roleColors = [
             'System Administrator' => 'purple',
@@ -182,7 +202,7 @@ class MemberController extends Controller
             'Org Member'           => 'gray',
         ];
 
-        return view('members.index', compact('users', 'totalStats', 'roleColors', 'roleFilter'));
+        return view('members.index', compact('users', 'filteredStats', 'roleColors', 'roleFilter'));
     }
 
     // -------------------------------------------------------------------------
@@ -692,13 +712,14 @@ class MemberController extends Controller
 
     public function editHistory(int $id)
     {
-        $user         = User::findOrFail($id);
+        $user = User::with('role', 'member')->findOrFail($id);
         $memberRecord = $user->member;
-        $currentUser  = Auth::user();
 
         if (! $memberRecord) {
             abort(404, 'Member record not found for this user.');
         }
+
+        $currentUser = Auth::user();
 
         if (! $currentUser || ! $currentUser->role) {
             abort(403, 'Unauthorized.');
@@ -715,8 +736,7 @@ class MemberController extends Controller
 
         return view('members.edit-history', compact('user', 'memberRecord', 'positionLogs'));
     }
-
-    // -------------------------------------------------------------------------
+        // -------------------------------------------------------------------------
     // Private Helpers
     // -------------------------------------------------------------------------
 

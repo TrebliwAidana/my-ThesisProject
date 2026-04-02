@@ -5,15 +5,29 @@
 
 @php
     $validPositions = \App\Models\Member::VALID_POSITIONS;
+    $nonStudentRoleIds = [1, 6, 8];
 @endphp
 
 @section('content')
 <div x-data="memberEditForm()" x-init="init()" class="max-w-3xl mx-auto">
-    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gold-800 p-6">
+    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 p-6">
         <form method="POST" action="{{ route('members.update', $member->id) }}">
             @csrf
             @method('PUT')
 
+            {{-- Display validation errors --}}
+            @if($errors->any())
+                <div class="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+                    <strong>Please fix the following errors:</strong>
+                    <ul class="mt-2 list-disc list-inside">
+                        @foreach($errors->all() as $error)
+                            <li>{{ $error }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
+
+            {{-- First Name & Last Name --}}
             <div class="grid grid-cols-2 gap-4">
                 <div>
                     <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">First Name <span class="text-red-500">*</span></label>
@@ -27,34 +41,14 @@
                 </div>
             </div>
 
+            {{-- Middle Name --}}
             <div class="mb-4">
                 <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Middle Name <span class="text-gray-400">(Optional)</span></label>
                 <input type="text" name="middle_name" value="{{ old('middle_name', $member->middle_name) }}"
                        class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2 text-sm">
             </div>
 
-            <div class="mb-4">
-                <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Email <span class="text-red-500">*</span></label>
-                <input type="email" name="email" value="{{ old('email', $member->email) }}" required
-                       class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2 text-sm">
-            </div>
-
-            <div class="mb-4">
-                <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Student ID</label>
-                <input type="text" name="student_id" value="{{ old('student_id', $member->student_id) }}" placeholder="2020-12345"
-                       class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2 text-sm">
-            </div>
-
-            <div class="mb-4">
-                <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Year Level</label>
-                <select name="year_level" class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2 text-sm">
-                    <option value="">Select Year Level</option>
-                    @foreach(['Grade 7','Grade 8','Grade 9','Grade 10','Grade 11','Grade 12'] as $level)
-                        <option value="{{ $level }}" {{ old('year_level', $member->year_level) == $level ? 'selected' : '' }}>{{ $level }}</option>
-                    @endforeach
-                </select>
-            </div>
-
+            {{-- Gender --}}
             <div class="mb-4">
                 <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Gender <span class="text-red-500">*</span></label>
                 <select name="gender" required class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2 text-sm">
@@ -65,6 +59,14 @@
                 </select>
             </div>
 
+            {{-- Birthday --}}
+            <div class="mb-4">
+                <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Birthday</label>
+                <input type="date" name="birthday" value="{{ old('birthday', optional($member->birthday)->format('Y-m-d')) }}"
+                       class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2 text-sm">
+            </div>
+
+            {{-- Phone Number --}}
             <div class="mb-4">
                 <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Phone Number</label>
                 <div class="flex">
@@ -76,12 +78,14 @@
                 <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Enter 10-digit number (e.g., 9123456789). +63 will be added automatically.</p>
             </div>
 
+            {{-- Email --}}
             <div class="mb-4">
-                <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Birthday</label>
-                <input type="date" name="birthday" value="{{ old('birthday', optional($member->birthday)->format('Y-m-d')) }}"
+                <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Email <span class="text-red-500">*</span></label>
+                <input type="email" name="email" value="{{ old('email', $member->email) }}" required
                        class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2 text-sm">
             </div>
 
+            {{-- Role --}}
             <div class="mb-4">
                 <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Role <span class="text-red-500">*</span></label>
                 <select name="role_id" x-model="selectedRoleId" required class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2 text-sm">
@@ -91,6 +95,7 @@
                 </select>
             </div>
 
+            {{-- Position (dynamic) --}}
             <div class="mb-4">
                 <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Position</label>
                 <select name="position" x-model="selectedPosition" class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2 text-sm">
@@ -102,9 +107,45 @@
                 <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Positions are based on the selected role</p>
             </div>
 
+            {{-- Reason for Position Change (shown when position is different) --}}
+            <div x-show="positionChanged" x-cloak>
+                <div class="mb-4">
+                    <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Reason for Change <span class="text-red-500">*</span></label>
+                    <textarea name="position_change_reason" rows="2" class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2 text-sm" placeholder="Please provide a reason for changing the position..."></textarea>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Required when changing position</p>
+                </div>
+            </div>
+
+            {{-- Student ID --}}
+            <div class="mb-4">
+                <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Student ID</label>
+                <input type="text" name="student_id" value="{{ old('student_id', $member->student_id) }}" placeholder="2020-12345"
+                       class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2 text-sm">
+                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Format: YYYY-XXXXX (e.g., 2020-12345)</p>
+            </div>
+
+            {{-- Year Level (conditional) --}}
+            <div x-show="isStudentRole" x-cloak>
+                <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Year Level</label>
+                <select x-model="yearLevelValue" class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2 text-sm">
+                    <option value="">Select Year Level</option>
+                    <option value="Grade 7">Grade 7</option>
+                    <option value="Grade 8">Grade 8</option>
+                    <option value="Grade 9">Grade 9</option>
+                    <option value="Grade 10">Grade 10</option>
+                    <option value="Grade 11">Grade 11</option>
+                    <option value="Grade 12">Grade 12</option>
+                </select>
+            </div>
+            <input type="hidden" name="year_level" :value="yearLevelValue">
+            <div x-show="!isStudentRole" class="text-sm text-gray-500 dark:text-gray-400 italic mb-4">
+                Year level is not applicable for this role.
+            </div>
+
+            {{-- Change Password --}}
             <div class="mb-4">
                 <label class="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" x-model="changePassword" class="rounded border-gray-300 text-primary-600">
+                    <input type="checkbox" x-model="changePassword" class="rounded border-gray-300 text-indigo-600">
                     <span class="text-sm text-gray-700 dark:text-gray-300">Change Password</span>
                 </label>
                 <div x-show="changePassword" x-cloak>
@@ -120,6 +161,7 @@
                 <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Leave blank to keep current password.</p>
             </div>
 
+            {{-- Account Status --}}
             <div class="mb-6">
                 <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Account Status</label>
                 <div class="flex gap-4">
@@ -128,8 +170,12 @@
                 </div>
             </div>
 
+            {{-- Buttons + History Link --}}
             <div class="flex gap-3">
                 <button type="submit" class="flex-1 bg-primary-600 hover:bg-gold-500 text-white font-semibold py-2 px-4 rounded-lg transition">Update Member</button>
+                <a href="{{ route('members.edit-history', $member->id) }}" class="flex-1 text-center bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 font-semibold py-2 px-4 rounded-lg transition">
+                    View History
+                </a>
                 <a href="{{ route('members.index') }}" class="flex-1 text-center bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 font-semibold py-2 px-4 rounded-lg transition">Cancel</a>
             </div>
         </form>
@@ -138,6 +184,7 @@
 
 <script>
     const validPositions = @json(\App\Models\Member::VALID_POSITIONS);
+    const nonStudentRoleIds = @json($nonStudentRoleIds);
 
     function memberEditForm() {
         return {
@@ -145,9 +192,18 @@
             selectedPosition: '{{ old('position', $member->position) }}',
             positionOptions: [],
             changePassword: false,
+            isStudentRole: true,
+            yearLevelValue: '{{ old('year_level', $member->year_level) }}',
             init() {
                 this.updatePositionOptions();
-                this.$watch('selectedRoleId', () => this.updatePositionOptions());
+                this.checkIfStudentRole();
+                this.$watch('selectedRoleId', () => {
+                    this.updatePositionOptions();
+                    this.checkIfStudentRole();
+                });
+                this.$watch('selectedPosition', () => {
+                    this.checkIfStudentRole();
+                });
             },
             updatePositionOptions() {
                 const roleId = this.selectedRoleId;
@@ -159,6 +215,26 @@
                 if (this.selectedPosition && !this.positionOptions.includes(this.selectedPosition)) {
                     this.selectedPosition = '';
                 }
+            },
+            checkIfStudentRole() {
+                const roleId = parseInt(this.selectedRoleId);
+                const position = this.selectedPosition;
+                if (nonStudentRoleIds.includes(roleId)) {
+                    this.isStudentRole = false;
+                    this.yearLevelValue = '';
+                    return;
+                }
+                if (roleId === 2) {
+                    this.isStudentRole = (position === 'SSLG President');
+                    if (!this.isStudentRole) this.yearLevelValue = '';
+                    return;
+                }
+                this.isStudentRole = true;
+            },
+            positionChanged() {
+                // Check if selectedPosition is different from original position (from PHP)
+                const originalPosition = '{{ $member->position }}';
+                return this.selectedPosition && this.selectedPosition !== originalPosition;
             }
         };
     }
