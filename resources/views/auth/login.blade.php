@@ -99,10 +99,10 @@
                             </svg>
                         </div>
                         <input type="email" id="email" name="email" value="{{ old('email') }}" required
-                               autocomplete="email" placeholder="you@vsulhs-sslg.com"
+                               autocomplete="email" placeholder="username@gmail.com"
                                class="w-full pl-10 pr-4 py-2.5 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition {{ $errors->has('email') ? 'border-red-400' : '' }}">
                     </div>
-                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Use your school email address</p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Use your Gmail account</p>
                 </div>
 
                 {{-- Password Field --}}
@@ -136,7 +136,7 @@
                     </div>
                 </div>
 
-                {{-- Remember Me Checkbox --}}
+                {{-- Remember Me & Forgot Password Row --}}
                 <div class="flex items-center justify-between">
                     <label class="flex items-center gap-2 cursor-pointer">
                         <input type="checkbox" 
@@ -146,6 +146,11 @@
                                class="rounded border-gray-300 dark:border-gray-600 text-indigo-600 focus:ring-indigo-500 transition">
                         <span class="text-sm text-gray-600 dark:text-gray-400">Remember me on this device</span>
                     </label>
+                    
+                    <a href="{{ route('password.request') }}" 
+                       class="text-sm text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 transition">
+                        Forgot Password?
+                    </a>
                 </div>
 
                 {{-- Submit Button --}}

@@ -4,8 +4,25 @@
 @section('page-title', 'User Management')
 
 @section('content')
+<style>
+    /* Prevent table cells from wrapping on larger screens */
+    .admin-users-table th,
+    .admin-users-table td {
+        white-space: nowrap;
+        padding: 0.75rem 1.5rem;
+    }
+
+    /* On smaller screens, allow some wrapping for better readability */
+    @media (max-width: 768px) {
+        .admin-users-table td {
+            white-space: normal;
+            min-width: 120px;
+        }
+    }
+</style>
+
 <div class="space-y-6">
-    {{-- Statistics Cards --}}
+    {{-- Statistics Cards (unchanged) --}}
     <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4">
             <div class="flex items-center justify-between">
@@ -20,7 +37,7 @@
                 </div>
             </div>
         </div>
-        
+
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4">
             <div class="flex items-center justify-between">
                 <div>
@@ -34,7 +51,7 @@
                 </div>
             </div>
         </div>
-        
+
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4">
             <div class="flex items-center justify-between">
                 <div>
@@ -48,7 +65,7 @@
                 </div>
             </div>
         </div>
-        
+
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4">
             <div class="flex items-center justify-between">
                 <div>
@@ -63,8 +80,8 @@
             </div>
         </div>
     </div>
-    
-    {{-- Actions Bar --}}
+
+    {{-- Actions Bar with GET form (server‑side filtering) --}}
     <div class="flex flex-wrap items-center justify-between gap-4">
         <div class="flex items-center gap-3">
             <a href="{{ route('admin.users.create') }}" class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition transform hover:scale-105 active:scale-95">
@@ -74,41 +91,50 @@
                 Manage Roles
             </a>
         </div>
-        
-        <div class="flex items-center gap-3">
+
+        <form method="GET" action="{{ route('admin.users.index') }}" class="flex items-center gap-3">
             <div class="relative">
-                <input type="text" id="searchUsers" placeholder="Search users..." 
+                <input type="text" name="search" value="{{ request('search') }}" placeholder="Search users..." 
                        class="pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 w-64">
                 <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                 </svg>
             </div>
-            
-            <select id="roleFilter" class="border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2 text-sm">
+
+            <select name="role" class="border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2 text-sm">
                 <option value="">All Roles</option>
                 @foreach($roles as $role)
-                    <option value="{{ $role->name }}">{{ $role->name }}</option>
+                    <option value="{{ $role->name }}" {{ request('role') == $role->name ? 'selected' : '' }}>
+                        {{ $role->name }}
+                    </option>
                 @endforeach
             </select>
-            
-            <select id="statusFilter" class="border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2 text-sm">
+
+            <select name="status" class="border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2 text-sm">
                 <option value="">All Status</option>
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
+                <option value="active" {{ request('status') == 'active' ? 'selected' : '' }}>Active</option>
+                <option value="inactive" {{ request('status') == 'inactive' ? 'selected' : '' }}>Inactive</option>
             </select>
-            
-            <select id="verificationFilter" class="border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2 text-sm">
+
+            <select name="verification" class="border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2 text-sm">
                 <option value="">All Verification</option>
-                <option value="verified">Verified</option>
-                <option value="unverified">Unverified</option>
+                <option value="verified" {{ request('verification') == 'verified' ? 'selected' : '' }}>Verified</option>
+                <option value="unverified" {{ request('verification') == 'unverified' ? 'selected' : '' }}>Unverified</option>
             </select>
-        </div>
+
+            <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition">
+                Apply Filters
+            </button>
+            <a href="{{ route('admin.users.index') }}" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 text-sm">
+                Reset
+            </a>
+        </form>
     </div>
-    
-    {{-- Users Table --}}
+
+    {{-- Users Table (unchanged structure) --}}
     <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
         <div class="overflow-x-auto">
-            <table class="w-full text-sm">
+            <table class="w-full text-sm admin-users-table">
                 <thead class="bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
                     <tr>
                         <th class="text-left px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">User</th>
@@ -123,12 +149,7 @@
                 </thead>
                 <tbody class="divide-y divide-gray-100 dark:divide-gray-700" id="usersTableBody">
                     @forelse($users as $user)
-                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition user-row" 
-                        data-role="{{ strtolower($user->role->name) }}" 
-                        data-status="{{ $user->is_active ? 'active' : 'inactive' }}" 
-                        data-verification="{{ $user->email_verified_at ? 'verified' : 'unverified' }}"
-                        data-name="{{ strtolower($user->full_name) }}" 
-                        data-email="{{ strtolower($user->email) }}">
+                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition">
                         <td class="px-6 py-4">
                             <div class="flex items-center gap-3">
                                 <div class="w-8 h-8 rounded-full bg-gradient-to-r from-indigo-500 to-indigo-600 flex items-center justify-center text-white text-xs font-bold">
@@ -204,7 +225,7 @@
                 </tbody>
             </table>
         </div>
-        
+
         @if($users->hasPages())
         <div class="px-6 py-3 border-t border-gray-100 dark:border-gray-700">
             {{ $users->links() }}
@@ -215,48 +236,32 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        const searchInput = document.getElementById('searchUsers');
-        const roleFilter = document.getElementById('roleFilter');
-        const statusFilter = document.getElementById('statusFilter');
-        const verificationFilter = document.getElementById('verificationFilter');
-        const rows = document.querySelectorAll('#usersTableBody .user-row');
-        
-        function filterTable() {
-            const searchTerm = searchInput?.value.toLowerCase() || '';
-            const selectedRole = roleFilter?.value.toLowerCase() || '';
-            const selectedStatus = statusFilter?.value.toLowerCase() || '';
-            const selectedVerification = verificationFilter?.value.toLowerCase() || '';
-            
-            rows.forEach(row => {
-                const name = row.getAttribute('data-name') || '';
-                const email = row.getAttribute('data-email') || '';
-                const role = row.getAttribute('data-role') || '';
-                const status = row.getAttribute('data-status') || '';
-                const verification = row.getAttribute('data-verification') || '';
-                
-                const matchesSearch = searchTerm === '' || name.includes(searchTerm) || email.includes(searchTerm);
-                const matchesRole = selectedRole === '' || role === selectedRole;
-                const matchesStatus = selectedStatus === '' || status === selectedStatus;
-                const matchesVerification = selectedVerification === '' || verification === selectedVerification;
-                
-                if (matchesSearch && matchesRole && matchesStatus && matchesVerification) {
-                    row.style.display = '';
-                } else {
-                    row.style.display = 'none';
-                }
-            });
-        }
-        
-        // Add event listeners
-        if (searchInput) searchInput.addEventListener('input', filterTable);
-        if (roleFilter) roleFilter.addEventListener('change', filterTable);
-        if (statusFilter) statusFilter.addEventListener('change', filterTable);
-        if (verificationFilter) verificationFilter.addEventListener('change', filterTable);
-        
-        // Initial filter
-        filterTable();
+        // --- Flash message handling (unchanged) ---
+        const flashMessages = document.querySelectorAll('.flash-message');
+        flashMessages.forEach(msg => {
+            setTimeout(() => {
+                msg.style.transition = 'opacity 0.5s';
+                msg.style.opacity = '0';
+                setTimeout(() => msg.remove(), 500);
+            }, 5000);
+        });
+
+        // When the page is restored from bfcache (back/forward), clear any lingering flash messages
+        window.addEventListener('pageshow', function(event) {
+            if (event.persisted) {
+                fetch('/clear-flash-messages', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Content-Type': 'application/json'
+                    }
+                }).then(() => {
+                    document.querySelectorAll('.flash-message').forEach(el => el.remove());
+                }).catch(console.error);
+            }
+        });
     });
-    
+
     function sendVerification(userId) {
         if (confirm('Send verification email to this user?')) {
             fetch(`/admin/users/${userId}/send-verification`, {

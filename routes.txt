@@ -1,0 +1,19 @@
+
+   ErrorException 
+
+  include(C:\laragon\www\MyThesis\vendor\composer/../../app/Http/Controllers/SettingsController.php): Failed to open stream: No such file or directory
+
+  at vendor\composer\ClassLoader.php:576
+    [90m572[0m[90m▕ [0m[90;3m         * @param  string $file[0m
+    [90m573[0m[90m▕ [0m[90;3m         * @return void[0m
+    [90m574[0m[90m▕ [0m[90;3m         */[0m
+    [90m575[0m[90m▕ [0m[90;3m        [0m[39;1mself[0m[35;1m::[0m[39;1m$includeFile [0m[35;1m= \Closure::[0m[39;1mbind[0m[35;1m(static function([0m[39;1m$file[0m[35;1m) {[0m
+[31;1m  ➜ [0m[3;1m576[0m[90m▕ [0m[35;1m            include [0m[39;1m$file[0m[35;1m;[0m
+    [90m577[0m[90m▕ [0m[35;1m        }, [0m[39;1mnull[0m[35;1m, [0m[39;1mnull[0m[35;1m);[0m
+    [90m578[0m[90m▕ [0m[35;1m    }[0m
+    [90m579[0m[90m▕ [0m[35;1m}[0m
+    [90m580[0m[90m▕ [0m
+
+  1   vendor\composer\ClassLoader.php:576
+  2   vendor\composer\ClassLoader.php:427
+

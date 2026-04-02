@@ -7,7 +7,7 @@
 @php
     $currentUser = auth()->user();
     $isSystemAdmin = $currentUser->role_id == 1;
-    $canManageAccounts = ($isSystemAdmin || $currentUser->role->name === 'Supreme Admin' || $currentUser->role->name === 'Adviser');
+    $canManageAccounts = ($isSystemAdmin || $currentUser->role->name === 'Supreme Admin' || $currentUser->role->name === 'Club Adviser');
 @endphp
 
 <div class="mb-6">
@@ -39,7 +39,7 @@
                                 'Supreme Officer' => 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300',
                                 'Org Admin' => 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300',
                                 'Org Officer' => 'bg-sky-100 text-sky-700 dark:bg-sky-900/50 dark:text-sky-300',
-                                'Adviser' => 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300',
+                                'Club Adviser' => 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300',
                                 'Org Member' => 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
                             ];
                             $colorClass = $roleColors[$member->role->name] ?? 'bg-gray-100 text-gray-700';
@@ -93,6 +93,25 @@
                     <span class="text-sm font-medium text-gray-900 dark:text-white">{{ $member->year_level }}</span>
                 </div>
                 @endif
+                {{-- New Fields: Gender, Phone, Birthday --}}
+                @if($member->gender)
+                <div class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-700">
+                    <span class="text-sm text-gray-500 dark:text-gray-400">Gender</span>
+                    <span class="text-sm font-medium text-gray-900 dark:text-white">{{ $member->gender }}</span>
+                </div>
+                @endif
+                @if($member->phone)
+                <div class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-700">
+                    <span class="text-sm text-gray-500 dark:text-gray-400">Phone</span>
+                    <span class="text-sm font-medium text-gray-900 dark:text-white">{{ $member->phone }}</span>
+                </div>
+                @endif
+                @if($member->birthday)
+                <div class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-700">
+                    <span class="text-sm text-gray-500 dark:text-gray-400">Birthday</span>
+                    <span class="text-sm font-medium text-gray-900 dark:text-white">{{ $member->birthday->format('F d, Y') }}</span>
+                </div>
+                @endif
                 <div class="flex justify-between items-center py-2">
                     <span class="text-sm text-gray-500 dark:text-gray-400">Role Level</span>
                     <span class="text-sm font-medium text-gray-900 dark:text-white">Level {{ $member->role->level }}</span>
@@ -111,6 +130,17 @@
                         Edit Profile
                     </a>
                     
+                    {{-- View History Button --}}
+                    <a href="{{ route('members.edit-history', $member->id) }}" 
+                       class="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        View History
+                    </a>
+                </div>
+                
+                <div class="mt-3 grid grid-cols-1 gap-3">
                     {{-- Deactivate/Activate Account Button --}}
                     @if($canManageAccounts && $member->id !== auth()->id())
                         @if($member->is_active)
@@ -183,8 +213,36 @@
             <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
                 <h3 class="font-semibold text-gray-900 dark:text-white">Recent Activity</h3>
             </div>
-            <div class="p-6 text-center text-gray-500 dark:text-gray-400">
-                <p class="text-sm">No recent activity to display.</p>
+            <div class="divide-y divide-gray-100 dark:divide-gray-700">
+                @forelse($recentActivity ?? [] as $activity)
+                <div class="p-4 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center">
+                            @if($activity['type'] === 'document')
+                                <svg class="w-4 h-4 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                </svg>
+                            @elseif($activity['type'] === 'budget')
+                                <svg class="w-4 h-4 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                            @else
+                                <svg class="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                                </svg>
+                            @endif
+                        </div>
+                        <div class="flex-1">
+                            <p class="text-sm text-gray-900 dark:text-white">{{ $activity['description'] }}</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">{{ $activity['time'] }}</p>
+                        </div>
+                    </div>
+                </div>
+                @empty
+                <div class="p-12 text-center text-gray-500 dark:text-gray-400">
+                    <p class="text-sm">No recent activity to display.</p>
+                </div>
+                @endforelse
             </div>
         </div>
     </div>
@@ -193,24 +251,17 @@
 <script>
 function toggleAccountStatus(userId, userName, action) {
     const isDeactivate = action === 'deactivate';
-    const title = isDeactivate ? 'Deactivate Account' : 'Activate Account';
     const message = isDeactivate 
         ? `⚠️ Are you sure you want to deactivate ${userName}'s account?\n\nDeactivated accounts cannot log in or access the system until reactivated.\n\nThis action can be undone by activating the account later.`
         : `✅ Are you sure you want to activate ${userName}'s account?\n\nActivated accounts will be able to log in and access the system again.`;
-    const confirmText = isDeactivate ? 'Yes, Deactivate' : 'Yes, Activate';
-    const type = isDeactivate ? 'danger' : 'success';
     
-    // Show confirmation dialog
     if (confirm(message)) {
-        // Get the button element
         const button = event.currentTarget;
         const originalText = button.innerHTML;
         
-        // Show loading state
         button.innerHTML = '<svg class="animate-spin w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg> Processing...';
         button.disabled = true;
         
-        // Send request
         fetch(`/members/${userId}/${action}`, {
             method: 'POST',
             headers: {
@@ -222,33 +273,17 @@ function toggleAccountStatus(userId, userName, action) {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                // Show success message using your notification system
-                if (window.notify && window.notify.success) {
-                    window.notify.success(data.message);
-                } else {
-                    alert(data.message);
-                }
-                // Reload page to update status
+                alert(data.message);
                 setTimeout(() => window.location.reload(), 1000);
             } else {
-                // Show error message
-                if (window.notify && window.notify.error) {
-                    window.notify.error(data.error || 'Failed to process request');
-                } else {
-                    alert(data.error || 'Failed to process request');
-                }
-                // Restore button
+                alert(data.error || 'Failed to process request');
                 button.innerHTML = originalText;
                 button.disabled = false;
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            if (window.notify && window.notify.error) {
-                window.notify.error('An error occurred. Please try again.');
-            } else {
-                alert('An error occurred. Please try again.');
-            }
+            alert('An error occurred. Please try again.');
             button.innerHTML = originalText;
             button.disabled = false;
         });

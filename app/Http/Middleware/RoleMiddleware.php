@@ -9,62 +9,56 @@ use Symfony\Component\HttpFoundation\Response;
 
 class RoleMiddleware
 {
-    public function handle(Request $request, Closure $next, string ...$roles): Response
+    public function handle(Request $request, Closure $next, ...$allowed): Response
     {
-        // Check if user is authenticated
         if (!Auth::check()) {
-            return redirect()->route('login')
-                ->with('error', 'You must be logged in to access this page.');
+            return redirect()->route('login')->with('error', 'You must be logged in to access this page.');
         }
 
         $user = Auth::user();
-        
-        // Check if user has a role
+
         if (!$user->role) {
             abort(403, 'User role not assigned. Please contact administrator.');
         }
 
-        $userRole = $user->role->name;
-
-        // If no roles are specified, just pass through
-        if (empty($roles)) {
+        // No restrictions – allow access
+        if (empty($allowed)) {
             return $next($request);
         }
 
-        if (!in_array($userRole, $roles)) {
-            abort(403, 'Unauthorized. You do not have permission to perform this action.');
-        }
+        // Determine if the allowed values are role names or level numbers
+        $allowedLevels = [];
+        $allowedRoles = [];
 
-        return $next($request);
-
-         $allowed = false;
-        foreach ($roles as $allowedRole) {
-            if ($this->hasRoleOrParent($userRole, $allowedRole)) {
-                $allowed = true;
-                break;
+        foreach ($allowed as $item) {
+            if (is_numeric($item)) {
+                $allowedLevels[] = (int) $item;
+            } else {
+                $allowedRoles[] = $item;
             }
         }
-        
-        if ($allowed) {
-            return $next($request);
-        }
-        
-        abort(403, 'Unauthorized');
-    }
 
-    private function hasRoleOrParent($userRole, $allowedRole)
-    {
-        // Get role from database with parent relationship
-        $role = \App\Models\Role::where('name', $userRole)->with('parent')->first();
-        
-        if ($role->name === $allowedRole) {
-            return true;
+        // Check by role name (if any)
+        if (!empty($allowedRoles)) {
+            foreach ($allowedRoles as $roleName) {
+                if ($user->hasRole($roleName)) {
+                    return $next($request);
+                }
+            }
         }
-        
-        if ($role->parent && $role->parent->name === $allowedRole) {
-            return true;
+
+        // Check by level (if any)
+        if (!empty($allowedLevels)) {
+            $userLevel = (int) $user->role->level;
+            // If any allowed level is >= user level? Depends on your logic.
+            // With your current "lower = higher authority", a user with level 1 can do everything.
+            // So allow if user level is <= any allowed level? Or <= max allowed?
+            // Let's use: user level <= max allowed level (higher number = less authority)
+            if ($userLevel <= max($allowedLevels)) {
+                return $next($request);
+            }
         }
-        
-        return false;
+
+        abort(403, 'Unauthorized. You do not have permission to perform this action.');
     }
 }

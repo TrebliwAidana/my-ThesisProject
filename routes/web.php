@@ -11,6 +11,9 @@ use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\EmailVerificationController;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Http\Request;
 
 /*
 |--------------------------------------------------------------------------
@@ -18,225 +21,198 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 */
 
-// ============= TEST ROUTES =============
-Route::get('/test-login', function() {
-    $email = 'trebliwaidana@gmail.com';
-    $password = 'password';
-    
-    $user = App\Models\User::where('email', $email)->first();
-    
-    if (!$user) {
-        return "User not found: " . $email;
-    }
-    
-    $passwordCheck = Hash::check($password, $user->password);
-    
-    return [
-        'user_exists' => true,
-        'user_id' => $user->id,
-        'user_email' => $user->email,
-        'is_active' => $user->is_active,
-        'email_verified' => $user->email_verified_at ? true : false,
-        'password_matches' => $passwordCheck,
-    ];
-});
-
-Route::get('/simple-login-page', function() {
-    return '
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>Simple Login Test</title>
-        <meta name="csrf-token" content="' . csrf_token() . '">
-        <style>
-            body { font-family: Arial; padding: 50px; max-width: 400px; margin: 0 auto; }
-            input { width: 100%; padding: 8px; margin: 5px 0 15px; border: 1px solid #ddd; border-radius: 4px; }
-            button { background: #4f46e5; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; }
-            .error { color: red; margin-top: 10px; }
-        </style>
-    </head>
-    <body>
-        <h2>Simple Login Test</h2>
-        <form method="POST" action="/simple-login-submit">
-            <input type="hidden" name="_token" value="' . csrf_token() . '">
-            <div>
-                <label>Email:</label>
-                <input type="email" name="email" value="trebliwaidana@gmail.com" required>
-            </div>
-            <div>
-                <label>Password:</label>
-                <input type="password" name="password" value="password" required>
-            </div>
-            <button type="submit">Login</button>
-        </form>
-    </body>
-    </html>
-    ';
-});
-
-Route::post('/simple-login-submit', function(\Illuminate\Http\Request $request) {
-    $credentials = $request->only('email', 'password');
-    
-    \Log::info('Simple login attempt', ['email' => $credentials['email']]);
-    
-    if (Auth::attempt($credentials)) {
-        \Log::info('Simple login SUCCESS for: ' . $credentials['email']);
-        $request->session()->regenerate();
-        return redirect('/dashboard');
-    }
-    
-    \Log::info('Simple login FAILED for: ' . $credentials['email']);
-    return back()->withErrors(['email' => 'Invalid credentials']);
-});
-// ============= END TEST ROUTES =============
-
 // Root redirect
 Route::get('/', fn() => redirect()->route('login'));
 
-// Guest routes
+// ── Guest ─────────────────────────────────────────────────────────────────
 Route::middleware('guest')->group(function () {
-    Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
+    Route::get('/login',  [AuthController::class, 'showLogin'])->name('login');
     Route::post('/login', [AuthController::class, 'login'])->name('login.post');
 });
 
-// ============= EMAIL VERIFICATION ROUTES - MUST BE OUTSIDE AUTH MIDDLEWARE =============
-Route::get('/email/verify', [EmailVerificationController::class, 'notice'])->name('verification.notice');
-Route::get('/email/verify/{id}/{hash}', [EmailVerificationController::class, 'verify'])->name('verification.verify');
-Route::post('/email/verification-resend', [EmailVerificationController::class, 'resend'])->name('verification.resend');
+// ── Email Verification (outside auth so the link works before login) ───────
+Route::get('/email/verify',              [EmailVerificationController::class, 'notice'])->name('verification.notice');
+Route::get('/email/verify/{id}/{hash}',  [EmailVerificationController::class, 'verify'])->name('verification.verify');
+Route::post('/email/verification-resend',[EmailVerificationController::class, 'resend'])->name('verification.resend');
 
-// Authenticated routes (basic auth)
+// ── Auth only (no email verification required) ─────────────────────────────
 Route::middleware('auth.custom')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 });
 
-// Protected routes (require email verification)
+// ── Auth + Verified ────────────────────────────────────────────────────────
 Route::middleware(['auth.custom', 'verified'])->group(function () {
-    
+
     // Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
-    // Members — System Administrator, Adviser, Org Admin, Org Officer
-    Route::middleware('role:System Administrator,Adviser,Org Admin,Org Officer')->prefix('members')->name('members.')->group(function () {
-        Route::get('/', [MemberController::class, 'index'])->name('index');
-        Route::get('/create', [MemberController::class, 'create'])->name('create');
-        Route::post('/', [MemberController::class, 'store'])->name('store');
-        Route::get('/{id}', [MemberController::class, 'show'])->name('show');
-        Route::get('/{id}/edit', [MemberController::class, 'edit'])->name('edit');
-        Route::put('/{id}', [MemberController::class, 'update'])->name('update');
-        Route::delete('/{id}', [MemberController::class, 'destroy'])->name('destroy');
-        Route::get('/{id}/position-history', [MemberController::class, 'positionHistory'])->name('position-history');
-        Route::get('/{id}/position-history-data', [MemberController::class, 'getPositionHistoryData'])->name('position-history-data');
-        Route::post('/{id}/deactivate', [MemberController::class, 'deactivate'])->name('deactivate');
-        Route::post('/{id}/activate', [MemberController::class, 'activate'])->name('activate');
-        Route::post('/{id}/deactivate', [MemberController::class, 'deactivate'])->name('deactivate');
-        Route::post('/{id}/activate', [MemberController::class, 'activate'])->name('activate');   
-        Route::get('/{id}/position-history', [MemberController::class, 'positionHistory'])->name('position-history');
-        Route::get('/{id}/position-history-data', [MemberController::class, 'getPositionHistoryData'])->name('position-history-data');
-    });
+    // ── Members ───────────────────────────────────────────────────────────
+    Route::middleware('role:System Administrator,Club Adviser,Org Admin,Org Officer')
+        ->prefix('members')
+        ->name('members.')
+        ->group(function () {
+            Route::get('/',                          [MemberController::class, 'index'])->name('index');
+            Route::get('/create',                    [MemberController::class, 'create'])->name('create');
+            Route::post('/',                         [MemberController::class, 'store'])->name('store');
+            Route::get('/{id}',                      [MemberController::class, 'show'])->name('show');
+            Route::get('/{id}/edit',                 [MemberController::class, 'edit'])->name('edit');
+            Route::put('/{id}',                      [MemberController::class, 'update'])->name('update');
+            Route::delete('/{id}',                   [MemberController::class, 'destroy'])->name('destroy');
+            Route::get('/{id}/edit-history',         [MemberController::class, 'editHistory'])->name('edit-history');
 
-    // Documents — System Administrator, Adviser, Org Admin, Org Officer
-    Route::middleware('role:System Administrator,Adviser,Org Admin,Org Officer')->prefix('documents')->name('documents.')->group(function () {
-        Route::get('/', [DocumentController::class, 'index'])->name('index');
-        Route::get('/upload', [DocumentController::class, 'create'])->name('create');
-        Route::post('/', [DocumentController::class, 'store'])->name('store');
-        Route::get('/{id}', [DocumentController::class, 'show'])->name('show');
-        Route::delete('/{id}', [DocumentController::class, 'destroy'])->name('destroy');
-    });
+            // Position Change Log — AJAX endpoint used by the Edit blade tab
+            Route::get('/{id}/position-history-data',[MemberController::class, 'getPositionHistoryData'])->name('position-history-data');
 
-    // Budgets — System Administrator, Adviser, Org Admin, Org Officer
-    Route::middleware('role:System Administrator,Adviser,Org Admin,Org Officer')->prefix('budgets')->name('budgets.')->group(function () {
-        Route::get('/', [BudgetController::class, 'index'])->name('index');
-        Route::get('/create', [BudgetController::class, 'create'])->name('create');
-        Route::post('/', [BudgetController::class, 'store'])->name('store');
-        Route::get('/{budget}', [BudgetController::class, 'show'])->name('show');
-        Route::get('/{budget}/edit', [BudgetController::class, 'edit'])->name('edit');
-        Route::put('/{budget}', [BudgetController::class, 'update'])->name('update');
-        Route::get('/{budget}/review', [BudgetController::class, 'review'])->name('review');
-        Route::post('/{budget}/approve', [BudgetController::class, 'approve'])->name('approve');
-        Route::delete('/{budget}', [BudgetController::class, 'destroy'])->name('destroy');
-    });
-
-    // Admin routes (System Administrator, Supreme Admin, Adviser)
-    Route::middleware('role:System Administrator,Supreme Admin,Adviser')->prefix('admin')->name('admin.')->group(function () {
-        // Users Management
-        Route::prefix('users')->name('users.')->group(function () {
-            Route::get('/', [AdminController::class, 'users'])->name('index');
-            Route::get('/create', [AdminController::class, 'createUser'])->name('create');
-            Route::post('/', [AdminController::class, 'storeUser'])->name('store');
-            Route::get('/{id}/edit', [AdminController::class, 'editUser'])->name('edit');
-            Route::put('/{id}', [AdminController::class, 'updateUser'])->name('update');
-            Route::delete('/{id}', [AdminController::class, 'destroyUser'])->name('destroy');
-            Route::post('/{id}/reset-password', [AdminController::class, 'resetPassword'])->name('reset-password');
-            Route::post('/{id}/send-verification', [AdminController::class, 'sendVerificationEmail'])->name('send-verification');
-            Route::post('/{id}/verify-manual', [AdminController::class, 'verifyEmailManually'])->name('verify-manual');
+            Route::post('/{id}/deactivate',          [MemberController::class, 'deactivate'])->name('deactivate');
+            Route::post('/{id}/activate',            [MemberController::class, 'activate'])->name('activate');
         });
-        
-        // Roles Management
-        Route::prefix('roles')->name('roles.')->group(function () {
-            Route::get('/', [AdminController::class, 'roles'])->name('index');
-            Route::post('/', [AdminController::class, 'storeRole'])->name('store');
-            Route::put('/{id}', [AdminController::class, 'updateRole'])->name('update');
-            Route::delete('/{id}', [AdminController::class, 'destroyRole'])->name('destroy');
-        });
-        
-        // Permissions Management
-        Route::prefix('permissions')->name('permissions.')->group(function () {
-            Route::get('/', [AdminController::class, 'permissions'])->name('index');
-            Route::post('/sync', [AdminController::class, 'syncPermissions'])->name('sync');
-        });
-    });
 
-    // Settings — System Administrator, Supreme Admin, Adviser
+    // ── Documents ─────────────────────────────────────────────────────────
+    Route::middleware('role:System Administrator,Club Adviser,Org Admin,Org Officer')
+        ->prefix('documents')
+        ->name('documents.')
+        ->group(function () {
+            Route::get('/',         [DocumentController::class, 'index'])->name('index');
+            Route::get('/upload',   [DocumentController::class, 'create'])->name('create');
+            Route::post('/',        [DocumentController::class, 'store'])->name('store');
+            Route::get('/{id}',     [DocumentController::class, 'show'])->name('show');
+            Route::delete('/{id}',  [DocumentController::class, 'destroy'])->name('destroy');
+        });
+
+    // ── Budgets ───────────────────────────────────────────────────────────
+    Route::middleware('role:System Administrator,Club Adviser,Org Admin,Org Officer')
+        ->prefix('budgets')
+        ->name('budgets.')
+        ->group(function () {
+            Route::get('/',                  [BudgetController::class, 'index'])->name('index');
+            Route::get('/create',            [BudgetController::class, 'create'])->name('create');
+            Route::post('/',                 [BudgetController::class, 'store'])->name('store');
+            Route::get('/{budget}',          [BudgetController::class, 'show'])->name('show');
+            Route::get('/{budget}/edit',     [BudgetController::class, 'edit'])->name('edit');
+            Route::put('/{budget}',          [BudgetController::class, 'update'])->name('update');
+            Route::get('/{budget}/review',   [BudgetController::class, 'review'])->name('review');
+            Route::post('/{budget}/approve', [BudgetController::class, 'approve'])->name('approve');
+            Route::delete('/{budget}',       [BudgetController::class, 'destroy'])->name('destroy');
+        });
+
+    // ── Admin ─────────────────────────────────────────────────────────────
+    Route::middleware('role:System Administrator,Supreme Admin,Club Adviser')
+        ->prefix('admin')
+        ->name('admin.')
+        ->group(function () {
+
+            // Users
+            Route::prefix('users')->name('users.')->group(function () {
+                Route::get('/',                          [AdminController::class, 'users'])->name('index');
+                Route::get('/create',                    [AdminController::class, 'createUser'])->name('create');
+                Route::post('/',                         [AdminController::class, 'storeUser'])->name('store');
+                Route::get('/{id}/edit',                 [AdminController::class, 'editUser'])->name('edit');
+                Route::put('/{id}',                      [AdminController::class, 'updateUser'])->name('update');
+                Route::delete('/{id}',                   [AdminController::class, 'destroyUser'])->name('destroy');
+                Route::post('/{id}/reset-password',      [AdminController::class, 'resetPassword'])->name('reset-password');
+                Route::post('/{id}/send-verification',   [AdminController::class, 'sendVerificationEmail'])->name('send-verification');
+                Route::post('/{id}/verify-manual',       [AdminController::class, 'verifyEmailManually'])->name('verify-manual');
+            });
+
+            // Roles
+            // Route::prefix('roles')->name('roles.')->group(function () {
+
+            //     Route::get('/', [AdminController::class, 'roles'])->name('index');
+
+            //     // ✅ put static routes FIRST
+            //     Route::get('/create', [AdminController::class, 'createRole'])->name('create');
+
+            //     // ✅ then dynamic routes
+            //     Route::get('/{id}/edit', [AdminController::class, 'editRole'])->name('edit');
+            //     Route::put('/{id}', [AdminController::class, 'updateRole'])->name('update');
+            //     Route::delete('/{id}', [AdminController::class, 'destroyRole'])->name('destroy');
+
+            //     Route::post('/', [AdminController::class, 'storeRole'])->name('store');
+            // });
+
+            // Permissions
+            Route::prefix('permissions')->name('permissions.')->group(function () {
+                Route::get('/',       [AdminController::class, 'permissions'])->name('index');
+                Route::post('/sync',  [AdminController::class, 'syncPermissions'])->name('sync');
+            });
+        });
+
+    // ── Settings ──────────────────────────────────────────────────────────
     Route::get('/settings', [SettingsController::class, 'index'])
         ->name('settings.index')
-        ->middleware('role:System Administrator,Supreme Admin,Adviser');
+        ->middleware('role:System Administrator,Supreme Admin,Club Adviser');
 
-    // Audit Logs — System Administrator, Supreme Admin
+    Route::post('/admin/settings/theme', [SettingsController::class, 'updateTheme'])
+        ->name('settings.theme.update')
+        ->middleware('role:System Administrator,Supreme Admin,Club Adviser');
+
+    // ── Audit Logs ────────────────────────────────────────────────────────
     Route::get('/audit-logs', [AuditLogController::class, 'index'])
         ->name('audit.logs')
         ->middleware('role:System Administrator,Supreme Admin');
 
-    // Theme update endpoint
-    Route::post('/admin/settings/theme', [SettingsController::class, 'updateTheme'])
-        ->name('settings.theme.update')
-        ->middleware('role:System Administrator,Supreme Admin,Adviser');
-    
-    // Profile routes (for all authenticated users)
+    // ── Profile (all authenticated users) ─────────────────────────────────
     Route::prefix('profile')->name('profile.')->group(function () {
-        Route::get('/', [ProfileController::class, 'index'])->name('index');
-        Route::put('/', [ProfileController::class, 'updateProfile'])->name('update');
-        Route::put('/password', [ProfileController::class, 'updatePassword'])->name('password');
+        Route::get('/',           [ProfileController::class, 'index'])->name('index');
+        Route::put('/',           [ProfileController::class, 'updateProfile'])->name('update');
+        Route::put('/password',   [ProfileController::class, 'updatePassword'])->name('password');
     });
 });
 
-Route::post('/clear-flash-messages', function() {
-    session()->forget('success');
-    session()->forget('error');
-    session()->forget('warning');
-    session()->forget('info');
-    session()->forget('_flash');
+// ── Flash message clear ────────────────────────────────────────────────────
+Route::post('/clear-flash-messages', function () {
+    session()->forget(['success', 'error', 'warning', 'info', '_flash']);
     return response()->json(['success' => true]);
 })->name('clear-flash');
 
-// Debug route to check permissions
-Route::get('/debug-my-permissions', function () {
-    $user = auth()->user();
-    
-    return [
-        'user' => [
-            'id' => $user->id,
-            'name' => $user->full_name,
-            'email' => $user->email,
-            'role_id' => $user->role_id,
-            'role_name' => $user->role->name ?? 'No role',
-            'role_abbreviation' => $user->role->abbreviation ?? 'No abbreviation',
-        ],
-        'hasPermission tests' => [
-            'members.view' => method_exists($user, 'hasPermission') ? $user->hasPermission('members.view') : 'Method not found',
-            'members.create' => method_exists($user, 'hasPermission') ? $user->hasPermission('members.create') : 'Method not found',
-            'members.edit' => method_exists($user, 'hasPermission') ? $user->hasPermission('members.edit') : 'Method not found',
-            'members.delete' => method_exists($user, 'hasPermission') ? $user->hasPermission('members.delete') : 'Method not found',
-        ],
-        'role_permissions' => $user->role->permissions ?? 'No permissions set',
-    ];
-})->middleware('auth');
+// ── Password Reset Routes (available to guests) ───────────────────────────
+Route::get('/password/reset', function () {
+    return view('auth.passwords.email');
+})->name('password.request');
+
+Route::post('/password/email', function (Request $request) {
+    $request->validate(['email' => 'required|email']);
+
+    $status = Password::sendResetLink($request->only('email'));
+
+    return $status === Password::RESET_LINK_SENT
+        ? back()->with(['status' => __($status)])
+        : back()->withErrors(['email' => __($status)]);
+})->name('password.email');
+
+Route::get('/password/reset/{token}', function ($token, Request $request) {
+    return view('auth.passwords.reset', [
+        'token' => $token,
+        'email' => $request->query('email', '')
+    ]);
+})->name('password.reset');
+
+Route::post('/password/reset', function (Request $request) {
+    $request->validate([
+        'token' => 'required',
+        'email' => 'required|email',
+        'password' => 'required|confirmed|min:8',
+    ]);
+
+    $status = Password::reset(
+        $request->only('email', 'password', 'password_confirmation', 'token'),
+        function ($user, $password) {
+            $user->password = Hash::make($password);
+            $user->save();
+        }
+    );
+
+    return $status === Password::PASSWORD_RESET
+        ? redirect()->route('login')->with('status', __($status))
+        : back()->withErrors(['email' => [__($status)]]);
+})->name('password.update');
+
+// ── Admin roles management (requires role ID 1) ───────────────────────────
+Route::middleware(['auth', 'role:1'])->prefix('admin')->group(function () {
+    Route::get('/roles', [AdminController::class, 'roles'])->name('admin.roles.index');
+    Route::get('/roles/create', [AdminController::class, 'createRole'])->name('admin.roles.create');
+    Route::post('/roles', [AdminController::class, 'storeRole'])->name('admin.roles.store');
+    Route::get('/roles/{id}/edit', [AdminController::class, 'editRole'])->name('admin.roles.edit');
+    Route::put('/roles/{id}', [AdminController::class, 'updateRole'])->name('admin.roles.update');
+    Route::delete('/roles/{id}', [AdminController::class, 'destroyRole'])->name('admin.roles.destroy');
+});

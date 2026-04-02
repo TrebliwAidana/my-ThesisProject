@@ -8,20 +8,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Member extends Model
 {
-    // Position/Role Constants
-    const POSITION_MEMBER = 'member';
-    const POSITION_OFFICER = 'officer';
-    const POSITION_ADVISER = 'adviser';
-    const POSITION_ADMIN = 'admin';
-    
-    // Available positions with labels
-    const POSITIONS = [
-        self::POSITION_MEMBER => 'Member',
-        self::POSITION_OFFICER => 'Officer',
-        self::POSITION_ADVISER => 'Adviser',
-        self::POSITION_ADMIN => 'Admin',
-    ];
-    
     protected $fillable = [
         'user_id',
         'position',
@@ -33,229 +19,176 @@ class Member extends Model
     ];
 
     protected $casts = [
-        'term_start' => 'date',
-        'term_end'   => 'date',
-        'joined_at'  => 'date',
-        'created_at' => 'datetime',
-        'updated_at' => 'datetime',
+        'term_start'          => 'date',
+        'term_end'            => 'date',
+        'joined_at'           => 'date',
         'position_changed_at' => 'datetime',
+        'created_at'          => 'datetime',
+        'updated_at'          => 'datetime',
     ];
 
-    /**
-     * A member belongs to a user.
-     */
+    /*
+    |--------------------------------------------------------------------------
+    | Valid Positions Map
+    |--------------------------------------------------------------------------
+    | Keyed by role_id. Used for validation in booted() and in the controller.
+    */
+    public const VALID_POSITIONS = [
+        1 => ['System Administrator'],
+        2 => ['SSLG President', 'SSLG Adviser', 'Student Affairs Head'],
+        3 => ['SSLG Secretary', 'SSLG Treasurer', 'SSLG PIO'],
+        4 => ['Organization President', 'Organization Vice President'],
+        5 => ['Organization Secretary', 'Organization Treasurer', 'Organization Auditor', 'Organization PIO'],
+        6 => ['Club Adviser'],
+        7 => ['Regular Member'],
+        8 => ['Guest'],
+    ];
+
+    /*
+    |--------------------------------------------------------------------------
+    | Model Boot — Position Validation on Save
+    |--------------------------------------------------------------------------
+    */
+    protected static function booted(): void
+    {
+        static::saving(function (Member $member) {
+            $user = $member->user;
+
+            if (! $user || ! $user->role) {
+                return;
+            }
+
+            $validForRole = self::VALID_POSITIONS[$user->role_id] ?? [];
+
+            if (! in_array($member->position, $validForRole)) {
+                throw new \Exception(
+                    "Invalid position '{$member->position}' for role '{$user->role->name}'. " .
+                    "Valid positions: " . implode(', ', $validForRole)
+                );
+            }
+        });
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Relationships
+    |--------------------------------------------------------------------------
+    */
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
-    /**
-     * Get the user who changed this member's position
-     */
     public function positionChangedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'position_changed_by');
     }
 
-    /**
-     * Get the position change history for this member
-     */
-    public function positionChangeHistory(): HasMany
+    public function positionChangeLogs(): HasMany
     {
         return $this->hasMany(PositionChangeLog::class);
     }
 
-    /**
-     * Budgets relationship
-     */
-    public function budgets(): HasMany
-    {
-        return $this->hasMany(Budget::class, 'reviewed_by');
-    }
+    /*
+    |--------------------------------------------------------------------------
+    | Accessors
+    |--------------------------------------------------------------------------
+    */
 
-    /**
-     * Check if the member is currently active
-     * A member is active if term_end is null OR term_end is in the future
-     */
-    public function isActive(): bool
-    {
-        return is_null($this->term_end) || $this->term_end >= now();
-    }
-
-    /**
-     * Get the member's status (Active/Inactive)
-     */
     public function getStatusAttribute(): string
     {
         return $this->isActive() ? 'Active' : 'Inactive';
     }
 
-    /**
-     * Scope query to only active members
-     */
+    public function getInitialsAttribute(): string
+    {
+        $fullName = $this->user->full_name ?? '';
+
+        return collect(explode(' ', $fullName))
+            ->filter(fn($n) => strlen($n) > 0)
+            ->map(fn($n) => strtoupper(substr($n, 0, 1)))
+            ->take(2)
+            ->implode('');
+    }
+
+    public function getFullNameAttribute(): string
+    {
+        return $this->user->full_name ?? 'Unknown';
+    }
+
+    public function getEmailAttribute(): string
+    {
+        return $this->user->email ?? '';
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Scopes
+    |--------------------------------------------------------------------------
+    */
+
     public function scopeActive($query)
     {
         return $query->whereNull('term_end')
                      ->orWhere('term_end', '>=', now());
     }
 
-    /**
-     * Scope query to only inactive members
-     */
     public function scopeInactive($query)
     {
         return $query->whereNotNull('term_end')
                      ->where('term_end', '<', now());
     }
 
-    /**
-     * Get member's initials from their user's name
-     */
-    public function getInitialsAttribute()
+    /*
+    |--------------------------------------------------------------------------
+    | Helpers
+    |--------------------------------------------------------------------------
+    */
+
+    public function isActive(): bool
     {
-        $fullName = $this->user->name ?? '';
-        return collect(explode(' ', $fullName))
-            ->filter(fn($n) => strlen($n) > 0)
-            ->map(fn($n) => substr($n, 0, 1))
-            ->take(2)
-            ->implode('');
+        return is_null($this->term_end) || $this->term_end >= now();
     }
 
     /**
-     * Check if position change is valid
-     * 
-     * @param string $currentPosition The current position of the member
-     * @param string $newPosition The new position to change to
-     * @param \App\Models\User $changingUser The user who is making the change
-     * @param \App\Models\Member|null $targetMember The member being changed (optional, for self-change checks)
-     * @return bool
+     * Return valid positions for a given role_id.
      */
-    public static function isValidPositionChange($currentPosition, $newPosition, $changingUser, $targetMember = null)
+    public static function getValidPositionsForRole(int $roleId): array
     {
-        // Get changing user's member record
-        $changingUserMember = $changingUser->member;
-        
-        if (!$changingUserMember) {
-            return false;
-        }
-        
-        $changingUserPosition = $changingUserMember->position;
-        
-        // Only admin and adviser can change positions
-        if (!in_array($changingUserPosition, [self::POSITION_ADMIN, self::POSITION_ADVISER])) {
-            return false;
-        }
-        
-        // Admin can change any position
-        if ($changingUserPosition === self::POSITION_ADMIN) {
-            return true;
-        }
-        
-        // Adviser cannot change admin positions
-        if ($newPosition === self::POSITION_ADMIN || $currentPosition === self::POSITION_ADMIN) {
-            return false;
-        }
-        
-        // Adviser cannot change their own position
-        if ($targetMember && $changingUser->id === $targetMember->user_id) {
-            return false;
-        }
-        
-        return true;
+        return self::VALID_POSITIONS[$roleId] ?? [];
     }
 
     /**
-     * Check if the member is an admin
-     */
-    public function isAdmin(): bool
-    {
-        return $this->position === self::POSITION_ADMIN;
-    }
-
-    /**
-     * Check if the member is an adviser
-     */
-    public function isAdviser(): bool
-    {
-        return $this->position === self::POSITION_ADVISER;
-    }
-
-    /**
-     * Check if the member is an officer
-     */
-    public function isOfficer(): bool
-    {
-        return $this->position === self::POSITION_OFFICER;
-    }
-
-    /**
-     * Check if the member is a regular member
-     */
-    public function isRegularMember(): bool
-    {
-        return $this->position === self::POSITION_MEMBER;
-    }
-
-    /**
-     * Get the position label
-     */
-    public function getPositionLabelAttribute(): string
-    {
-        return self::POSITIONS[$this->position] ?? ucfirst($this->position);
-    }
-
-    /**
-     * Check if the member's position was recently changed (within last X days)
-     */
-    public function wasPositionChangedRecently(int $days = 7): bool
-    {
-        if (!$this->position_changed_at) {
-            return false;
-        }
-        
-        return $this->position_changed_at->diffInDays(now()) <= $days;
-    }
-
-    /**
-     * Get the member's full name from their user
-     */
-    public function getFullNameAttribute()
-    {
-        return $this->user->name ?? 'Unknown';
-    }
-
-    /**
-     * Get the member's email from their user
-     */
-    public function getEmailAttribute()
-    {
-        return $this->user->email ?? '';
-    }
-
-    /**
-     * Check if the member can perform certain actions based on position
+     * Check if this member's user has a given permission.
      */
     public function can(string $permission): bool
     {
-        // Define permissions based on position
-        $permissions = [
-            self::POSITION_ADMIN => [
+        $role = $this->user->role;
+
+        if (! $role) {
+            return false;
+        }
+
+        $rolePermissions = [
+            'System Administrator' => [
                 'manage_all', 'edit_members', 'delete_members', 'change_positions',
-                'view_budgets', 'approve_budgets', 'manage_settings'
+                'view_budgets', 'approve_budgets', 'manage_settings',
             ],
-            self::POSITION_ADVISER => [
-                'edit_members', 'change_positions', 'view_budgets', 'approve_budgets'
+            'Supreme Admin' => [
+                'manage_all', 'edit_members', 'change_positions',
+                'view_budgets', 'approve_budgets',
             ],
-            self::POSITION_OFFICER => [
-                'view_budgets', 'submit_budgets'
+            'Club Adviser' => [
+                'edit_members', 'change_positions',
+                'view_budgets', 'approve_budgets',
             ],
-            self::POSITION_MEMBER => [
-                'view_own_profile'
-            ],
+            'Org Admin'      => ['edit_members', 'view_budgets'],
+            'Supreme Officer'=> ['view_budgets', 'submit_budgets'],
+            'Org Officer'    => ['view_budgets', 'submit_budgets'],
+            'Org Member'     => ['view_own_profile'],
         ];
-        
-        $userPermissions = $permissions[$this->position] ?? [];
-        
-        return in_array($permission, $userPermissions);
+
+        return in_array($permission, $rolePermissions[$role->name] ?? []);
     }
 }

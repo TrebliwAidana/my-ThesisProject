@@ -1,251 +1,206 @@
 @extends('layouts.app')
 
-@section('title', 'Edit User — VSULHS_SSLG')
-@section('page-title', 'Edit User')
+@section('title', 'Create User')
+@section('page-title', 'Create New User')
 
 @section('content')
-<div class="max-w-3xl mx-auto">
-    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 p-6">
-        <form method="POST" action="{{ route('admin.users.update', $user->id) }}" id="editUserForm">
+<div class="max-w-2xl">
+    <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm">
+        <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+            <h2 class="text-sm font-semibold text-gray-900 dark:text-white">Create New User</h2>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Add a new user to the system</p>
+        </div>
+        
+        <form method="POST" action="{{ route('admin.users.store') }}" class="p-5 space-y-5">
             @csrf
-            @method('PUT')
-
-            {{-- First Name & Last Name --}}
-            <div class="grid grid-cols-2 gap-4">
-                <div class="mb-4">
-                    <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                        First Name <span class="text-red-500">*</span>
-                    </label>
-                    <input type="text" name="first_name" value="{{ old('first_name', $user->first_name) }}" required
-                           class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 @error('first_name') border-red-500 @enderror">
-                    @error('first_name')
-                        <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
-                    @enderror
+            
+            {{-- First Name --}}
+            <div>
+                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
+                    First Name <span class="text-red-500">*</span>
+                </label>
+                <input type="text" name="first_name" value="{{ old('first_name') }}" required 
+                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
+                    placeholder="Enter first name">
+                @error('first_name')
+                    <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                @enderror
+            </div>
+            
+            {{-- Middle Name (Optional) --}}
+            <div>
+                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
+                    Middle Name <span class="text-gray-400 text-xs font-normal">(Optional)</span>
+                </label>
+                <input type="text" name="middle_name" value="{{ old('middle_name') }}" 
+                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
+                    placeholder="Enter middle name">
+                @error('middle_name')
+                    <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                @enderror
+            </div>
+            
+            {{-- Last Name --}}
+            <div>
+                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
+                    Last Name <span class="text-red-500">*</span>
+                </label>
+                <input type="text" name="last_name" value="{{ old('last_name') }}" required 
+                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
+                    placeholder="Enter last name">
+                @error('last_name')
+                    <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                @enderror
+            </div>
+            
+            {{-- Email Address - Manual entry only --}}
+            <div>
+                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
+                    Email Address <span class="text-red-500">*</span>
+                </label>
+                <input type="email" name="email" value="{{ old('email') }}" required 
+                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
+                    placeholder="username@gmail.com">
+                
+                {{-- Hint Message --}}
+                <div class="mt-2 p-2 bg-yellow-50 dark:bg-yellow-900/20 border-l-4 border-yellow-400 rounded-r-lg">
+                    <div class="flex items-start gap-2">
+                        <svg class="w-4 h-4 text-yellow-600 dark:text-yellow-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <p class="text-xs text-yellow-700 dark:text-yellow-300">
+                            <span class="font-semibold">Hint:</span> Please use a valid Gmail account (e.g., yourname@gmail.com). 
+                            A verification email will be sent to this address.
+                        </p>
+                    </div>
                 </div>
                 
-                <div class="mb-4">
-                    <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                        Last Name <span class="text-red-500">*</span>
-                    </label>
-                    <input type="text" name="last_name" value="{{ old('last_name', $user->last_name) }}" required
-                           class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 @error('last_name') border-red-500 @enderror">
-                    @error('last_name')
-                        <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
-                    @enderror
-                </div>
-            </div>
-
-            {{-- Middle Name (Optional) --}}
-            <div class="mb-4">
-                <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                    Middle Name <span class="text-gray-400">(Optional)</span>
-                </label>
-                <input type="text" name="middle_name" value="{{ old('middle_name', $user->middle_name) }}"
-                       class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-            </div>
-
-            {{-- Email --}}
-            <div class="mb-4">
-                <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Email Address</label>
-                <input type="email" name="email" value="{{ old('email', $user->email) }}" required
-                       class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 @error('email') border-red-500 @enderror">
                 @error('email')
-                    <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
+                    <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                 @enderror
             </div>
-
-            {{-- Student ID --}}
-            <div class="mb-4">
-                <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                    Student ID Number
-                </label>
-                <input type="text" name="student_id" value="{{ old('student_id', $user->student_id) }}"
-                       class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 @error('student_id') border-red-500 @enderror"
-                       placeholder="e.g., 2024-0001">
-                @error('student_id')
-                    <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
-                @enderror
-            </div>
-
-            {{-- Year Level --}}
-            <div class="mb-4">
-                <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Year Level</label>
-                <select name="year_level" class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                    <option value="">Select Year Level</option>
-                    <option value="Grade 7" {{ old('year_level', $user->year_level) == 'Grade 7' ? 'selected' : '' }}>Grade 7</option>
-                    <option value="Grade 8" {{ old('year_level', $user->year_level) == 'Grade 8' ? 'selected' : '' }}>Grade 8</option>
-                    <option value="Grade 9" {{ old('year_level', $user->year_level) == 'Grade 9' ? 'selected' : '' }}>Grade 9</option>
-                    <option value="Grade 10" {{ old('year_level', $user->year_level) == 'Grade 10' ? 'selected' : '' }}>Grade 10</option>
-                    <option value="Grade 11" {{ old('year_level', $user->year_level) == 'Grade 11' ? 'selected' : '' }}>Grade 11</option>
-                    <option value="Grade 12" {{ old('year_level', $user->year_level) == 'Grade 12' ? 'selected' : '' }}>Grade 12</option>
-                </select>
-            </div>
-
+            
             {{-- Role Selection --}}
-            <div class="mb-4">
-                <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Role</label>
-                <select name="role_id" id="role_id" required
-                        class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <div>
+                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
+                    Role <span class="text-red-500">*</span>
+                </label>
+                <select name="role_id" required 
+                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white">
+                    <option value="">Select a role</option>
                     @foreach($roles as $role)
-                        <option value="{{ $role->id }}" data-role-name="{{ $role->name }}" 
-                            {{ old('role_id', $user->role_id) == $role->id ? 'selected' : '' }}>
-                            {{ $role->name }}
+                        <option value="{{ $role->id }}" {{ old('role_id') == $role->id ? 'selected' : '' }}>
+                            {{ $role->name }} @if($role->abbreviation)({{ $role->abbreviation }})@endif
                         </option>
                     @endforeach
                 </select>
                 @error('role_id')
-                    <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
+                    <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                 @enderror
             </div>
-
-            {{-- Position Dropdown --}}
-            <div class="mb-4">
-                <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Position</label>
-                <select name="position" id="position" 
-                        class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                    <option value="">Select Position</option>
+            
+            {{-- Position (Optional) --}}
+            <div>
+                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
+                    Position <span class="text-gray-400 text-xs font-normal">(Optional)</span>
+                </label>
+                <input type="text" name="position" value="{{ old('position') }}" 
+                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
+                    placeholder="e.g., President, Secretary, Adviser">
+                @error('position')
+                    <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                @enderror
+            </div>
+            
+            {{-- Student ID (Optional) --}}
+            <div>
+                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
+                    Student ID <span class="text-gray-400 text-xs font-normal">(Optional)</span>
+                </label>
+                <input type="text" name="student_id" value="{{ old('student_id') }}" 
+                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
+                    placeholder="Enter student ID number (e.g., 2020-12345)">
+                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Enter a valid student ID number if applicable</p>
+                @error('student_id')
+                    <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                @enderror
+            </div>
+            
+            {{-- Year Level - Grade 7 to 12 --}}
+            <div>
+                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
+                    Year Level <span class="text-gray-400 text-xs font-normal">(Optional)</span>
+                </label>
+                <select name="year_level" 
+                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white">
+                    <option value="">Select grade level</option>
+                    <option value="Grade 7" {{ old('year_level') == 'Grade 7' ? 'selected' : '' }}>Grade 7</option>
+                    <option value="Grade 8" {{ old('year_level') == 'Grade 8' ? 'selected' : '' }}>Grade 8</option>
+                    <option value="Grade 9" {{ old('year_level') == 'Grade 9' ? 'selected' : '' }}>Grade 9</option>
+                    <option value="Grade 10" {{ old('year_level') == 'Grade 10' ? 'selected' : '' }}>Grade 10</option>
+                    <option value="Grade 11" {{ old('year_level') == 'Grade 11' ? 'selected' : '' }}>Grade 11</option>
+                    <option value="Grade 12" {{ old('year_level') == 'Grade 12' ? 'selected' : '' }}>Grade 12</option>
                 </select>
-                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Positions are based on the selected role</p>
-            </div>
-
-            {{-- Password (optional for edit) --}}
-            <div class="mb-4">
-                <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Password (leave blank to keep current)</label>
-                <div class="relative">
-                    <input type="password" name="password" id="password" 
-                           class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 @error('password') border-red-500 @enderror">
-                    <button type="button" id="generatePassword" 
-                            class="absolute right-3 top-1/2 transform -translate-y-1/2 text-xs text-indigo-600 hover:text-indigo-700 dark:text-indigo-400">
-                        Generate
-                    </button>
-                </div>
-                
-                <div id="passwordMatch" class="text-xs mt-1"></div>
-                <p class="text-xs text-gray-500 mt-1">Minimum 8 characters. Leave blank to keep current password.</p>
-                @error('password')
-                    <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
+                @error('year_level')
+                    <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                 @enderror
             </div>
-
-            {{-- Password Confirmation --}}
-            <div class="mb-4">
-                <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Confirm Password</label>
-                <input type="password" name="password_confirmation" id="password_confirmation" 
-                       class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            
+            {{-- Password --}}
+            <div>
+                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
+                    Password <span class="text-red-500">*</span>
+                </label>
+                <input type="password" name="password" required 
+                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
+                    placeholder="Enter password">
+                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Minimum 8 characters</p>
+                @error('password')
+                    <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                @enderror
             </div>
-
-            {{-- Account Status --}}
-            <div class="mb-6">
-                <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Account Status</label>
-                <div class="flex items-center gap-4">
-                    <label class="flex items-center gap-2 cursor-pointer">
-                        <input type="radio" name="is_active" value="1" {{ old('is_active', $user->is_active) == 1 ? 'checked' : '' }} class="w-4 h-4 text-indigo-600">
-                        <span class="text-sm text-gray-700 dark:text-gray-300">Active</span>
-                    </label>
-                    <label class="flex items-center gap-2 cursor-pointer">
-                        <input type="radio" name="is_active" value="0" {{ old('is_active', $user->is_active) == 0 ? 'checked' : '' }} class="w-4 h-4 text-indigo-600">
-                        <span class="text-sm text-gray-700 dark:text-gray-300">Inactive</span>
-                    </label>
-                </div>
+            
+            {{-- Confirm Password --}}
+            <div>
+                <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
+                    Confirm Password <span class="text-red-500">*</span>
+                </label>
+                <input type="password" name="password_confirmation" required 
+                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
+                    placeholder="Confirm password">
             </div>
-
-            {{-- Reset Password Section --}}
-            <div class="mb-6 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Reset Password</h3>
-                <p class="text-xs text-gray-500 dark:text-gray-400 mb-3">
-                    Send a password reset link to {{ $user->email }}
-                </p>
-                <form method="POST" action="{{ route('admin.users.reset-password', $user->id) }}" class="inline">
-                    @csrf
-                    <button type="submit" class="bg-gray-600 hover:bg-gray-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition">
-                        Send Reset Link
-                    </button>
-                </form>
+            
+            {{-- Active Status --}}
+            <div>
+                <label class="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" name="is_active" value="1" {{ old('is_active', '1') == '1' ? 'checked' : '' }}
+                        class="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500">
+                    <span class="text-sm text-gray-700 dark:text-gray-300">Active</span>
+                </label>
+                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Inactive users cannot log in</p>
+                @error('is_active')
+                    <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                @enderror
             </div>
-
-            <div class="flex gap-3">
-                <button type="submit"
-                        class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold px-5 py-2.5 rounded-lg transition">
-                    Update User
+            
+            {{-- Action Buttons --}}
+            <div class="flex gap-3 pt-4 border-t border-gray-100 dark:border-gray-700">
+                <button type="submit" 
+                    class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white transition-all duration-200 shadow-sm hover:shadow-md">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                    </svg>
+                    Create User
                 </button>
-                <a href="{{ route('admin.users.index') }}"
-                   class="flex-1 text-center text-sm font-semibold text-gray-600 dark:text-gray-400 border border-gray-300 dark:border-gray-600 px-5 py-2.5 rounded-lg hover:bg-gray-50 transition">
+                <a href="{{ route('admin.users.index') }}" 
+                    class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-lg bg-gray-500 hover:bg-gray-600 text-white transition-all duration-200 shadow-sm hover:shadow-md">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
                     Cancel
-                </a>
+                </button>
             </div>
         </form>
     </div>
 </div>
-
-<script>
-// Position options based on role
-const positionOptions = {
-    'Adviser': ['Adviser'],
-    'Officer': ['President', 'Vice President', 'Secretary', 'Treasurer'],
-    'Auditor': ['Auditor'],
-    'Member': ['Member']
-};
-
-// Update position dropdown based on selected role
-function updatePositionDropdown() {
-    const roleSelect = document.getElementById('role_id');
-    const positionSelect = document.getElementById('position');
-    const selectedOption = roleSelect.options[roleSelect.selectedIndex];
-    const roleName = selectedOption ? selectedOption.getAttribute('data-role-name') || selectedOption.textContent : '';
-    const currentPosition = '{{ $user->position }}';
-    
-    positionSelect.innerHTML = '<option value="">Select Position</option>';
-    
-    if (roleName && positionOptions[roleName]) {
-        positionOptions[roleName].forEach(pos => {
-            const option = document.createElement('option');
-            option.value = pos;
-            option.textContent = pos;
-            if (pos === currentPosition) {
-                option.selected = true;
-            }
-            positionSelect.appendChild(option);
-        });
-        positionSelect.disabled = false;
-    } else {
-        positionSelect.disabled = true;
-    }
-}
-
-// Password match checker (simplified)
-function checkPasswordMatch() {
-    const password = document.getElementById('password')?.value;
-    const confirm = document.getElementById('password_confirmation')?.value;
-    const matchDiv = document.getElementById('passwordMatch');
-    
-    if (confirm && confirm.length > 0) {
-        if (password === confirm) {
-            matchDiv.innerHTML = '<span class="text-green-500">✓ Passwords match</span>';
-        } else {
-            matchDiv.innerHTML = '<span class="text-red-500">✗ Passwords do not match</span>';
-        }
-    } else {
-        matchDiv.innerHTML = '';
-    }
-}
-
-// Generate random password
-document.getElementById('generatePassword')?.addEventListener('click', function() {
-    const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*';
-    let password = '';
-    for (let i = 0; i < 12; i++) {
-        password += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    document.getElementById('password').value = password;
-    document.getElementById('password_confirmation').value = password;
-    checkPasswordMatch();
-});
-
-document.getElementById('password_confirmation')?.addEventListener('input', checkPasswordMatch);
-document.getElementById('password')?.addEventListener('input', checkPasswordMatch);
-document.getElementById('role_id')?.addEventListener('change', updatePositionDropdown);
-
-// Initialize on page load
-updatePositionDropdown();
-</script>
 @endsection

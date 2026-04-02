@@ -3,31 +3,56 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-/**
- * @property int $id
- * @property string $name
- * @property string|null $desc
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Permission> $permissions
- * @property-read int|null $permissions_count
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Role newModelQuery()
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Role newQuery()
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Role query()
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Role whereCreatedAt($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Role whereDesc($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Role whereId($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Role whereName($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Role whereUpdatedAt($value)
- * @mixin \Eloquent
- */
 class Role extends Model
 {
-    protected $fillable = ['name', 'description'];
+    /**
+     * The attributes that are mass assignable.
+     *
+     * @var array<int, string>
+     */
+    protected $fillable = [
+        'name',
+        'abbreviation',
+        'description',
+        'level',
+        'is_system',
+        'parent_id',
+        'typical_positions', // optional, if you have this column
+        'is_predefined', 
+    ];
 
-    
+    /**
+     * The attributes that should be cast.
+     *
+     * @var array<string, string>
+     */
+    protected $casts = [
+        'is_system' => 'boolean',
+        'level' => 'integer',
+        'typical_positions' => 'array', // if stored as JSON
+        'is_predefined' => 'boolean',
+    ];
+
+    /**
+     * Get the parent role (the one this role reports to).
+     */
+    public function parent(): BelongsTo
+    {
+        return $this->belongsTo(Role::class, 'parent_id');
+    }
+
+    /**
+     * Get the child roles (roles that report to this role).
+     */
+    public function children(): HasMany
+    {
+        return $this->hasMany(Role::class, 'parent_id');
+    }
+
     /**
      * Get the users that belong to this role.
      */
@@ -36,9 +61,19 @@ class Role extends Model
         return $this->hasMany(User::class);
     }
 
-    // A role has many permissions
-    public function permissions()
+    /**
+     * Get the permissions assigned to this role.
+     */
+    public function permissions(): BelongsToMany
     {
         return $this->belongsToMany(Permission::class, 'role_permissions');
+    }
+
+    /**
+     * Get the positions (if any) assigned to this role.
+     */
+    public function positions(): HasMany
+    {
+        return $this->hasMany(Position::class);
     }
 }

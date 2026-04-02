@@ -1,0 +1,15 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+
+class Position extends Model
+{
+    protected $fillable = ['name', 'role_id']; // add your columns here
+
+    public function role()
+    {
+        return $this->belongsTo(Role::class);
+    }
+}

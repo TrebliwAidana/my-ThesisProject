@@ -7,6 +7,9 @@ use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Auth\MustVerifyEmail as MustVerifyEmailTrait;
+use Illuminate\Database\Eloquent\SoftDeletes;   // <-- added
 
 use App\Models\Role;
 use App\Models\Member;
@@ -70,9 +73,9 @@ use App\Notifications\VerifyEmail;
  * @method static \Illuminate\Database\Eloquent\Builder<static>|User unverified()
  * @mixin \Eloquent
  */
-class User extends Authenticatable
+class User extends Authenticatable implements MustVerifyEmail
 {
-    use Notifiable;
+    use Notifiable, MustVerifyEmailTrait, SoftDeletes;
 
     protected $fillable = [
         'full_name',
@@ -440,5 +443,21 @@ class User extends Authenticatable
                 $user->email = \App\Helpers\UserHelper::generateUniqueMemberEmail($user->full_name);
             }
         });
+    }
+
+    // Membership Edit Logs
+    public function memberEditLogs()
+    {
+        return $this->hasMany(MemberEditLog::class, 'member_id');
+    }
+
+    public function editsMade()
+    {
+        return $this->hasMany(MemberEditLog::class, 'edited_by');
+    }
+    
+    public function positionChangeLogs()
+    {
+        return $this->hasMany(PositionChangeLog::class, 'member_id');
     }
 }
