@@ -176,7 +176,7 @@
                 <a href="{{ route('members.edit-history', $member->id) }}" class="flex-1 text-center bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 font-semibold py-2 px-4 rounded-lg transition">
                     View History
                 </a>
-                <a href="{{ route('members.index') }}" class="flex-1 text-center bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 font-semibold py-2 px-4 rounded-lg transition">Cancel</a>
+                <a href="{{ route('members.index') }}" class="flex-1 text-center bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-lg transition">Cancel</a>
             </div>
         </form>
     </div>

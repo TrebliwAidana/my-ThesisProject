@@ -95,6 +95,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'gender', 
         'phone',
         'birthday',
+        'avatar',
     ];
 
     protected $hidden = [
@@ -500,5 +501,11 @@ class User extends Authenticatable implements MustVerifyEmail
             in_array($this->role?->name, $nonStudentRoles) ||
             in_array($this->role?->abbreviation, $nonStudentAbbr)
         );
+    }
+    public function getAvatarUrlAttribute()
+    {
+        return $this->avatar
+            ? asset('storage/' . $this->avatar)
+            : asset('images/default-avatar.png');
     }
 }

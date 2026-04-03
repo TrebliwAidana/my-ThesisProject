@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Notification;
 use App\Notifications\BudgetStatusChanged;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
+use Carbon\Carbon;
 
 class BudgetController extends Controller
 {
@@ -23,7 +24,6 @@ class BudgetController extends Controller
     {
         $query = Budget::with('requester');
 
-        // Search (title + requester name)
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
@@ -34,22 +34,18 @@ class BudgetController extends Controller
             });
         }
 
-        // Filter by status (including draft)
         if ($request->filled('status')) {
             $query->where('status', $request->status);
         }
 
-        // Filter by category
         if ($request->filled('category')) {
             $query->where('category', $request->category);
         }
 
-        // "My Budgets" filter
         if ($request->boolean('my')) {
             $query->where('requested_by', Auth::id());
         }
 
-        // Date range filter
         if ($request->filled('date_from')) {
             $query->whereDate('created_at', '>=', $request->date_from);
         }
@@ -57,7 +53,6 @@ class BudgetController extends Controller
             $query->whereDate('created_at', '<=', $request->date_to);
         }
 
-        // Sorting
         $sortField = $request->get('sort', 'created_at');
         $sortOrder = $request->get('order', 'desc');
         if (in_array($sortField, ['title', 'amount', 'status', 'created_at'])) {
@@ -68,7 +63,6 @@ class BudgetController extends Controller
 
         $budgets = $query->paginate(15)->appends($request->except('page'));
 
-        // Statistics (including draft)
         $statusCounts = [
             'draft'     => Budget::draft()->count(),
             'pending'   => Budget::pending()->count(),
@@ -88,7 +82,6 @@ class BudgetController extends Controller
         $user = auth()->user();
         $categories = BudgetCategory::all();
 
-        // Get categories ordered by usage frequency for this user
         $userCategories = Budget::where('requested_by', $user->id)
             ->select('category')
             ->groupBy('category')
@@ -100,18 +93,16 @@ class BudgetController extends Controller
             return $index !== false ? $index : PHP_INT_MAX;
         })->values();
 
-        // Previous budgets (for copy)
         $previousBudgets = Budget::where('requested_by', $user->id)
             ->where('status', '!=', 'draft')
             ->orderBy('created_at', 'desc')
             ->get(['id', 'title']);
 
-        // Estimated remaining budget (current fiscal year)
         $currentYear = now()->year;
         $totalApproved = Budget::where('status', 'approved')
             ->whereYear('created_at', $currentYear)
             ->sum('amount');
-        $annualBudget = 1000000; // Set your annual budget limit
+        $annualBudget = 1000000;
         $remainingBudget = max(0, $annualBudget - $totalApproved);
 
         return view('budgets.create', compact('sortedCategories', 'previousBudgets', 'remainingBudget', 'totalApproved'));
@@ -119,6 +110,11 @@ class BudgetController extends Controller
 
     public function store(Request $request)
     {
+        // Decode the items JSON string into an array
+        if ($request->has('items')) {
+            $request->merge(['items' => json_decode($request->items, true)]);
+        }
+
         $validated = $request->validate([
             'title'          => 'required|string|max:255',
             'description'    => 'nullable|string',
@@ -140,7 +136,6 @@ class BudgetController extends Controller
             $attachmentPath = $request->file('attachment')->store('budget_attachments', 'public');
         }
 
-        // Calculate total amount from items
         $total = 0;
         foreach ($validated['items'] as $item) {
             $total += $item['quantity'] * $item['unit_price'];
@@ -169,10 +164,8 @@ class BudgetController extends Controller
             }
 
             DB::commit();
-
             $message = $status === 'draft' ? 'Budget saved as draft.' : 'Budget request submitted.';
             return redirect()->route('budgets.index')->with('success', $message);
-
         } catch (\Exception $e) {
             DB::rollBack();
             return back()->with('error', 'Failed to save budget: ' . $e->getMessage())->withInput();
@@ -187,15 +180,13 @@ class BudgetController extends Controller
     public function edit(Budget $budget)
     {
         $user = auth()->user();
-        // Allow System Administrator and Supreme Admin
         if (in_array($user->role->name, ['System Administrator', 'Supreme Admin'])) {
             // proceed
         } elseif ($budget->status === 'pending' && $budget->requested_by === $user->id) {
-            // allow owner only if pending
+            // allow owner
         } else {
             abort(403, 'You are not authorized to edit this budget.');
         }
-        
         $categories = BudgetCategory::all();
         return view('budgets.edit', compact('budget', 'categories'));
     }
@@ -203,7 +194,6 @@ class BudgetController extends Controller
     public function update(Request $request, Budget $budget)
     {
         $user = auth()->user();
-        // Same authorization logic
         if (in_array($user->role->name, ['System Administrator', 'Supreme Admin'])) {
             // allowed
         } elseif ($budget->status === 'pending' && $budget->requested_by === $user->id) {
@@ -211,7 +201,7 @@ class BudgetController extends Controller
         } else {
             abort(403, 'You are not authorized to update this budget.');
         }
-        
+
         $validated = $request->validate([
             'title'       => 'required|string|max:255',
             'description' => 'nullable|string',
@@ -254,8 +244,8 @@ class BudgetController extends Controller
         ]);
         $budget->status = 'approved';
         $budget->approved_by = Auth::id();
-        $budget->approved_at = now();
-        $budget->approval_remarks = $validated['approval_remarks'];
+        $budget->approved_at = Carbon::now();
+        $budget->approval_remarks = $validated['approval_remarks'] ?? null;
         $budget->save();
 
         if ($budget->requester) {
@@ -272,8 +262,8 @@ class BudgetController extends Controller
         ]);
         $budget->status = 'rejected';
         $budget->reviewed_by = Auth::id();
-        $budget->reviewed_at = now();
-        $budget->review_remarks = $validated['review_remarks'];
+        $budget->reviewed_at = Carbon::now();
+        $budget->review_remarks = $validated['review_remarks'] ?? null;
         $budget->save();
 
         if ($budget->requester) {
@@ -289,7 +279,7 @@ class BudgetController extends Controller
             return back()->with('error', 'Only approved budgets can be marked as disbursed.');
         }
         $budget->status = 'disbursed';
-        $budget->disbursed_at = now();
+        $budget->disbursed_at = Carbon::now();
         $budget->save();
 
         if ($budget->requester) {
@@ -332,7 +322,9 @@ class BudgetController extends Controller
 
     public function copyData(Budget $budget)
     {
-        if ($budget->requested_by !== auth()->id()) {
+        $user = auth()->user();
+        // Allow System Administrator, Supreme Admin, or the owner
+        if ($budget->requested_by !== $user->id && !in_array($user->role->name, ['System Administrator', 'Supreme Admin'])) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
@@ -376,24 +368,64 @@ class BudgetController extends Controller
             'Content-Type' => 'text/csv',
             'Content-Disposition' => "attachment; filename=\"$fileName\"",
         ];
+
         $callback = function () use ($budgets) {
             $file = fopen('php://output', 'w');
-            fputcsv($file, ['ID', 'Title', 'Amount', 'Category', 'Status', 'Requester', 'Created At', 'Approved At', 'Remarks']);
+            fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF)); // UTF-8 BOM
+
+            fputcsv($file, [
+                'ID', 'Title', 'Description', 'Amount (₱)', 'Category', 'Status',
+                'Requester', 'Requester Email', 'Start Date', 'End Date', 'Created At',
+                'Approved At', 'Remarks', 'Attachment'
+            ]);
+
             foreach ($budgets as $b) {
                 fputcsv($file, [
                     $b->id,
                     $b->title,
-                    $b->amount,
+                    $b->description,
+                    number_format($b->amount, 2),
                     $b->category,
-                    $b->status,
+                    ucfirst($b->status),
                     $b->requester->full_name ?? 'N/A',
-                    $b->created_at,
-                    $b->approved_at,
-                    $b->approval_remarks ?? $b->review_remarks,
+                    $b->requester->email ?? 'N/A',
+                    optional($b->start_date)->format('Y-m-d'),
+                    optional($b->end_date)->format('Y-m-d'),
+                    optional($b->created_at)->format('Y-m-d H:i:s'),
+                    optional($b->approved_at)->format('Y-m-d H:i:s'),
+                    $b->approval_remarks ?? $b->review_remarks ?? '',
+                    $b->attachment_path ? 'Yes' : 'No'
                 ]);
             }
+
+            $totalAmount = $budgets->sum('amount');
+            fputcsv($file, []);
+            fputcsv($file, ['TOTAL', '', '', number_format($totalAmount, 2), '', '', '', '', '', '', '', '', '', '']);
             fclose($file);
         };
+
         return response()->stream($callback, 200, $headers);
+    }
+    public function destroy(Budget $budget)
+    {
+        $user = auth()->user();
+        
+        // Only allow deletion if the budget is pending or draft
+        if (!in_array($budget->status, ['pending', 'draft'])) {
+            return back()->with('error', 'Only pending or draft budgets can be deleted.');
+        }
+        
+        // Allow System Administrator, Supreme Admin, or the requester
+        if ($budget->requested_by !== $user->id && !in_array($user->role->name, ['System Administrator', 'Supreme Admin'])) {
+            abort(403, 'Unauthorized to delete this budget.');
+        }
+        
+        // Delete associated budget items first (cascade will handle if foreign key is set)
+        $budget->items()->delete();
+        
+        // Delete the budget
+        $budget->delete();
+        
+        return redirect()->route('budgets.index')->with('success', 'Budget deleted successfully.');
     }
 }

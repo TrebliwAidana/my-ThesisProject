@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" :class="darkMode ? 'dark' : ''" x-data>
+<html lang="en" :class="$store.theme.dark ? 'dark' : ''" x-data>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -145,21 +145,21 @@
     }"
 >
 
-{{-- ══════════════════════ SIDEBAR ══════════════════════ --}}
+{{-- ══════════════════════ SIDEBAR (EMERALD) ══════════════════════ --}}
 <aside
     :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'"
-    class="bg-white dark:bg-gray-800 fixed z-40 top-0 left-0 h-full transform transition-transform duration-200 lg:translate-x-0 flex flex-col border-r border-gold-200 dark:border-gold-800 sidebar-transition"
+    class="bg-emerald-50 dark:bg-emerald-950 fixed z-40 top-0 left-0 h-full transform transition-transform duration-200 lg:translate-x-0 flex flex-col border-r border-emerald-200 dark:border-emerald-800 sidebar-transition"
     :style="sidebarCollapsed ? 'width: 4rem' : 'width: 16rem'"
 >
-    {{-- Brand & Toggle Button (X button removed) --}}
-    <div class="flex items-center justify-between h-14 px-3 border-b border-gold-200 dark:border-gold-800 flex-shrink-0"
+    {{-- Brand & Toggle Button --}}
+    <div class="flex items-center justify-between h-14 px-3 border-b border-emerald-200 dark:border-emerald-800 flex-shrink-0"
          :class="sidebarCollapsed ? 'justify-center' : 'justify-between'">
         <div x-show="!sidebarCollapsed" class="text-left">
-            <span class="text-gold-600 dark:text-primary-400 font-semibold text-sm tracking-wide block">VSULHS_SSLG</span>
-            <span class="text-gray-500 dark:text-gray-400 text-xs block mt-0.5">Student Gov Portal</span>
+            <span class="text-emerald-700 dark:text-emerald-300 font-semibold text-sm tracking-wide block">VSULHS_SSLG</span>
+            <span class="text-emerald-600 dark:text-emerald-400 text-xs block mt-0.5">Student Gov Portal</span>
         </div>
         <button @click="sidebarCollapsed = !sidebarCollapsed"
-                class="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+                class="text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-200 transition-colors"
                 :title="sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'">
             <svg x-show="!sidebarCollapsed" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/>
@@ -240,8 +240,8 @@
             @foreach($filteredMenu as $index => $item)
                 <a href="{{ route($item['route']) }}"
                    :class="activeRoute === '{{ $item['route'] }}'
-                       ? 'bg-gold-50 dark:bg-gold-900/30 text-gold-600 dark:text-gold-400'
-                       : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'"
+                       ? 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-200'
+                       : 'text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/30'"
                    class="flex items-center gap-3 px-4 py-2.5 text-sm font-medium rounded-lg mx-2 my-1 transition-colors duration-150 hover:translate-x-1"
                    :title="sidebarCollapsed ? '{{ $item['label'] }}' : ''">
                     <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -256,8 +256,8 @@
                 <div class="mt-2">
                     <button @click="adminOpen = !adminOpen"
                             :class="adminOpen
-                                ? 'bg-gold-50 dark:bg-gold-900/30 text-gold-600 dark:text-gold-400'
-                                : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'"
+                                ? 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-200'
+                                : 'text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/30'"
                             class="w-full flex items-center justify-between px-4 py-2.5 text-sm font-medium rounded-lg mx-2 transition-colors duration-150 hover:translate-x-1"
                             :title="sidebarCollapsed ? '{{ $adminMenu['label'] }}' : ''">
                         <span class="flex items-center gap-3">
@@ -284,8 +284,8 @@
                             @if(in_array($userRole, $sub['roles']))
                                 <a href="{{ route($sub['route']) }}"
                                    :class="activeRoute === '{{ $sub['route'] }}'
-                                       ? 'bg-gold-50 dark:bg-gold-900/30 text-gold-600 dark:text-gold-400'
-                                       : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'"
+                                       ? 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-200'
+                                       : 'text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/30'"
                                    class="flex items-center gap-2.5 pl-11 pr-4 py-2 text-xs font-medium rounded-lg mx-2 my-1 transition-colors duration-150 hover:translate-x-1"
                                    :title="sidebarCollapsed ? '{{ $sub['label'] }}' : ''">
                                     <span class="w-1.5 h-1.5 rounded-full bg-current opacity-50 flex-shrink-0"></span>
@@ -301,16 +301,16 @@
 
     {{-- User footer --}}
     @auth
-        <div class="border-t border-gold-200 dark:border-gold-800 px-3 py-3 flex items-center gap-3 flex-shrink-0"
+        <div class="border-t border-emerald-200 dark:border-emerald-800 px-3 py-3 flex items-center gap-3 flex-shrink-0"
              :class="sidebarCollapsed ? 'justify-center' : 'justify-start'">
-            <div class="w-8 h-8 rounded-full bg-gradient-to-r from-primary-500 to-primary-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+            <div class="w-8 h-8 rounded-full bg-gradient-to-r from-emerald-500 to-emerald-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
                 {{ strtoupper(substr(auth()->user()->full_name, 0, 2)) }}
             </div>
             <div x-show="!sidebarCollapsed" class="min-w-0 sidebar-content">
-                <p class="text-gray-700 dark:text-gray-200 text-xs font-semibold truncate">{{ auth()->user()->full_name }}</p>
-                <p class="text-gray-500 dark:text-gray-400 text-xs truncate">{{ auth()->user()->role->name }}</p>
+                <p class="text-emerald-800 dark:text-emerald-200 text-xs font-semibold truncate">{{ auth()->user()->full_name }}</p>
+                <p class="text-emerald-600 dark:text-emerald-400 text-xs truncate">{{ auth()->user()->role->name }}</p>
                 @if(auth()->user()->role->abbreviation)
-                    <p class="text-gray-400 dark:text-gray-500 text-xs truncate">{{ auth()->user()->role->abbreviation }}</p>
+                    <p class="text-emerald-500 dark:text-emerald-500 text-xs truncate">{{ auth()->user()->role->abbreviation }}</p>
                 @endif
             </div>
         </div>
@@ -327,25 +327,25 @@
 <div class="flex-1 flex flex-col min-h-screen transition-all duration-300"
      :class="sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64'">
 
-    {{-- Topbar with shadow --}}
-    <nav class="bg-white dark:bg-gray-800 border-b border-gold-200 dark:border-gold-800 h-14 flex items-center
+    {{-- Topbar (EMERALD) with shadow --}}
+    <nav class="bg-emerald-50 dark:bg-emerald-950 border-b border-emerald-200 dark:border-emerald-800 h-14 flex items-center
                 justify-between px-5 fixed top-0 left-0 right-0 z-50 shadow-sm"
          :class="sidebarCollapsed ? 'lg:left-16' : 'lg:left-64'">
         <div class="flex items-center gap-3">
             <button @click="sidebarOpen = !sidebarOpen"
-                    class="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors lg:hidden">
+                    class="text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-200 transition-colors lg:hidden">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
                 </svg>
             </button>
-            <span class="font-semibold text-sm text-gray-800 dark:text-gray-200">@yield('page-title', 'Dashboard')</span>
+            <span class="font-semibold text-sm text-emerald-800 dark:text-emerald-200">@yield('page-title', 'Dashboard')</span>
         </div>
 
         <div class="flex items-center gap-3">
             {{-- Dark mode toggle --}}
             <button @click="$store.theme.toggle()"
-                    class="w-8 h-8 rounded-lg flex items-center justify-center text-gray-500 dark:text-gray-400
-                           hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                    class="w-8 h-8 rounded-lg flex items-center justify-center text-emerald-600 dark:text-emerald-400
+                           hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition-colors"
                     :title="$store.theme.dark ? 'Switch to light mode' : 'Switch to dark mode'">
                 <svg x-show="$store.theme.dark" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -358,12 +358,12 @@
             </button>
 
             @auth
-                <span class="text-sm text-gray-600 dark:text-gray-400 hidden sm:block">{{ auth()->user()->full_name }}</span>
-                <span class="px-3 py-1 rounded-full text-xs font-semibold bg-primary-100 dark:bg-primary-900/50 text-primary-700 dark:text-primary-400">
+                <span class="text-sm text-emerald-700 dark:text-emerald-300 hidden sm:block">{{ auth()->user()->full_name }}</span>
+                <span class="px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300">
                     {{ auth()->user()->role->name }}
                 </span>
                 @if(auth()->user()->role->abbreviation)
-                    <span class="px-2 py-0.5 rounded-full text-xs font-mono bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hidden sm:inline-block">
+                    <span class="px-2 py-0.5 rounded-full text-xs font-mono bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 hidden sm:inline-block">
                         {{ auth()->user()->role->abbreviation }}
                     </span>
                 @endif
@@ -372,8 +372,8 @@
             <form method="POST" action="{{ route('logout') }}">
                 @csrf
                 <button type="submit"
-                        class="text-xs border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400
-                               px-3 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                        class="text-xs border border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300
+                               px-3 py-1.5 rounded-lg hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition-colors">
                     Logout
                 </button>
             </form>

@@ -6,189 +6,166 @@ use App\Models\Document;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
-/**
- * DocumentController
- * - System Admin, Supreme Admin, Adviser, Org Admin, Org Officer : full CRUD
- * - Supreme Officer, Auditor, Org Member : index + show only (read-only)
- * - Guest : no access
- */
 class DocumentController extends Controller
 {
     public function __construct()
     {
         $this->middleware('auth.custom');
-
-        // Full CRUD access for these roles
-        $this->middleware(function ($request, $next) {
-            $user = Auth::user();
-            $allowedRoles = ['System Administrator', 'Supreme Admin', 'Adviser', 'Org Admin', 'Org Officer'];
-            $allowedAbbreviations = ['SysAdmin', 'SA', 'AD', 'OA', 'OO'];
-            
-            if (!in_array($user->role->name, $allowedRoles) && !in_array($user->role->abbreviation, $allowedAbbreviations)) {
-                abort(403, 'Unauthorized. Only System Administrators, Supreme Admins, Advisers, Org Admins, and Org Officers can modify documents.');
-            }
-            
-            return $next($request);
-        })->only(['create', 'store', 'edit', 'update', 'destroy']);
     }
 
-    public function index()
+    // Helper: check if user can manage documents (upload/edit/delete)
+    private function canManageDocuments()
+    {
+        $allowed = ['System Administrator', 'Supreme Admin', 'Supreme Officer', 'Org Admin', 'Org Officer', 'Club Adviser'];
+        return in_array(Auth::user()->role->name, $allowed);
+    }
+
+    public function index(Request $request)
     {
         $user = Auth::user();
-        
-        $allowedRoles = ['System Administrator', 'Supreme Admin', 'Supreme Officer', 'Adviser', 'Org Admin', 'Org Officer', 'Auditor', 'Org Member'];
-        $allowedAbbreviations = ['SysAdmin', 'SA', 'SO', 'AD', 'OA', 'OO', 'OM'];
-        
-        if (!in_array($user->role->name, $allowedRoles) && !in_array($user->role->abbreviation, $allowedAbbreviations)) {
-            abort(403, 'Unauthorized. You do not have permission to view documents.');
+        $query = Document::with('uploader', 'organization');
+
+        // Filter by user's organization + public docs
+        if (!$this->canManageDocuments()) {
+            $query->where(function ($q) use ($user) {
+                $q->where('is_public', true)
+                  ->orWhere('organization_id', $user->organization_id);
+            });
         }
-        
-        $query = Document::with('uploader')->latest('uploaded_at');
-        
-        // If user is Org Officer or Org Member, only show their organization's documents
-        if (in_array($user->role->abbreviation, ['OO', 'OM']) || in_array($user->role->name, ['Org Officer', 'Org Member'])) {
-            $query->where('organization_id', $user->organization_id ?? 0);
+
+        // Search
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('title', 'like', "%{$search}%")
+                  ->orWhere('description', 'like', "%{$search}%");
+            });
         }
-        
-        $documents = $query->paginate(10);
-        
-        return view('documents.index', compact('documents'));
+
+        // Filter by category
+        if ($request->filled('category')) {
+            $query->where('category', $request->category);
+        }
+
+        // Filter by status (if approval enabled)
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        $documents = $query->latest()->paginate(15)->appends($request->query());
+
+        $categories = Document::distinct()->pluck('category')->filter();
+
+        return view('documents.index', compact('documents', 'categories'));
     }
 
     public function create()
     {
-        $user = Auth::user();
-        
-        $allowedRoles = ['System Administrator', 'Supreme Admin', 'Adviser', 'Org Admin', 'Org Officer'];
-        $allowedAbbreviations = ['SysAdmin', 'SA', 'AD', 'OA', 'OO'];
-        
-        if (!in_array($user->role->name, $allowedRoles) && !in_array($user->role->abbreviation, $allowedAbbreviations)) {
-            abort(403, 'Unauthorized. Only authorized roles can upload documents.');
+        if (!$this->canManageDocuments()) {
+            abort(403, 'You are not allowed to upload documents.');
         }
-        
         return view('documents.create');
     }
 
     public function store(Request $request)
     {
-        $user = Auth::user();
-        
-        $request->validate([
-            'title' => ['required', 'string', 'max:255'],
-            'file'  => ['required', 'file', 'max:10240', 'mimes:pdf,doc,docx,xls,xlsx,png,jpg,jpeg'],
-            'organization_id' => ['nullable', 'exists:organizations,id'],
+        if (!$this->canManageDocuments()) {
+            abort(403);
+        }
+
+        $validated = $request->validate([
+            'title'       => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'category'    => 'nullable|string|max:100',
+            'is_public'   => 'boolean',
+            'file'        => 'required|file|max:10240|mimes:pdf,doc,docx,xls,xlsx,ppt,pptx,jpg,jpeg,png,gif,zip', // max 10MB
         ]);
 
-        $path = $request->file('file')->store('documents', 'public');
+        $file = $request->file('file');
+        $originalName = $file->getClientOriginalName();
+        $mime = $file->getMimeType();
+        $size = $file->getSize();
 
-        Document::create([
-            'title' => $request->title,
-            'file_path' => $path,
-            'uploaded_by' => Auth::id(),
-            'uploaded_at' => now(),
-            'organization_id' => $request->organization_id ?? $user->organization_id ?? null,
+        // Store file
+        $path = $file->store('documents/' . date('Y/m'), 'public');
+
+        $document = Document::create([
+            'title'           => $validated['title'],
+            'description'     => $validated['description'],
+            'file_path'       => $path,
+            'file_name'       => $originalName,
+            'mime_type'       => $mime,
+            'size'            => $size,
+            'category'        => $validated['category'],
+            'uploaded_by'     => Auth::id(),
+            'organization_id' => Auth::user()->organization_id,
+            'is_public'       => $validated['is_public'] ?? false,
+            'status'          => 'approved', // or 'pending' if approval needed
         ]);
 
         return redirect()->route('documents.index')
-            ->with('success', '✅ Document uploaded successfully.');
+            ->with('success', 'Document uploaded successfully.');
     }
 
     public function show(Document $document)
     {
         $user = Auth::user();
-        
-        $allowedRoles = ['System Administrator', 'Supreme Admin', 'Supreme Officer', 'Adviser', 'Org Admin', 'Org Officer', 'Auditor', 'Org Member'];
-        $allowedAbbreviations = ['SysAdmin', 'SA', 'SO', 'AD', 'OA', 'OO', 'OM'];
-        
-        if (!in_array($user->role->name, $allowedRoles) && !in_array($user->role->abbreviation, $allowedAbbreviations)) {
-            abort(403, 'Unauthorized. You do not have permission to view this document.');
+        if (!$document->is_public && $document->organization_id != $user->organization_id && !$this->canManageDocuments()) {
+            abort(403);
         }
-        
-        // Check organization access
-        if (in_array($user->role->abbreviation, ['OO', 'OM']) && $document->organization_id != ($user->organization_id ?? null)) {
-            abort(403, 'Unauthorized. You can only view documents from your organization.');
-        }
-        
-        $document->load('uploader');
         return view('documents.show', compact('document'));
     }
 
     public function edit(Document $document)
     {
-        $this->authorizeEdit($document);
+        if (!$this->canManageDocuments()) {
+            abort(403);
+        }
         return view('documents.edit', compact('document'));
     }
 
     public function update(Request $request, Document $document)
     {
-        $this->authorizeEdit($document);
-
-        $request->validate([
-            'title' => ['required', 'string', 'max:255'],
-            'file'  => ['nullable', 'file', 'max:10240', 'mimes:pdf,doc,docx,xls,xlsx,png,jpg,jpeg'],
-        ]);
-
-        if ($request->hasFile('file')) {
-            Storage::disk('public')->delete($document->file_path);
-            $document->file_path = $request->file('file')->store('documents', 'public');
+        if (!$this->canManageDocuments()) {
+            abort(403);
         }
 
-        $document->title = $request->title;
-        $document->save();
+        $validated = $request->validate([
+            'title'       => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'category'    => 'nullable|string|max:100',
+            'is_public'   => 'boolean',
+        ]);
+
+        $document->update($validated);
 
         return redirect()->route('documents.index')
-            ->with('success', '✅ Document updated successfully.');
+            ->with('success', 'Document updated successfully.');
     }
 
     public function destroy(Document $document)
     {
-        $user = Auth::user();
-        
-        $allowedRoles = ['System Administrator', 'Supreme Admin', 'Adviser'];
-        $allowedAbbreviations = ['SysAdmin', 'SA', 'AD'];
-        
-        if (!in_array($user->role->name, $allowedRoles) && !in_array($user->role->abbreviation, $allowedAbbreviations)) {
-            abort(403, 'Unauthorized. Only System Administrators, Supreme Admins, and Advisers can delete documents.');
+        if (!$this->canManageDocuments()) {
+            abort(403);
         }
-        
+
+        // Delete physical file
         Storage::disk('public')->delete($document->file_path);
-        $documentTitle = $document->title;
         $document->delete();
 
         return redirect()->route('documents.index')
-            ->with('success', "✅ Document '{$documentTitle}' deleted successfully.");
+            ->with('success', 'Document deleted successfully.');
     }
 
-    /**
-     * Only the uploader or authorized roles can edit a document.
-     * Org Officer/Admin can edit documents from their organization.
-     */
-    private function authorizeEdit(Document $document): void
+    public function download(Document $document)
     {
         $user = Auth::user();
-        
-        // System Admin, Supreme Admin, Adviser can edit anything
-        if (in_array($user->role->abbreviation, ['SysAdmin', 'SA', 'AD'])) {
-            return;
+        if (!$document->is_public && $document->organization_id != $user->organization_id && !$this->canManageDocuments()) {
+            abort(403);
         }
-        
-        // Org Admin can edit documents from their organization
-        if (in_array($user->role->abbreviation, ['OA'])) {
-            if ($document->organization_id == ($user->organization_id ?? null)) {
-                return;
-            }
-            abort(403, 'Unauthorized. You can only edit documents from your organization.');
-        }
-        
-        // Org Officer can only edit documents they uploaded
-        if (in_array($user->role->abbreviation, ['OO'])) {
-            if ($document->uploaded_by === $user->id) {
-                return;
-            }
-            abort(403, 'Unauthorized. You can only edit documents you uploaded.');
-        }
-        
-        abort(403, 'Unauthorized to edit this document.');
+
+        return Storage::disk('public')->download($document->file_path, $document->file_name);
     }
 }

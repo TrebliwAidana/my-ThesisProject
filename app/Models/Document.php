@@ -2,45 +2,53 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-/**
- * @property int $id
- * @property string $title
- * @property string $file_path
- * @property int $uploaded_by
- * @property string $uploaded_at
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
- * @property-read \App\Models\User $uploader
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Document newModelQuery()
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Document newQuery()
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Document query()
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Document whereCreatedAt($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Document whereFilePath($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Document whereId($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Document whereTitle($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Document whereUpdatedAt($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Document whereUploadedAt($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Document whereUploadedBy($value)
- * @mixin \Eloquent
- */
 class Document extends Model
 {
-    // ✅ FIXED: Removed HasUuids — migration uses integer id()
+    use HasFactory;
+
     protected $fillable = [
-        'title',
-        'file_path',      // ✅ FIXED: was 'file_url', migration column is 'file_path'
-        'uploaded_by',
-        'uploaded_at',
+        'title', 'description', 'file_path', 'file_name', 'mime_type',
+        'size', 'category', 'uploaded_by', 'organization_id', 'is_public', 'status'
     ];
 
-    /**
-     * The user who uploaded this document.
-     */
-    public function uploader(): BelongsTo
+    protected $casts = [
+        'is_public' => 'boolean',
+        'size' => 'integer',
+    ];
+
+    // Relationships
+    public function uploader()
     {
         return $this->belongsTo(User::class, 'uploaded_by');
+    }
+
+    public function organization()
+    {
+        return $this->belongsTo(Organization::class);
+    }
+
+    // Helper: formatted size
+    public function getFormattedSizeAttribute()
+    {
+        $bytes = $this->size;
+        $units = ['B', 'KB', 'MB', 'GB'];
+        $i = 0;
+        while ($bytes >= 1024 && $i < count($units) - 1) {
+            $bytes /= 1024;
+            $i++;
+        }
+        return round($bytes, 2) . ' ' . $units[$i];
+    }
+
+    // Scope for user's organization or public
+    public function scopeAccessible($query, User $user)
+    {
+        return $query->where(function ($q) use ($user) {
+            $q->where('is_public', true)
+              ->orWhere('organization_id', $user->organization_id);
+        });
     }
 }

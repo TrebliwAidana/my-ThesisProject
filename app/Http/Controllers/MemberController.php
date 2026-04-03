@@ -223,7 +223,14 @@ class MemberController extends Controller
 
         $roles = $this->getAllowedRolesForCurrentUser();
 
-        return view('members.create', compact('roles'));
+        // ✅ Build position mapping using actual role IDs from the database
+        $positionMapping = [];
+        foreach ($roles as $role) {
+            $allowedPositions = $this->getAllowedPositions($role->name, $role->abbreviation);
+            $positionMapping[$role->id] = $allowedPositions;
+        }
+
+        return view('members.create', compact('roles', 'positionMapping'));
     }
 
     public function store(Request $request)
@@ -736,7 +743,8 @@ class MemberController extends Controller
 
         return view('members.edit-history', compact('user', 'memberRecord', 'positionLogs'));
     }
-        // -------------------------------------------------------------------------
+    
+    // -------------------------------------------------------------------------
     // Private Helpers
     // -------------------------------------------------------------------------
 

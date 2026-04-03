@@ -74,6 +74,7 @@ Route::middleware(['auth.custom', 'verified'])->group(function () {
             Route::post('/',        [DocumentController::class, 'store'])->name('store');
             Route::get('/{id}',     [DocumentController::class, 'show'])->name('show');
             Route::delete('/{id}',  [DocumentController::class, 'destroy'])->name('destroy');
+            Route::get('documents/{document}/download', [DocumentController::class, 'download'])->name('documents.download');
         });
 
     // ── Budgets ───────────────────────────────────────────────────────────
@@ -84,18 +85,17 @@ Route::middleware(['auth.custom', 'verified'])->group(function () {
             Route::get('/',                  [BudgetController::class, 'index'])->name('index');
             Route::get('/create',            [BudgetController::class, 'create'])->name('create');
             Route::post('/',                 [BudgetController::class, 'store'])->name('store');
+            Route::get('/export',            [BudgetController::class, 'export'])->name('export');
+            Route::get('/copy-data/{budget}',[BudgetController::class, 'copyData'])->name('copy-data');
             Route::get('/{budget}',          [BudgetController::class, 'show'])->name('show');
             Route::get('/{budget}/edit',     [BudgetController::class, 'edit'])->name('edit');
             Route::put('/{budget}',          [BudgetController::class, 'update'])->name('update');
             Route::get('/{budget}/review',   [BudgetController::class, 'review'])->name('review');
             Route::post('/{budget}/approve', [BudgetController::class, 'approve'])->name('approve');
+            Route::post('/{budget}/reject',  [BudgetController::class, 'reject'])->name('reject');
             Route::delete('/{budget}',       [BudgetController::class, 'destroy'])->name('destroy');
-
-            // Additional features
-            Route::get('/export',            [BudgetController::class, 'export'])->name('export');
             Route::get('/{budget}/copy',     [BudgetController::class, 'copy'])->name('copy');
             Route::post('/{budget}/disburse',[BudgetController::class, 'disburse'])->name('disburse');
-            Route::get('/copy-data/{budget}',[BudgetController::class, 'copyData'])->name('copy-data');
         });
 
     // ── Admin ─────────────────────────────────────────────────────────────
@@ -114,14 +114,16 @@ Route::middleware(['auth.custom', 'verified'])->group(function () {
                 Route::post('/{id}/reset-password',      [AdminController::class, 'resetPassword'])->name('reset-password');
                 Route::post('/{id}/send-verification',   [AdminController::class, 'sendVerificationEmail'])->name('send-verification');
                 Route::post('/{id}/verify-manual',       [AdminController::class, 'verifyEmailManually'])->name('verify-manual');
-            });
+                Route::post('/{id}/restore',             [AdminController::class, 'restoreUser'])->name('restore');
+                Route::delete('/{id}/force-delete',      [AdminController::class, 'forceDeleteUser'])->name('force-delete');
+            }); // ✅ closed users group
 
             // Permissions
             Route::prefix('permissions')->name('permissions.')->group(function () {
                 Route::get('/',       [AdminController::class, 'permissions'])->name('index');
                 Route::post('/sync',  [AdminController::class, 'syncPermissions'])->name('sync');
             });
-        });
+        }); // ✅ closed admin group
 
     // ── Settings ──────────────────────────────────────────────────────────
     Route::get('/settings', [SettingsController::class, 'index'])
@@ -143,7 +145,7 @@ Route::middleware(['auth.custom', 'verified'])->group(function () {
         Route::put('/',           [ProfileController::class, 'updateProfile'])->name('update');
         Route::put('/password',   [ProfileController::class, 'updatePassword'])->name('password');
     });
-});
+}); // ✅ closed auth+verified group
 
 // ── Flash message clear ────────────────────────────────────────────────────
 Route::post('/clear-flash-messages', function () {

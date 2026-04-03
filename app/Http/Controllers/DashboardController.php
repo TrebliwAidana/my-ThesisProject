@@ -18,6 +18,10 @@ class DashboardController extends Controller
     {
         $user = Auth::user()->load('role');
 
+        $user->avatar_url = $user->avatar
+        ? asset('storage/' . $user->avatar)
+        : asset('images/default-avatar.png');
+
         // Statistics
         $totalMembers = User::count();
         $activeMembers = User::where('is_active', true)->count();

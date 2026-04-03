@@ -157,6 +157,11 @@ class AdminController extends Controller
     {
         $query = User::with('role');
 
+            if ($request->boolean('trashed')) {
+            $query->withTrashed();
+        }
+        $users = $query->paginate(15)->appends($request->except('page'));
+
         if ($request->filled('role')) {
             $query->whereHas('role', function ($q) use ($request) {
                 $q->where('name', $request->role);
@@ -506,5 +511,19 @@ class AdminController extends Controller
         ];
 
         return $byName[$roleName] ?? [];
+    }
+    public function restoreUser(int $id)
+    {
+        $user = User::withTrashed()->findOrFail($id);
+        $user->restore();
+        return redirect()->route('admin.users.index')->with('success', "User '{$user->full_name}' restored successfully.");
+    }
+
+    public function forceDeleteUser(int $id)
+    {
+        $user = User::withTrashed()->findOrFail($id);
+        $userName = $user->full_name;
+        $user->forceDelete();
+        return redirect()->route('admin.users.index')->with('success', "User '{$userName}' permanently deleted.");
     }
 }

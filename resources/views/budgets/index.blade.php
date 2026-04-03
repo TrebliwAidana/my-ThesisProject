@@ -51,8 +51,17 @@
         vertical-align: middle;
     }
     .budget-table .title-col {
-        word-break: break-word;
         max-width: 250px;
+        word-break: break-word;
+    }
+    /* For small screens, allow truncation with ellipsis */
+    @media (max-width: 768px) {
+        .budget-table .title-col {
+            max-width: 150px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
     }
 </style>
 
@@ -65,74 +74,92 @@
     <div class="absolute top-0 right-0 -mt-8 -mr-8 w-64 h-64 bg-white/5 rounded-full blur-3xl"></div>
 </div>
 
-{{-- Stats Cards (compact) --}}
+{{-- Stats Cards (with responsive truncation) --}}
 <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
-    <!-- Cards unchanged (same as previous) -->
-    <div class="bg-white dark:bg-gray-800 rounded-xl border border-gold-200 dark:border-gold-800 p-3 shadow-sm">
-        <div class="flex items-center justify-between">
-            <div class="w-8 h-8 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center">
+    <!-- Draft -->
+    <div class="bg-white dark:bg-gray-800 rounded-xl border border-gold-200 dark:border-gold-800 p-3 shadow-sm min-w-0">
+        <div class="flex items-center gap-2">
+            <div class="w-8 h-8 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center flex-shrink-0">
                 <svg class="w-4 h-4 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                 </svg>
             </div>
-            <span class="text-xl font-bold text-gray-800 dark:text-white">{{ $statusCounts['draft'] ?? 0 }}</span>
+            <div class="flex-1 min-w-0 text-right">
+                <span class="text-base sm:text-lg md:text-xl font-bold text-gray-800 dark:text-white truncate block">{{ $statusCounts['draft'] ?? 0 }}</span>
+            </div>
         </div>
-        <p class="text-xs font-medium text-gray-600 dark:text-gray-400 mt-1">Draft</p>
+        <p class="text-xs font-medium text-gray-600 dark:text-gray-400 mt-1 truncate">Draft</p>
     </div>
-    <div class="bg-white dark:bg-gray-800 rounded-xl border border-gold-200 dark:border-gold-800 p-3 shadow-sm">
-        <div class="flex items-center justify-between">
-            <div class="w-8 h-8 bg-yellow-50 dark:bg-yellow-900/30 rounded-lg flex items-center justify-center">
+    <!-- Pending -->
+    <div class="bg-white dark:bg-gray-800 rounded-xl border border-gold-200 dark:border-gold-800 p-3 shadow-sm min-w-0">
+        <div class="flex items-center gap-2">
+            <div class="w-8 h-8 bg-yellow-50 dark:bg-yellow-900/30 rounded-lg flex items-center justify-center flex-shrink-0">
                 <svg class="w-4 h-4 text-yellow-600 dark:text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                 </svg>
             </div>
-            <span class="text-xl font-bold text-gray-800 dark:text-white">{{ $statusCounts['pending'] }}</span>
+            <div class="flex-1 min-w-0 text-right">
+                <span class="text-base sm:text-lg md:text-xl font-bold text-gray-800 dark:text-white truncate block">{{ $statusCounts['pending'] }}</span>
+            </div>
         </div>
-        <p class="text-xs font-medium text-gray-600 dark:text-gray-400 mt-1">Pending</p>
+        <p class="text-xs font-medium text-gray-600 dark:text-gray-400 mt-1 truncate">Pending</p>
     </div>
-    <div class="bg-white dark:bg-gray-800 rounded-xl border border-gold-200 dark:border-gold-800 p-3 shadow-sm">
-        <div class="flex items-center justify-between">
-            <div class="w-8 h-8 bg-blue-50 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
+    <!-- Reviewed -->
+    <div class="bg-white dark:bg-gray-800 rounded-xl border border-gold-200 dark:border-gold-800 p-3 shadow-sm min-w-0">
+        <div class="flex items-center gap-2">
+            <div class="w-8 h-8 bg-blue-50 dark:bg-blue-900/30 rounded-lg flex items-center justify-center flex-shrink-0">
                 <svg class="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                 </svg>
             </div>
-            <span class="text-xl font-bold text-gray-800 dark:text-white">{{ $statusCounts['reviewed'] }}</span>
+            <div class="flex-1 min-w-0 text-right">
+                <span class="text-base sm:text-lg md:text-xl font-bold text-gray-800 dark:text-white truncate block">{{ $statusCounts['reviewed'] }}</span>
+            </div>
         </div>
-        <p class="text-xs font-medium text-gray-600 dark:text-gray-400 mt-1">Reviewed</p>
+        <p class="text-xs font-medium text-gray-600 dark:text-gray-400 mt-1 truncate">Reviewed</p>
     </div>
-    <div class="bg-white dark:bg-gray-800 rounded-xl border border-gold-200 dark:border-gold-800 p-3 shadow-sm">
-        <div class="flex items-center justify-between">
-            <div class="w-8 h-8 bg-green-50 dark:bg-green-900/30 rounded-lg flex items-center justify-center">
+    <!-- Approved -->
+    <div class="bg-white dark:bg-gray-800 rounded-xl border border-gold-200 dark:border-gold-800 p-3 shadow-sm min-w-0">
+        <div class="flex items-center gap-2">
+            <div class="w-8 h-8 bg-green-50 dark:bg-green-900/30 rounded-lg flex items-center justify-center flex-shrink-0">
                 <svg class="w-4 h-4 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                 </svg>
             </div>
-            <span class="text-xl font-bold text-gray-800 dark:text-white">{{ $statusCounts['approved'] }}</span>
+            <div class="flex-1 min-w-0 text-right">
+                <span class="text-base sm:text-lg md:text-xl font-bold text-gray-800 dark:text-white truncate block">{{ $statusCounts['approved'] }}</span>
+            </div>
         </div>
-        <p class="text-xs font-medium text-gray-600 dark:text-gray-400 mt-1">Approved</p>
+        <p class="text-xs font-medium text-gray-600 dark:text-gray-400 mt-1 truncate">Approved</p>
     </div>
-    <div class="bg-white dark:bg-gray-800 rounded-xl border border-gold-200 dark:border-gold-800 p-3 shadow-sm">
-        <div class="flex items-center justify-between">
-            <div class="w-8 h-8 bg-red-50 dark:bg-red-900/30 rounded-lg flex items-center justify-center">
+    <!-- Rejected -->
+    <div class="bg-white dark:bg-gray-800 rounded-xl border border-gold-200 dark:border-gold-800 p-3 shadow-sm min-w-0">
+        <div class="flex items-center gap-2">
+            <div class="w-8 h-8 bg-red-50 dark:bg-red-900/30 rounded-lg flex items-center justify-center flex-shrink-0">
                 <svg class="w-4 h-4 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                 </svg>
             </div>
-            <span class="text-xl font-bold text-gray-800 dark:text-white">{{ $statusCounts['rejected'] }}</span>
+            <div class="flex-1 min-w-0 text-right">
+                <span class="text-base sm:text-lg md:text-xl font-bold text-gray-800 dark:text-white truncate block">{{ $statusCounts['rejected'] }}</span>
+            </div>
         </div>
-        <p class="text-xs font-medium text-gray-600 dark:text-gray-400 mt-1">Rejected</p>
+        <p class="text-xs font-medium text-gray-600 dark:text-gray-400 mt-1 truncate">Rejected</p>
     </div>
-    <div class="bg-white dark:bg-gray-800 rounded-xl border border-gold-200 dark:border-gold-800 p-3 shadow-sm">
-        <div class="flex items-center justify-between">
-            <div class="w-8 h-8 bg-primary-50 dark:bg-primary-900/30 rounded-lg flex items-center justify-center">
+    <!-- Total Approved (currency) with smaller font -->
+    <div class="bg-white dark:bg-gray-800 rounded-xl border border-gold-200 dark:border-gold-800 p-3 shadow-sm min-w-0">
+        <div class="flex items-center gap-2">
+            <div class="w-8 h-8 bg-primary-50 dark:bg-primary-900/30 rounded-lg flex items-center justify-center flex-shrink-0">
                 <svg class="w-4 h-4 text-primary-600 dark:text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                 </svg>
             </div>
-            <span class="text-xl font-bold text-gray-800 dark:text-white">₱{{ number_format($totalApproved, 2) }}</span>
+            <div class="flex-1 min-w-0 text-right">
+                {{-- Reduced font size for currency amount --}}
+                <span class="text-sm sm:text-base md:text-lg font-bold text-gray-800 dark:text-white truncate block">₱{{ number_format($totalApproved, 2) }}</span>
+            </div>
         </div>
-        <p class="text-xs font-medium text-gray-600 dark:text-gray-400 mt-1">Total Approved</p>
+        <p class="text-xs font-medium text-gray-600 dark:text-gray-400 mt-1 truncate">Total Approved</p>
     </div>
 </div>
 
@@ -182,7 +209,6 @@
             </div>
         </div>
 
-        {{-- Row 2: Action buttons --}}
         <div class="flex flex-wrap justify-between gap-2">
             <div class="flex gap-2">
                 <button type="submit" class="bg-primary-600 hover:bg-gold-500 text-white px-4 py-1.5 rounded-lg text-sm font-medium transition">Apply Filters</button>
@@ -364,5 +390,23 @@
         document.querySelector('input[name="date_to"]').value = to;
         document.getElementById('filter-form').submit();
     }
+
+    // Fix flash messages reappearing on back/forward
+    window.addEventListener('pageshow', function(event) {
+        if (event.persisted) {
+            // Clear any lingering flash messages from the DOM
+            document.querySelectorAll('.flash-message, .bg-green-50, .bg-red-50, .bg-yellow-50, .bg-blue-50').forEach(el => {
+                el.remove();
+            });
+            // Optionally clear the session flash data via AJAX (if you have a route)
+            fetch('/clear-flash-messages', {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                    'Content-Type': 'application/json'
+                }
+            }).catch(err => console.warn('Could not clear flash messages', err));
+        }
+    });
 </script>
 @endsection

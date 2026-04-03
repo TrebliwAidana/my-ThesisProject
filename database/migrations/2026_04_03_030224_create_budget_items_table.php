@@ -6,8 +6,7 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    // database/migrations/xxxx_xx_xx_xxxxxx_create_budget_items_table.php
-    public function up()
+    public function up(): void
     {
         Schema::create('budget_items', function (Blueprint $table) {
             $table->id();
@@ -15,11 +14,11 @@ return new class extends Migration
             $table->string('description');
             $table->integer('quantity')->default(1);
             $table->decimal('unit_price', 12, 2);
-            $table->decimal('total', 12, 2)->storedAs('quantity * unit_price');
             $table->timestamps();
+        });
     }
 
-    public function down()
+    public function down(): void
     {
         Schema::dropIfExists('budget_items');
     }
