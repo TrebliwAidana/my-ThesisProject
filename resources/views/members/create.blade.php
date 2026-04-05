@@ -167,8 +167,7 @@
                                 class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 {{ $errors->has('position') ? 'border-red-400' : '' }}">
                             <option value="">Select Position</option>
                             <template x-for="pos in positionOptions" :key="pos">
-                                <option :value="pos" x-text="pos"
-                                        :selected="pos === selectedPosition"></option>
+                                <option :value="pos" x-text="pos"></option>
                             </template>
                         </select>
                     </div>
@@ -284,13 +283,29 @@
 
 @push('scripts')
 <script>
-    // Position mapping from controller — keyed by role ID
-    const positionMapping = @json($positionMapping);
+    // Hardcoded fallback mapping (same as Member::VALID_POSITIONS)
+    const fallbackMapping = {
+        1: [],
+        2: ['SSLG President', 'SSLG Adviser', 'Student Affairs Head'],
+        3: ['SSLG Secretary', 'SSLG Treasurer', 'SSLG PIO'],
+        4: ['Organization President', 'Organization Vice President'],
+        5: ['Organization Secretary', 'Organization Treasurer', 'Organization Auditor', 'Organization PIO'],
+        6: ['Club Adviser'],
+        7: ['Regular Member'],
+        8: ['Guest'],
+    };
+
+    // Use mapping from controller if available, otherwise fallback
+    let controllerMapping = @json($positionMapping ?? []);
+    console.log('Controller mapping:', controllerMapping);
+    const positionMapping = (Object.keys(controllerMapping).length > 0) ? controllerMapping : fallbackMapping;
+    console.log('Final position mapping:', positionMapping);
+
     const nonStudentRoleIds = @json($nonStudentRoleIds);
+    console.log('Non-student role IDs:', nonStudentRoleIds);
 
     function memberCreateForm() {
         return {
-            // ✅ Fix: old('role_id') returns null-safe integer or null for Alpine
             selectedRoleId:   '{{ old('role_id', '') }}',
             selectedPosition: '{{ old('position', '') }}',
             yearLevelValue:   '{{ old('year_level', '') }}',
@@ -298,11 +313,11 @@
             isStudentRole:    true,
 
             init() {
-                // Populate positions on load (handles back-navigation with old values)
                 this.updatePositionOptions();
                 this.checkStudentRole();
 
                 this.$watch('selectedRoleId', () => {
+                    console.log('Role changed to:', this.selectedRoleId);
                     this.selectedPosition = '';
                     this.yearLevelValue   = '';
                     this.updatePositionOptions();
@@ -310,16 +325,24 @@
                 });
 
                 this.$watch('selectedPosition', () => {
+                    console.log('Position changed to:', this.selectedPosition);
                     this.checkStudentRole();
                 });
             },
 
             updatePositionOptions() {
                 const id = parseInt(this.selectedRoleId);
-                this.positionOptions = (id && positionMapping[id]) ? positionMapping[id] : [];
-
-                // Re-select old position if still valid after role change
+                console.log('Updating position options for role ID:', id);
+                if (id && positionMapping[id]) {
+                    this.positionOptions = positionMapping[id];
+                    console.log('Options found:', this.positionOptions);
+                } else {
+                    this.positionOptions = [];
+                    console.warn('No options for role ID:', id);
+                }
+                // Re-select old position if still valid
                 if (this.selectedPosition && !this.positionOptions.includes(this.selectedPosition)) {
+                    console.log('Clearing invalid selected position:', this.selectedPosition);
                     this.selectedPosition = '';
                 }
             },
@@ -327,17 +350,16 @@
             checkStudentRole() {
                 const id  = parseInt(this.selectedRoleId);
                 const pos = this.selectedPosition;
+                console.log('checkStudentRole: roleId=', id, 'position=', pos);
 
                 if (!id) { this.isStudentRole = true; return; }
 
-                // Non-student roles
                 if (nonStudentRoleIds.includes(id)) {
                     this.isStudentRole = false;
                     this.yearLevelValue = '';
                     return;
                 }
 
-                // Supreme Admin (role ID 2): only SSLG President is a student
                 if (id === 2) {
                     this.isStudentRole = (pos === 'SSLG President');
                     if (!this.isStudentRole) this.yearLevelValue = '';

@@ -5,8 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Document;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 
 class DocumentController extends Controller
 {
@@ -15,27 +15,24 @@ class DocumentController extends Controller
         $this->middleware('auth.custom');
     }
 
-    // Helper: check if user can manage documents (upload/edit/delete)
-    private function canManageDocuments()
-    {
-        $allowed = ['System Administrator', 'Supreme Admin', 'Supreme Officer', 'Org Admin', 'Org Officer', 'Club Adviser'];
-        return in_array(Auth::user()->role->name, $allowed);
-    }
-
     public function index(Request $request)
     {
         $user = Auth::user();
+
+        if ($user->role->level !== 1 && !$user->hasPermission('documents.view')) {
+            abort(403, 'You are not authorized to view documents.');
+        }
+
         $query = Document::with('uploader', 'organization');
 
-        // Filter by user's organization + public docs
-        if (!$this->canManageDocuments()) {
+        // Organisation scoping for non-level-1 users
+        if ($user->role->level !== 1) {
             $query->where(function ($q) use ($user) {
-                $q->where('is_public', true)
-                  ->orWhere('organization_id', $user->organization_id);
+                $q->where('organization_id', $user->organization_id)
+                  ->orWhere('is_public', true);
             });
         }
 
-        // Search
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
@@ -44,34 +41,39 @@ class DocumentController extends Controller
             });
         }
 
-        // Filter by category
         if ($request->filled('category')) {
             $query->where('category', $request->category);
         }
 
-        // Filter by status (if approval enabled)
         if ($request->filled('status')) {
             $query->where('status', $request->status);
         }
 
         $documents = $query->latest()->paginate(15)->appends($request->query());
 
-        $categories = Document::distinct()->pluck('category')->filter();
+        $categories   = Document::distinct()->pluck('category')->filter();
+        $publicCount  = Document::where('is_public', true)->count();
+        $privateCount = Document::where('is_public', false)->count();
 
-        return view('documents.index', compact('documents', 'categories'));
+        return view('documents.index', compact('documents', 'categories', 'publicCount', 'privateCount'));
     }
 
     public function create()
     {
-        if (!$this->canManageDocuments()) {
+        $user = Auth::user();
+
+        if ($user->role->level !== 1 && !$user->hasPermission('documents.upload')) {
             abort(403, 'You are not allowed to upload documents.');
         }
+
         return view('documents.create');
     }
 
     public function store(Request $request)
     {
-        if (!$this->canManageDocuments()) {
+        $user = Auth::user();
+
+        if ($user->role->level !== 1 && !$user->hasPermission('documents.upload')) {
             abort(403);
         }
 
@@ -80,18 +82,16 @@ class DocumentController extends Controller
             'description' => 'nullable|string',
             'category'    => 'nullable|string|max:100',
             'is_public'   => 'boolean',
-            'file'        => 'required|file|max:10240|mimes:pdf,doc,docx,xls,xlsx,ppt,pptx,jpg,jpeg,png,gif,zip', // max 10MB
+            'file'        => 'required|file|max:10240|mimes:pdf,doc,docx,xls,xlsx,ppt,pptx,jpg,jpeg,png,gif,zip',
         ]);
 
-        $file = $request->file('file');
+        $file         = $request->file('file');
         $originalName = $file->getClientOriginalName();
-        $mime = $file->getMimeType();
-        $size = $file->getSize();
+        $mime         = $file->getMimeType();
+        $size         = $file->getSize();
+        $path         = $file->store('documents/' . date('Y/m'), 'public');
 
-        // Store file
-        $path = $file->store('documents/' . date('Y/m'), 'public');
-
-        $document = Document::create([
+        Document::create([
             'title'           => $validated['title'],
             'description'     => $validated['description'],
             'file_path'       => $path,
@@ -99,10 +99,10 @@ class DocumentController extends Controller
             'mime_type'       => $mime,
             'size'            => $size,
             'category'        => $validated['category'],
-            'uploaded_by'     => Auth::id(),
-            'organization_id' => Auth::user()->organization_id,
+            'uploaded_by'     => $user->id,
+            'organization_id' => $user->organization_id,
             'is_public'       => $validated['is_public'] ?? false,
-            'status'          => 'approved', // or 'pending' if approval needed
+            'status'          => 'approved',
         ]);
 
         return redirect()->route('documents.index')
@@ -112,23 +112,42 @@ class DocumentController extends Controller
     public function show(Document $document)
     {
         $user = Auth::user();
-        if (!$document->is_public && $document->organization_id != $user->organization_id && !$this->canManageDocuments()) {
+
+        if ($user->role->level !== 1 && !$user->hasPermission('documents.view')) {
             abort(403);
         }
+
+        if (!$document->is_public && $document->organization_id != $user->organization_id && $user->role->level !== 1) {
+            abort(403, 'You are not authorized to view this document.');
+        }
+
         return view('documents.show', compact('document'));
     }
 
     public function edit(Document $document)
     {
-        if (!$this->canManageDocuments()) {
+        $user = Auth::user();
+
+        if ($user->role->level !== 1 && !$user->hasPermission('documents.edit')) {
             abort(403);
         }
+
+        if ($document->organization_id !== $user->organization_id && $user->role->level !== 1) {
+            abort(403, 'You cannot edit documents from another organisation.');
+        }
+
+        if ($document->uploaded_by !== $user->id && $user->role->level !== 1) {
+            abort(403, 'You can only edit your own documents.');
+        }
+
         return view('documents.edit', compact('document'));
     }
 
     public function update(Request $request, Document $document)
     {
-        if (!$this->canManageDocuments()) {
+        $user = Auth::user();
+
+        if ($user->role->level !== 1 && !$user->hasPermission('documents.edit')) {
             abort(403);
         }
 
@@ -147,11 +166,20 @@ class DocumentController extends Controller
 
     public function destroy(Document $document)
     {
-        if (!$this->canManageDocuments()) {
+        $user = Auth::user();
+
+        if ($user->role->level !== 1 && !$user->hasPermission('documents.delete')) {
             abort(403);
         }
 
-        // Delete physical file
+        if ($document->organization_id !== $user->organization_id && $user->role->level !== 1) {
+            abort(403);
+        }
+
+        if ($document->uploaded_by !== $user->id && $user->role->level !== 1) {
+            abort(403);
+        }
+
         Storage::disk('public')->delete($document->file_path);
         $document->delete();
 
@@ -162,7 +190,12 @@ class DocumentController extends Controller
     public function download(Document $document)
     {
         $user = Auth::user();
-        if (!$document->is_public && $document->organization_id != $user->organization_id && !$this->canManageDocuments()) {
+
+        if ($user->role->level !== 1 && !$user->hasPermission('documents.view')) {
+            abort(403);
+        }
+
+        if (!$document->is_public && $document->organization_id != $user->organization_id && $user->role->level !== 1) {
             abort(403);
         }
 

@@ -5,7 +5,6 @@
 
 @section('content')
 <style>
-    /* Custom pagination styling */
     .pagination {
         @apply flex justify-center space-x-1;
     }
@@ -31,9 +30,8 @@
 </style>
 
 <div class="space-y-6">
-    {{-- Statistics Cards --}}
+    {{-- Statistics Cards (keep as is) --}}
     <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <!-- same as before -->
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gold-200 dark:border-gold-800 p-4">
             <div class="flex items-center justify-between">
                 <div>
@@ -47,7 +45,7 @@
                 </div>
             </div>
         </div>
-        <!-- other cards unchanged -->
+        <!-- You can add more stats cards here if needed -->
     </div>
 
     {{-- Actions Bar --}}
@@ -61,7 +59,7 @@
             </a>
         </div>
 
-        <form method="GET" action="{{ route('admin.users.index') }}" id="filter-form" class="flex items-center gap-3">
+        <form method="GET" action="{{ route('admin.users.index') }}" id="filter-form" class="flex flex-wrap items-center gap-3">
             <div class="relative">
                 <input type="text" name="search" value="{{ request('search') }}" placeholder="Search users..."
                        class="pl-10 pr-4 py-2 border border-gold-200 dark:border-gold-800 dark:bg-gray-700 dark:text-white rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gold-500 w-64">
@@ -174,7 +172,18 @@
                                         <button type="submit" class="text-red-600 hover:text-red-800 text-xs font-medium">Force Delete</button>
                                     </form>
                                 @else
+                                    {{-- Manual Email Verification Button --}}
+                                    @if(!$user->hasVerifiedEmail())
+                                        <form method="POST" action="{{ route('admin.users.verify-manual', $user->id) }}" onsubmit="return confirm('Mark this user\'s email as verified?')" class="inline">
+                                            @csrf
+                                            <button type="submit" class="text-blue-600 hover:text-blue-800 text-xs font-medium border border-blue-200 dark:border-blue-800 px-2 py-1 rounded">
+                                                Verify
+                                            </button>
+                                        </form>
+                                    @endif
+
                                     <a href="{{ route('admin.users.edit', $user->id) }}" class="border border-gold-300 dark:border-gold-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 px-3 py-1 rounded text-xs transition">Edit</a>
+
                                     @if($user->id !== auth()->id())
                                     <form method="POST" action="{{ route('admin.users.destroy', $user->id) }}" onsubmit="return confirm('Soft delete {{ $user->full_name }}?')">
                                         @csrf
@@ -204,6 +213,6 @@
 </div>
 
 <script>
-    // ... existing sendVerification function and flash message handling (keep as is)
+    // Keep any existing scripts (e.g., sendVerification) if needed
 </script>
 @endsection

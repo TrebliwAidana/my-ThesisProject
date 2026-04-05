@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Auth\MustVerifyEmail as MustVerifyEmailTrait;
-use Illuminate\Database\Eloquent\SoftDeletes;   // <-- added
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 use App\Models\Role;
 use App\Models\Member;
@@ -17,62 +17,6 @@ use App\Models\Document;
 use App\Models\Budget;
 use App\Notifications\VerifyEmail;
 
-/**
- * @property int $id
- * @property string $full_name
- * @property string|null $first_name
- * @property string|null $last_name
- * @property string|null $middle_name
- * @property string $email
- * @property string|null $email_verified_at
- * @property string $password
- * @property int $role_id
- * @property string|null $position
- * @property string|null $student_id
- * @property string|null $year_level
- * @property bool $is_active
- * @property string|null $last_login_at
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
- * @property string $theme
- * @property string|null $remember_token
- * @property-read \Illuminate\Database\Eloquent\Collection<int, Budget> $budgets
- * @property-read int|null $budgets_count
- * @property-read \Illuminate\Database\Eloquent\Collection<int, Document> $documents
- * @property-read int|null $documents_count
- * @property-read Member|null $member
- * @property-read \Illuminate\Database\Eloquent\Collection<int, Member> $members
- * @property-read int|null $members_count
- * @property-read \Illuminate\Notifications\DatabaseNotificationCollection<int, \Illuminate\Notifications\DatabaseNotification> $notifications
- * @property-read int|null $notifications_count
- * @property-read Role $role
- * @method static \Illuminate\Database\Eloquent\Builder<static>|User active()
- * @method static \Illuminate\Database\Eloquent\Builder<static>|User inactive()
- * @method static \Illuminate\Database\Eloquent\Builder<static>|User newModelQuery()
- * @method static \Illuminate\Database\Eloquent\Builder<static>|User newQuery()
- * @method static \Illuminate\Database\Eloquent\Builder<static>|User query()
- * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereCreatedAt($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereEmail($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereEmailVerifiedAt($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereFirstName($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereFullName($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereId($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereIsActive($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereLastLoginAt($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereLastName($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereMiddleName($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|User wherePassword($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|User wherePosition($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereRememberToken($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereRoleId($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereStudentId($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereTheme($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereUpdatedAt($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereYearLevel($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|User verified()
- * @method static \Illuminate\Database\Eloquent\Builder<static>|User unverified()
- * @mixin \Eloquent
- */
 class User extends Authenticatable implements MustVerifyEmail
 {
     use Notifiable, MustVerifyEmailTrait, SoftDeletes;
@@ -168,56 +112,90 @@ class User extends Authenticatable implements MustVerifyEmail
         return $initials ?: 'U';
     }
 
-    /**
-     * A user belongs to a role.
-     */
+    // =========================================================================
+    // RELATIONSHIPS
+    // =========================================================================
+
     public function role(): BelongsTo
     {
         return $this->belongsTo(Role::class);
     }
 
-    /**
-     * A user has one primary member profile.
-     */
     public function member(): HasOne
     {
         return $this->hasOne(Member::class);
     }
 
-    /**
-     * A user can have multiple member records.
-     */
     public function members(): HasMany
     {
         return $this->hasMany(Member::class);
     }
 
-    /**
-     * A user has many uploaded documents.
-     */
     public function documents(): HasMany
     {
         return $this->hasMany(Document::class, 'uploaded_by');
     }
 
-    /**
-     * A user has many reviewed budgets.
-     */
     public function budgets(): HasMany
     {
         return $this->hasMany(Budget::class, 'reviewed_by');
     }
 
-    /**
-     * Get permissions through the user's role.
-     */
-    public function permissions()
+    public function hasPermission(string $moduleOrSlug, string $action = ''): bool
     {
-        return $this->role ? $this->role->permissions : collect();
+        // Build the slug from whichever form was passed
+        $slug = $action
+            ? "{$moduleOrSlug}.{$action}"
+            : $moduleOrSlug;
+
+        if (!$this->role_id) return false;
+
+        // Load role if needed
+        if (!$this->relationLoaded('role')) {
+            $this->load('role');
+        }
+
+        if (!$this->role) return false;
+
+        // Level 1 = System Administrator — bypass all checks
+        if (($this->role->level ?? 999) === 1) {
+            return true;
+        }
+
+        // Cache a plain array of permission slugs for this user.
+        // Storing a plain array (not an Eloquent Collection) prevents
+        // double-serialization issues with the database/file cache driver,
+        // which caused "Call to a member function contains() on string".
+        $cacheKey = "user_perms_{$this->id}";
+
+        $permissions = cache()->remember($cacheKey, now()->addMinutes(5), function () {
+            $perms = $this->role?->load('permissions')->permissions ?? collect();
+            return $perms->pluck('slug')->toArray(); // plain array — safe to cache
+        });
+
+        // Use in_array() since $permissions is always a plain array
+        return in_array($slug, $permissions);
     }
 
     /**
-     * Check if user has a specific role.
+     * Readable alias: $user->canDo('budgets', 'approve')
+     */
+    public function canDo(string $module, string $action): bool
+    {
+        return $this->hasPermission($module, $action);
+    }
+
+    /**
+     * Module-level access check (requires at least view permission).
+     * $user->hasModuleAccess('budgets')
+     */
+    public function hasModuleAccess(string $module): bool
+    {
+        return $this->hasPermission("{$module}.view");
+    }
+
+    /**
+     * Check if user has a role by name (unchanged from your original).
      */
     public function hasRole(string $role): bool
     {
@@ -225,113 +203,69 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     /**
-     * Check if user has a specific permission via their role.
+     * Clear cached permissions — call after any role/permission change.
      */
-    public function hasPermission($permission)
+    public function clearPermissionCache(): void
     {
-        // System Administrator (role_id = 1) has ALL permissions
-        if ($this->role_id == 1) {
-            return true;
-        }
-        
-        // Also check by role name for safety
-        if ($this->role && $this->role->name === 'System Administrator') {
-            return true;
-        }
-        
-        // If no role, deny access
-        if (!$this->role) {
-            return false;
-        }
-        
-        // Get permissions from config
-        $roleName = $this->role->name;
-        $permissions = config("permissions.roles.$roleName", []);
-        
-        // Add hierarchy inheritance from parent role
-        if ($this->role->parent) {
-            $parentPermissions = config("permissions.roles.{$this->role->parent->name}", []);
-            $permissions = array_merge($permissions, $parentPermissions);
-        }
-        
-        // Check if user has the permission
-        return in_array($permission, $permissions);
+        cache()->forget("user_perms_{$this->id}");
     }
 
-    /**
-     * Check if user account is active
-     */
+
+    // =========================================================================
+    // ACCOUNT STATUS HELPERS
+    // =========================================================================
+
     public function isActive(): bool
     {
         return (bool) $this->is_active;
     }
 
-    /**
-     * Activate user account
-     */
     public function activate(): void
     {
         $this->is_active = true;
         $this->save();
     }
 
-    /**
-     * Deactivate user account
-     */
     public function deactivate(): void
     {
         $this->is_active = false;
         $this->save();
     }
 
-    /**
-     * Update last login timestamp
-     */
     public function updateLastLogin(): void
     {
         $this->last_login_at = now();
         $this->save();
     }
 
-    /**
-     * Scope for active users
-     */
+    // =========================================================================
+    // SCOPES
+    // =========================================================================
+
     public function scopeActive($query)
     {
         return $query->where('is_active', true);
     }
 
-    /**
-     * Scope for inactive users
-     */
     public function scopeInactive($query)
     {
         return $query->where('is_active', false);
     }
 
-    /**
-     * Scope for users by year level
-     */
     public function scopeByYearLevel($query, $yearLevel)
     {
         return $query->where('year_level', $yearLevel);
     }
 
     // =========================================================================
-    // EMAIL VERIFICATION METHODS
+    // EMAIL VERIFICATION (MustVerifyEmail interface)
     // =========================================================================
 
-    /**
-     * Determine if the user has verified their email address.
-     */
     public function hasVerifiedEmail(): bool
     {
         return !is_null($this->email_verified_at);
     }
 
-    /**
-     * Mark the given user's email as verified.
-     */
     public function markEmailAsVerified(): bool
     {
         return $this->forceFill([
@@ -339,25 +273,16 @@ class User extends Authenticatable implements MustVerifyEmail
         ])->save();
     }
 
-    /**
-     * Send the email verification notification.
-     */
     public function sendEmailVerificationNotification()
     {
         $this->notify(new VerifyEmail());
     }
 
-    /**
-     * Get the email address that should be used for verification.
-     */
     public function getEmailForVerification()
     {
         return $this->email;
     }
 
-    /**
-     * Get email verification status badge class
-     */
     public function getEmailVerificationBadgeClassAttribute(): string
     {
         if ($this->hasVerifiedEmail()) {
@@ -366,31 +291,16 @@ class User extends Authenticatable implements MustVerifyEmail
         return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-400';
     }
 
-    /**
-     * Get email verification text
-     */
     public function getEmailVerificationTextAttribute(): string
     {
-        if ($this->hasVerifiedEmail()) {
-            return 'Verified';
-        }
-        return 'Unverified';
+        return $this->hasVerifiedEmail() ? 'Verified' : 'Unverified';
     }
 
-    /**
-     * Get formatted verification date
-     */
     public function getVerifiedDateAttribute(): string
     {
-        if ($this->hasVerifiedEmail()) {
-            return $this->email_verified_at->format('M d, Y');
-        }
-        return '—';
+        return $this->hasVerifiedEmail() ? $this->email_verified_at->format('M d, Y') : '—';
     }
 
-    /**
-     * Get verification status with icon (HTML)
-     */
     public function getVerificationStatusHtmlAttribute(): string
     {
         if ($this->hasVerifiedEmail()) {
@@ -409,48 +319,84 @@ class User extends Authenticatable implements MustVerifyEmail
                 </span>';
     }
 
-    /**
-     * Scope for verified users
-     */
     public function scopeVerified($query)
     {
         return $query->whereNotNull('email_verified_at');
     }
 
-    /**
-     * Scope for unverified users
-     */
     public function scopeUnverified($query)
     {
         return $query->whereNull('email_verified_at');
     }
 
-    /**
-     * Set default password for new members
-     */
+    // =========================================================================
+    // BOOT & MUTATORS
+    // =========================================================================
+
     protected static function boot()
     {
         parent::boot();
         
         static::creating(function ($user) {
-            // Set default is_active if not provided
             if (!isset($user->is_active)) {
                 $user->is_active = true;
             }
             
-            // If user is a member (role_id = 4) and no password set
             if ($user->role_id == 4 && empty($user->password)) {
                 $user->password = bcrypt('password');
             }
             
-            // If user is a member and no email set
             if ($user->role_id == 4 && empty($user->email)) {
                 $user->email = \App\Helpers\UserHelper::generateUniqueMemberEmail($user->full_name);
             }
         });
     }
 
-    // Membership Edit Logs
+    public function setFirstNameAttribute($value)
+    {
+        $this->attributes['first_name'] = ucwords(strtolower(trim($value)));
+    }
+
+    public function setLastNameAttribute($value)
+    {
+        $this->attributes['last_name'] = ucwords(strtolower(trim($value)));
+    }
+
+    public function setMiddleNameAttribute($value)
+    {
+        $this->attributes['middle_name'] = $value ? ucwords(strtolower(trim($value))) : null;
+    }
+
+    // =========================================================================
+    // STUDENT CHECK
+    // =========================================================================
+
+    public function isStudent(): bool
+    {
+        $nonStudentRoles = ['System Administrator', 'Club Adviser', 'Guest'];
+        $nonStudentAbbr  = ['SysAdmin', 'CA', 'Guest'];
+
+        return !(
+            in_array($this->role?->name, $nonStudentRoles) ||
+            in_array($this->role?->abbreviation, $nonStudentAbbr)
+        );
+    }
+
+    // =========================================================================
+    // AVATAR URL
+    // =========================================================================
+
+    public function getAvatarUrlAttribute()
+    {
+        return $this->avatar
+            ? asset('storage/' . $this->avatar)
+            : asset('images/default-avatar.png');
+    }
+
+    // =========================================================================
+    // LOG RELATIONSHIPS
+    // =========================================================================
+
     public function memberEditLogs()
     {
         return $this->hasMany(MemberEditLog::class, 'member_id');
@@ -460,52 +406,9 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         return $this->hasMany(MemberEditLog::class, 'edited_by');
     }
-    
+
     public function positionChangeLogs()
     {
         return $this->hasMany(PositionChangeLog::class, 'member_id');
-    }
-    public function setFirstNameAttribute($value)
-    {
-        $this->attributes['first_name'] = ucwords(strtolower(trim($value)));
-    }
-    public function setLastNameAttribute($value)
-    {
-        $this->attributes['last_name'] = ucwords(strtolower(trim($value)));
-    }
-
-    public function setMiddleNameAttribute($value)
-    {
-        if ($value) {
-            $this->attributes['middle_name'] = ucwords(strtolower(trim($value)));
-        } else {
-            $this->attributes['middle_name'] = null;
-        }
-    }
-        /**
-     * Determine if the user is a student (has a student role).
-     */
-    public function isStudent(): bool
-    {
-        // Non-student role IDs or names
-        $nonStudentRoles = [
-            'System Administrator',
-            'Club Adviser',
-            'Guest',
-        ];
-
-        // Also check by abbreviation if needed
-        $nonStudentAbbr = ['SysAdmin', 'CA', 'Guest'];
-
-        return !(
-            in_array($this->role?->name, $nonStudentRoles) ||
-            in_array($this->role?->abbreviation, $nonStudentAbbr)
-        );
-    }
-    public function getAvatarUrlAttribute()
-    {
-        return $this->avatar
-            ? asset('storage/' . $this->avatar)
-            : asset('images/default-avatar.png');
     }
 }

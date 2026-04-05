@@ -4,7 +4,6 @@
 
 @section('content')
 <style>
-    /* Custom pagination styling */
     .pagination {
         @apply flex justify-center space-x-1;
     }
@@ -31,8 +30,7 @@
 
 @php
     $currentUser = auth()->user();
-    $isSystemAdmin = $currentUser->role_id == 1;
-
+    $isSystemAdmin = $currentUser->role->level === 1;
     $roleBadgeClasses = [
         'System Administrator' => 'bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300',
         'Supreme Admin'        => 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300',
@@ -54,8 +52,9 @@
     <div class="absolute top-0 right-0 -mt-8 -mr-8 w-64 h-64 bg-white/5 rounded-full blur-3xl"></div>
 </div>
 
-{{-- Statistics Cards (filtered) --}}
+{{-- Statistics Cards --}}
 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5 mb-6">
+    <!-- System Admins -->
     <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gold-200 dark:border-gold-800 p-6 shadow-sm hover:shadow-lg transition-all duration-300 text-center">
         <div class="flex items-center justify-center mb-3">
             <div class="w-12 h-12 bg-purple-50 dark:bg-purple-900/30 rounded-xl flex items-center justify-center">
@@ -69,6 +68,7 @@
         <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Full system control</p>
     </div>
 
+    <!-- Supreme Level -->
     <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gold-200 dark:border-gold-800 p-6 shadow-sm hover:shadow-lg transition-all duration-300 text-center">
         <div class="flex items-center justify-center mb-3">
             <div class="w-12 h-12 bg-indigo-50 dark:bg-indigo-900/30 rounded-xl flex items-center justify-center">
@@ -82,6 +82,7 @@
         <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Level 3 and above</p>
     </div>
 
+    <!-- Org Leaders -->
     <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gold-200 dark:border-gold-800 p-6 shadow-sm hover:shadow-lg transition-all duration-300 text-center">
         <div class="flex items-center justify-center mb-3">
             <div class="w-12 h-12 bg-emerald-50 dark:bg-emerald-900/30 rounded-xl flex items-center justify-center">
@@ -95,6 +96,7 @@
         <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Admins and Officers</p>
     </div>
 
+    <!-- Club Advisers -->
     <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gold-200 dark:border-gold-800 p-6 shadow-sm hover:shadow-lg transition-all duration-300 text-center">
         <div class="flex items-center justify-center mb-3">
             <div class="w-12 h-12 bg-amber-50 dark:bg-amber-900/30 rounded-xl flex items-center justify-center">
@@ -108,6 +110,7 @@
         <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Organization advisers</p>
     </div>
 
+    <!-- Regular Members -->
     <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gold-200 dark:border-gold-800 p-6 shadow-sm hover:shadow-lg transition-all duration-300 text-center">
         <div class="flex items-center justify-center mb-3">
             <div class="w-12 h-12 bg-slate-50 dark:bg-slate-900/30 rounded-xl flex items-center justify-center">
@@ -122,18 +125,13 @@
     </div>
 </div>
 
-{{-- Search & Filter Form with Add Member button inline --}}
+{{-- Search & Filter Form --}}
 <form method="GET" action="{{ route('members.index') }}" id="filter-form" class="mb-6">
     <div class="flex flex-wrap gap-3 items-end">
-        {{-- Search Input with datalist --}}
         <div class="relative flex-1 sm:flex-initial">
-            <input type="text"
-                   name="search"
-                   id="search-input"
-                   list="member-suggestions"
-                   value="{{ request('search') }}"
+            <input type="text" name="search" id="search-input" list="member-suggestions" value="{{ request('search') }}"
                    placeholder="Search by name, email, role..."
-                   class="w-full sm:w-80 pl-11 pr-11 py-2.5 text-sm border border-gold-200 dark:border-gold-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent dark:bg-gray-800 dark:text-gray-200 bg-gray-50 dark:bg-gray-800/50">
+                   class="w-full sm:w-80 pl-11 pr-11 py-2.5 text-sm border border-gold-200 dark:border-gold-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent dark:bg-gray-800 dark:text-gray-200 bg-gray-50">
             <datalist id="member-suggestions">
                 @foreach($users as $member)
                     <option value="{{ $member->full_name }}"></option>
@@ -141,43 +139,40 @@
                 @endforeach
             </datalist>
             <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                <svg class="h-4.5 w-4.5 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="h-4.5 w-4.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                 </svg>
             </div>
             @if(request()->filled('search'))
             <a href="{{ route('members.index', array_merge(request()->except('search'), ['search' => ''])) }}"
                class="absolute inset-y-0 right-0 pr-3.5 flex items-center">
-                <svg class="h-4.5 w-4.5 text-gray-400 hover:text-gray-600 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="h-4.5 w-4.5 text-gray-400 hover:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                 </svg>
             </a>
             @endif
         </div>
 
-        {{-- Status Dropdown --}}
-        <select name="status" class="border border-gold-200 dark:border-gold-800 rounded-xl px-4 py-2.5 text-sm bg-gray-50 dark:bg-gray-800/50 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-gold-500">
+        <select name="status" class="border border-gold-200 dark:border-gold-800 rounded-xl px-4 py-2.5 text-sm bg-gray-50 dark:bg-gray-800/50">
             <option value="">All Status</option>
             <option value="active" {{ request('status') == 'active' ? 'selected' : '' }}>Active</option>
             <option value="inactive" {{ request('status') == 'inactive' ? 'selected' : '' }}>Inactive</option>
         </select>
 
-        {{-- Verification Dropdown --}}
-        <select name="verification" class="border border-gold-200 dark:border-gold-800 rounded-xl px-4 py-2.5 text-sm bg-gray-50 dark:bg-gray-800/50 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-gold-500">
+        <select name="verification" class="border border-gold-200 dark:border-gold-800 rounded-xl px-4 py-2.5 text-sm bg-gray-50 dark:bg-gray-800/50">
             <option value="">All Verification</option>
             <option value="verified" {{ request('verification') == 'verified' ? 'selected' : '' }}>Verified</option>
             <option value="unverified" {{ request('verification') == 'unverified' ? 'selected' : '' }}>Unverified</option>
         </select>
 
-        {{-- Apply Filters Button --}}
-        <button type="submit" class="bg-primary-600 hover:bg-gold-500 text-white px-4 py-2.5 rounded-xl text-sm font-medium transition shadow-sm hover:shadow-md transform hover:scale-[1.02] active:scale-[0.98]">
+        <button type="submit" class="bg-primary-600 hover:bg-gold-500 text-white px-4 py-2.5 rounded-xl text-sm font-medium transition shadow-sm">
             Apply Filters
         </button>
 
-        {{-- Add Member Button (inline, right-aligned) --}}
-        @if($isSystemAdmin || $currentUser->hasPermission('members.create'))
+        {{-- Add Member Button – visible for System Admin OR if Gate allows --}}
+        @if($isSystemAdmin || Gate::allows('members.create'))
         <a href="{{ route('members.create') }}"
-           class="inline-flex items-center justify-center gap-2 bg-primary-600 hover:bg-gold-500 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-[1.02] ml-auto">
+           class="inline-flex items-center justify-center gap-2 bg-primary-600 hover:bg-gold-500 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-all duration-200 shadow-md hover:shadow-lg ml-auto">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
             </svg>
@@ -185,74 +180,73 @@
         </a>
         @endif
 
-        {{-- Clear All Filters (only if filters active) --}}
         @if(request()->hasAny(['search', 'status', 'verification', 'role']) && request()->input('role') != 'all')
-        <a href="{{ route('members.index') }}" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 px-4 py-2.5 rounded-xl text-sm transition">
+        <a href="{{ route('members.index') }}" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 px-4 py-2.5 rounded-xl text-sm transition">
             Clear Filters
         </a>
         @endif
     </div>
 </form>
 
-{{-- Role Filter Tabs (gold active) --}}
+{{-- Role Filter Tabs --}}
 <div class="border-b border-gold-200 dark:border-gold-800 mb-6">
     <nav class="flex flex-wrap gap-4">
         <a href="{{ route('members.index', array_merge(request()->except('role'), ['role' => 'all'])) }}"
-           class="px-4 py-2 text-sm font-medium border-b-2 {{ $roleFilter == 'all' ? 'border-gold-500 text-gold-600 dark:text-gold-400' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400' }}">
+           class="px-4 py-2 text-sm font-medium border-b-2 {{ $roleFilter == 'all' ? 'border-gold-500 text-gold-600 dark:text-gold-400' : 'border-transparent text-gray-500 hover:text-gray-700' }}">
             All Members
             <span class="ml-1 text-xs bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded-full">{{ $filteredStats['all'] }}</span>
         </a>
         <a href="{{ route('members.index', array_merge(request()->except('role'), ['role' => 'admin'])) }}"
-           class="px-4 py-2 text-sm font-medium border-b-2 {{ $roleFilter == 'admin' ? 'border-gold-500 text-gold-600 dark:text-gold-400' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400' }}">
+           class="px-4 py-2 text-sm font-medium border-b-2 {{ $roleFilter == 'admin' ? 'border-gold-500 text-gold-600 dark:text-gold-400' : 'border-transparent text-gray-500 hover:text-gray-700' }}">
             System Admin
             <span class="ml-1 text-xs bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded-full">{{ $filteredStats['system_admin'] }}</span>
         </a>
         <a href="{{ route('members.index', array_merge(request()->except('role'), ['role' => 'supreme'])) }}"
-           class="px-4 py-2 text-sm font-medium border-b-2 {{ $roleFilter == 'supreme' ? 'border-gold-500 text-gold-600 dark:text-gold-400' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400' }}">
+           class="px-4 py-2 text-sm font-medium border-b-2 {{ $roleFilter == 'supreme' ? 'border-gold-500 text-gold-600 dark:text-gold-400' : 'border-transparent text-gray-500 hover:text-gray-700' }}">
             Supreme
             <span class="ml-1 text-xs bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded-full">{{ $filteredStats['supreme'] }}</span>
         </a>
         <a href="{{ route('members.index', array_merge(request()->except('role'), ['role' => 'org-leader'])) }}"
-           class="px-4 py-2 text-sm font-medium border-b-2 {{ $roleFilter == 'org-leader' ? 'border-gold-500 text-gold-600 dark:text-gold-400' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400' }}">
+           class="px-4 py-2 text-sm font-medium border-b-2 {{ $roleFilter == 'org-leader' ? 'border-gold-500 text-gold-600 dark:text-gold-400' : 'border-transparent text-gray-500 hover:text-gray-700' }}">
             Org Leaders
             <span class="ml-1 text-xs bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded-full">{{ $filteredStats['leaders'] }}</span>
         </a>
         <a href="{{ route('members.index', array_merge(request()->except('role'), ['role' => 'adviser'])) }}"
-           class="px-4 py-2 text-sm font-medium border-b-2 {{ $roleFilter == 'adviser' ? 'border-gold-500 text-gold-600 dark:text-gold-400' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400' }}">
+           class="px-4 py-2 text-sm font-medium border-b-2 {{ $roleFilter == 'adviser' ? 'border-gold-500 text-gold-600 dark:text-gold-400' : 'border-transparent text-gray-500 hover:text-gray-700' }}">
             Club Advisers
             <span class="ml-1 text-xs bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded-full">{{ $filteredStats['advisers'] }}</span>
         </a>
         <a href="{{ route('members.index', array_merge(request()->except('role'), ['role' => 'member'])) }}"
-           class="px-4 py-2 text-sm font-medium border-b-2 {{ $roleFilter == 'member' ? 'border-gold-500 text-gold-600 dark:text-gold-400' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400' }}">
+           class="px-4 py-2 text-sm font-medium border-b-2 {{ $roleFilter == 'member' ? 'border-gold-500 text-gold-600 dark:text-gold-400' : 'border-transparent text-gray-500 hover:text-gray-700' }}">
             Members
             <span class="ml-1 text-xs bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded-full">{{ $filteredStats['members'] }}</span>
         </a>
     </nav>
 </div>
 
-{{-- Members Table with Emerald Header --}}
+{{-- Members Table --}}
 <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gold-200 dark:border-gold-800 overflow-hidden">
     <div class="overflow-x-auto">
         <table class="w-full text-sm">
             <thead>
-                <tr class="bg-primary-600 dark:bg-primary-700 text-white border-b border-gold-200 dark:border-gold-800">
-                    <th class="text-left px-6 py-4 text-xs font-semibold uppercase tracking-wider">Member</th>
-                    <th class="text-left px-6 py-4 text-xs font-semibold uppercase tracking-wider">Email</th>
-                    <th class="text-left px-6 py-4 text-xs font-semibold uppercase tracking-wider">Role</th>
-                    <th class="text-left px-6 py-4 text-xs font-semibold uppercase tracking-wider">Verified</th>
-                    <th class="text-left px-6 py-4 text-xs font-semibold uppercase tracking-wider">Status</th>
-                    <th class="text-left px-6 py-4 text-xs font-semibold uppercase tracking-wider">Level</th>
-                    <th class="text-left px-6 py-4 text-xs font-semibold uppercase tracking-wider">Joined</th>
-                    <th class="text-right px-6 py-4 text-xs font-semibold uppercase tracking-wider">Actions</th>
+                <tr class="bg-primary-600 dark:bg-primary-700 text-white border-b border-gold-200">
+                    <th class="text-left px-6 py-4 text-xs font-semibold uppercase">Member</th>
+                    <th class="text-left px-6 py-4 text-xs font-semibold uppercase">Email</th>
+                    <th class="text-left px-6 py-4 text-xs font-semibold uppercase">Role</th>
+                    <th class="text-left px-6 py-4 text-xs font-semibold uppercase">Verified</th>
+                    <th class="text-left px-6 py-4 text-xs font-semibold uppercase">Status</th>
+                    <th class="text-left px-6 py-4 text-xs font-semibold uppercase">Level</th>
+                    <th class="text-left px-6 py-4 text-xs font-semibold uppercase">Joined</th>
+                    <th class="text-right px-6 py-4 text-xs font-semibold uppercase">Actions</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
                 @forelse ($users as $member)
                 @php
-                    $color = $roleColors[$member->role->name] ?? 'gray';
-                    $badgeClass = $roleBadgeClasses[$member->role->name] ?? 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300';
+                    $badgeClass = $roleBadgeClasses[$member->role->name] ?? 'bg-gray-100 text-gray-700';
+                    $color = explode('-', $badgeClass)[1] ?? 'gray';
                 @endphp
-                <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-all duration-150">
+                <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition">
                     <td class="px-6 py-4">
                         <div class="flex items-center gap-3">
                             <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-{{ $color }}-100 to-{{ $color }}-200 dark:from-{{ $color }}-900/50 dark:to-{{ $color }}-800/50 flex items-center justify-center text-sm font-bold text-{{ $color }}-700 dark:text-{{ $color }}-300 shadow-sm">
@@ -264,7 +258,7 @@
                             </div>
                         </div>
                     </td>
-                    <td class="px-6 py-4 text-gray-600 dark:text-gray-400 text-sm">{{ $member->email }}</td>
+                    <td class="px-6 py-4 text-gray-600 dark:text-gray-400">{{ $member->email }}</td>
                     <td class="px-6 py-4">
                         <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium {{ $badgeClass }}">
                             {{ $member->role->abbreviation ?? $member->role->name }}
@@ -273,16 +267,12 @@
                     <td class="px-6 py-4">
                         @if($member->email_verified_at)
                             <span class="inline-flex items-center gap-1 text-green-600 dark:text-green-400">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                </svg>
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                                 Verified
                             </span>
                         @else
                             <span class="inline-flex items-center gap-1 text-yellow-600 dark:text-yellow-400">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
-                                </svg>
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
                                 Unverified
                             </span>
                         @endif
@@ -308,41 +298,45 @@
                             <span class="text-xs text-gray-500">Lv.{{ $member->role->level }}</span>
                         </div>
                     </td>
-                    <td class="px-6 py-4 text-gray-500 dark:text-gray-400 text-sm">
-                        {{ optional($member->created_at)->format('M d, Y') }}
-                    </td>
+                    <td class="px-6 py-4 text-gray-500 dark:text-gray-400">{{ optional($member->created_at)->format('M d, Y') }}</td>
                     <td class="px-6 py-4 text-right">
                         <div class="flex items-center justify-end gap-2">
-                            <a href="{{ route('members.show', $member->id) }}" class="p-1.5 text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400 transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700" title="View member" aria-label="View member details">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                            {{-- View --}}
+                            <a href="{{ route('members.show', $member->id) }}" class="p-1.5 text-gray-500 hover:text-blue-600 rounded-lg hover:bg-gray-100" title="View">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
                             </a>
-                            @if($isSystemAdmin || $currentUser->hasPermission('members.edit'))
-                            <a href="{{ route('members.edit', $member->id) }}" class="p-1.5 text-gray-500 hover:text-primary-600 dark:text-gray-400 dark:hover:text-primary-400 transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700" title="Edit member" aria-label="Edit member">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+
+                            {{-- Edit – visible for System Admin OR if Gate allows --}}
+                            @if($isSystemAdmin || Gate::allows('members.edit'))
+                            <a href="{{ route('members.edit', $member->id) }}" class="p-1.5 text-gray-500 hover:text-primary-600 rounded-lg hover:bg-gray-100" title="Edit">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                             </a>
                             @endif
-                            <a href="{{ route('members.edit-history', $member->id) }}" class="p-1.5 text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400 transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700" title="View history" aria-label="View edit history">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+
+                            {{-- History --}}
+                            <a href="{{ route('members.edit-history', $member->id) }}" class="p-1.5 text-gray-500 hover:text-blue-600 rounded-lg hover:bg-gray-100" title="History">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                             </a>
-                            @if(($isSystemAdmin || $currentUser->hasPermission('members.delete')) && $member->id !== auth()->id())
-                            <button type="button" onclick="confirmDelete('{{ $member->id }}', '{{ $member->full_name }}', '{{ $member->role->name }}')" class="p-1.5 text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700" title="Remove member" aria-label="Delete member">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+
+                            {{-- Delete – visible for System Admin OR if Gate allows, and not deleting own account --}}
+                            @if(($isSystemAdmin || Gate::allows('members.delete')) && $member->id !== auth()->id())
+                            <button type="button" onclick="confirmDelete('{{ $member->id }}', '{{ $member->full_name }}', '{{ $member->role->name }}')" class="p-1.5 text-gray-500 hover:text-red-600 rounded-lg hover:bg-gray-100" title="Delete">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                             </button>
                             @endif
                         </div>
                     </td>
                 </tr>
                 @empty
-                <tr>
-                    <td colspan="8" class="px-6 py-12 text-center">
-                        <div class="flex flex-col items-center gap-3">
-                            <svg class="w-12 h-12 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-                            <p class="text-gray-500 dark:text-gray-400 text-sm italic">No members found.</p>
-                            @if(request()->hasAny(['search', 'status', 'verification']) || (request()->has('role') && request()->role != 'all'))
-                            <a href="{{ route('members.index') }}" class="text-primary-600 hover:underline text-sm">Clear all filters</a>
-                            @endif
-                        </div>
-                    </td>
+                <tr><td colspan="8" class="px-6 py-12 text-center">
+                    <div class="flex flex-col items-center gap-3">
+                        <svg class="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                        <p class="text-gray-500 text-sm">No members found.</p>
+                        @if(request()->hasAny(['search', 'status', 'verification']) || (request()->has('role') && request()->role != 'all'))
+                        <a href="{{ route('members.index') }}" class="text-primary-600 hover:underline text-sm">Clear all filters</a>
+                        @endif
+                    </div>
+                </td>
                 </tr>
                 @endforelse
             </tbody>

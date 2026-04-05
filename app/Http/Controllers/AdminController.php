@@ -157,30 +157,12 @@ class AdminController extends Controller
     {
         $query = User::with('role');
 
-            if ($request->boolean('trashed')) {
+        // 🔁 Include soft-deleted users if the checkbox is checked
+        if ($request->boolean('trashed')) {
             $query->withTrashed();
         }
-        $users = $query->paginate(15)->appends($request->except('page'));
 
-        if ($request->filled('role')) {
-            $query->whereHas('role', function ($q) use ($request) {
-                $q->where('name', $request->role);
-            });
-        }
-
-        if ($request->filled('status')) {
-            $isActive = $request->status === 'active';
-            $query->where('is_active', $isActive);
-        }
-
-        if ($request->filled('verification')) {
-            if ($request->verification === 'verified') {
-                $query->whereNotNull('email_verified_at');
-            } elseif ($request->verification === 'unverified') {
-                $query->whereNull('email_verified_at');
-            }
-        }
-
+        // Search
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
@@ -189,8 +171,30 @@ class AdminController extends Controller
             });
         }
 
-        $users = $query->paginate(15)->appends($request->except('page'));
+        // Role filter
+        if ($request->filled('role')) {
+            $query->whereHas('role', fn($q) => $q->where('name', $request->role));
+        }
 
+        // Status filter (active/inactive)
+        if ($request->filled('status')) {
+            $isActive = $request->status === 'active';
+            $query->where('is_active', $isActive);
+        }
+
+        // Verification filter
+        if ($request->filled('verification')) {
+            if ($request->verification === 'verified') {
+                $query->whereNotNull('email_verified_at');
+            } elseif ($request->verification === 'unverified') {
+                $query->whereNull('email_verified_at');
+            }
+        }
+
+        // Paginate
+        $users = $query->paginate(20)->appends($request->except('page'));
+
+        // Statistics (unfiltered counts for the whole system)
         $totalUsers = User::count();
         $activeUsers = User::where('is_active', true)->count();
         $verifiedEmails = User::whereNotNull('email_verified_at')->count();
@@ -455,22 +459,44 @@ class AdminController extends Controller
         return back()->with('success', 'Verification email sent.');
     }
 
-    public function verifyEmailManually(int $id)
+    public function verifyEmailManually($id)
     {
         $user = User::findOrFail($id);
-
-        if ($user->hasVerifiedEmail()) {
-            return back()->with('warning', 'Email already verified.');
+        
+        // Only allow System Admin (level 1) or Supreme Admin (level 2)
+        if (!in_array(auth()->user()->role->level, [1, 2])) {
+            return back()->with('error', 'Unauthorized.');
         }
-
+        
+        if ($user->hasVerifiedEmail()) {
+            return back()->with('info', 'User already verified.');
+        }
+        
         $user->markEmailAsVerified();
-
-        return back()->with('success', "Email for '{$user->full_name}' marked as verified.");
+        
+        return back()->with('success', "Email for {$user->full_name} has been verified.");
     }
 
-    // -------------------------------------------------------------------------
+    public function restoreUser(int $id)
+    {
+        $user = User::withTrashed()->findOrFail($id);
+        $user->restore();
+        return redirect()->route('admin.users.index')
+            ->with('success', "User '{$user->full_name}' restored successfully.");
+    }
+
+    public function forceDeleteUser(int $id)
+    {
+        $user = User::withTrashed()->findOrFail($id);
+        $userName = $user->full_name;
+        $user->forceDelete();
+        return redirect()->route('admin.users.index')
+            ->with('success', "User '{$userName}' permanently deleted.");
+    }
+
+    // =========================================================================
     // Helpers
-    // -------------------------------------------------------------------------
+    // =========================================================================
 
     private function shouldClearYearLevel($roleId, $position)
     {
@@ -511,19 +537,5 @@ class AdminController extends Controller
         ];
 
         return $byName[$roleName] ?? [];
-    }
-    public function restoreUser(int $id)
-    {
-        $user = User::withTrashed()->findOrFail($id);
-        $user->restore();
-        return redirect()->route('admin.users.index')->with('success', "User '{$user->full_name}' restored successfully.");
-    }
-
-    public function forceDeleteUser(int $id)
-    {
-        $user = User::withTrashed()->findOrFail($id);
-        $userName = $user->full_name;
-        $user->forceDelete();
-        return redirect()->route('admin.users.index')->with('success', "User '{$userName}' permanently deleted.");
     }
 }

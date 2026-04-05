@@ -3,77 +3,69 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+
+// FIX: Added missing Position import — without this, the positions()
+// relationship throws "Class Position not found" at runtime.
+use App\Models\Position;
 
 class Role extends Model
 {
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array<int, string>
-     */
-    protected $fillable = [
-        'name',
-        'abbreviation',
-        'description',
-        'level',
-        'is_system',
-        'parent_id',
-        'typical_positions', // optional, if you have this column
-        'is_predefined', 
-    ];
+    protected $fillable = ['name', 'abbreviation', 'level', 'is_predefined'];
 
-    /**
-     * The attributes that should be cast.
-     *
-     * @var array<string, string>
-     */
-    protected $casts = [
-        'is_system' => 'boolean',
-        'level' => 'integer',
-        'typical_positions' => 'array', // if stored as JSON
-        'is_predefined' => 'boolean',
-    ];
+    // ── Relationships ─────────────────────────────────────────────────────────
 
-    /**
-     * Get the parent role (the one this role reports to).
-     */
-    public function parent(): BelongsTo
-    {
-        return $this->belongsTo(Role::class, 'parent_id');
-    }
-
-    /**
-     * Get the child roles (roles that report to this role).
-     */
-    public function children(): HasMany
-    {
-        return $this->hasMany(Role::class, 'parent_id');
-    }
-
-    /**
-     * Get the users that belong to this role.
-     */
     public function users(): HasMany
     {
         return $this->hasMany(User::class);
     }
 
     /**
-     * Get the permissions assigned to this role.
+     * Pivot is 'role_permission' (singular) — matches Permission model and migration.
      */
     public function permissions(): BelongsToMany
     {
-        return $this->belongsToMany(Permission::class, 'role_permissions');
+        return $this->belongsToMany(Permission::class, 'role_permission');
     }
 
-    /**
-     * Get the positions (if any) assigned to this role.
-     */
     public function positions(): HasMany
     {
         return $this->hasMany(Position::class);
+    }
+
+    // ── Permission helpers ────────────────────────────────────────────────────
+
+    /**
+     * Check if this role has a permission by slug.
+     *
+     * Accepts:
+     *   hasPermission('documents.view')        — slug (preferred)
+     *   hasPermission('documents', 'view')     — two-arg form
+     */
+    public function hasPermission(string $moduleOrSlug, string $action = ''): bool
+    {
+        $slug = $action
+            ? "{$moduleOrSlug}.{$action}"
+            : $moduleOrSlug;
+
+        if (!$this->relationLoaded('permissions')) {
+            $this->load('permissions');
+        }
+
+        return $this->permissions->contains('slug', $slug);
+    }
+
+    /**
+     * Sync permissions for one module only, preserving all others.
+     */
+    public function syncModulePermissions(string $module, array $permissionIds): void
+    {
+        $otherIds = $this->permissions()
+            ->where('module', '!=', $module)
+            ->pluck('permissions.id')
+            ->toArray();
+
+        $this->permissions()->sync(array_merge($otherIds, $permissionIds));
     }
 }

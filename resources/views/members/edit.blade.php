@@ -4,7 +4,6 @@
 @section('page-title', 'Edit Member')
 
 @php
-    $validPositions = \App\Models\Member::VALID_POSITIONS;
     $nonStudentRoleIds = [1, 6, 8];
 @endphp
 
@@ -15,7 +14,6 @@
             @csrf
             @method('PUT')
 
-            {{-- Display validation errors --}}
             @if($errors->any())
                 <div class="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
                     <strong>Please fix the following errors:</strong>
@@ -27,7 +25,7 @@
                 </div>
             @endif
 
-            {{-- First Name & Last Name --}}
+            {{-- First & Last Name --}}
             <div class="grid grid-cols-2 gap-4">
                 <div>
                     <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">First Name <span class="text-red-500">*</span></label>
@@ -66,7 +64,7 @@
                        class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2 text-sm">
             </div>
 
-            {{-- Phone Number --}}
+            {{-- Phone --}}
             <div class="mb-4">
                 <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Phone Number</label>
                 <div class="flex">
@@ -107,7 +105,7 @@
                 <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Positions are based on the selected role</p>
             </div>
 
-            {{-- Reason for Position Change (shown when position is different) --}}
+            {{-- Reason for Position Change --}}
             <div x-show="positionChanged" x-cloak>
                 <div class="mb-4">
                     <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Reason for Change <span class="text-red-500">*</span></label>
@@ -128,13 +126,10 @@
             <div x-show="isStudentRole" x-cloak>
                 <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Year Level</label>
                 <select x-model="yearLevelValue" class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2 text-sm">
-                    <option value="">Select Year Level</option>
-                    <option value="Grade 7">Grade 7</option>
-                    <option value="Grade 8">Grade 8</option>
-                    <option value="Grade 9">Grade 9</option>
-                    <option value="Grade 10">Grade 10</option>
-                    <option value="Grade 11">Grade 11</option>
-                    <option value="Grade 12">Grade 12</option>
+                    <option value="">Select Grade</option>
+                    @for($i=7; $i<=12; $i++)
+                        <option value="Grade {{ $i }}">Grade {{ $i }}</option>
+                    @endfor
                 </select>
             </div>
             <input type="hidden" name="year_level" :value="yearLevelValue">
@@ -170,7 +165,7 @@
                 </div>
             </div>
 
-            {{-- Buttons + History Link --}}
+            {{-- Buttons --}}
             <div class="flex gap-3">
                 <button type="submit" class="flex-1 bg-primary-600 hover:bg-gold-500 text-white font-semibold py-2 px-4 rounded-lg transition">Update Member</button>
                 <a href="{{ route('members.edit-history', $member->id) }}" class="flex-1 text-center bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 font-semibold py-2 px-4 rounded-lg transition">
@@ -182,9 +177,29 @@
     </div>
 </div>
 
+<style>[x-cloak] { display: none !important; }</style>
+
 <script>
-    const validPositions = @json(\App\Models\Member::VALID_POSITIONS);
+    // Hardcoded fallback mapping (same as Member::VALID_POSITIONS)
+    const fallbackMapping = {
+        1: [],
+        2: ['SSLG President', 'SSLG Adviser', 'Student Affairs Head'],
+        3: ['SSLG Secretary', 'SSLG Treasurer', 'SSLG PIO'],
+        4: ['Organization President', 'Organization Vice President'],
+        5: ['Organization Secretary', 'Organization Treasurer', 'Organization Auditor', 'Organization PIO'],
+        6: ['Club Adviser'],
+        7: ['Regular Member'],
+        8: ['Guest'],
+    };
+
+    // Use validPositions from PHP if available, otherwise fallback
+    let controllerMapping = @json(\App\Models\Member::VALID_POSITIONS);
+    console.log('Controller mapping (edit):', controllerMapping);
+    const validPositions = (Object.keys(controllerMapping).length > 0) ? controllerMapping : fallbackMapping;
+    console.log('Final mapping (edit):', validPositions);
+
     const nonStudentRoleIds = @json($nonStudentRoleIds);
+    console.log('Non-student role IDs (edit):', nonStudentRoleIds);
 
     function memberEditForm() {
         return {
@@ -198,19 +213,24 @@
                 this.updatePositionOptions();
                 this.checkIfStudentRole();
                 this.$watch('selectedRoleId', () => {
+                    console.log('Edit: role changed to', this.selectedRoleId);
                     this.updatePositionOptions();
                     this.checkIfStudentRole();
                 });
                 this.$watch('selectedPosition', () => {
+                    console.log('Edit: position changed to', this.selectedPosition);
                     this.checkIfStudentRole();
                 });
             },
             updatePositionOptions() {
-                const roleId = this.selectedRoleId;
+                const roleId = parseInt(this.selectedRoleId);
+                console.log('Edit: updatePositionOptions for roleId', roleId);
                 if (roleId && validPositions[roleId]) {
                     this.positionOptions = validPositions[roleId];
+                    console.log('Options found:', this.positionOptions);
                 } else {
                     this.positionOptions = [];
+                    console.warn('No options for roleId', roleId);
                 }
                 if (this.selectedPosition && !this.positionOptions.includes(this.selectedPosition)) {
                     this.selectedPosition = '';
@@ -219,6 +239,7 @@
             checkIfStudentRole() {
                 const roleId = parseInt(this.selectedRoleId);
                 const position = this.selectedPosition;
+                console.log('Edit: checkIfStudentRole roleId', roleId, 'position', position);
                 if (nonStudentRoleIds.includes(roleId)) {
                     this.isStudentRole = false;
                     this.yearLevelValue = '';
@@ -232,7 +253,6 @@
                 this.isStudentRole = true;
             },
             positionChanged() {
-                // Check if selectedPosition is different from original position (from PHP)
                 const originalPosition = '{{ $member->position }}';
                 return this.selectedPosition && this.selectedPosition !== originalPosition;
             }

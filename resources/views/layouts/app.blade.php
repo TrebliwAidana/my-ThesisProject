@@ -208,11 +208,37 @@
                 'icon'    => 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z',
                 'roles'   => ['System Administrator','Supreme Admin','Adviser'],
                 'submenu' => [
-                    ['label' => 'User Management', 'route' => 'admin.users.index',       'roles' => ['System Administrator','Supreme Admin','Adviser']],
-                    ['label' => 'Roles',           'route' => 'admin.roles.index',       'roles' => ['System Administrator','Supreme Admin','Adviser']],
-                    ['label' => 'Permissions',     'route' => 'admin.permissions.index', 'roles' => ['System Administrator','Supreme Admin','Adviser']],
-                    ['label' => 'System Settings', 'route' => 'settings.index',          'roles' => ['System Administrator','Supreme Admin','Adviser']],
-                    ['label' => 'Audit Logs',      'route' => 'audit.logs',              'roles' => ['System Administrator','Supreme Admin']],
+                    [
+                        'label' => 'User Management',
+                        'route' => 'admin.users.index',
+                        // FIX: matches route middleware: role:System Administrator,Supreme Admin,Club Adviser
+                        'roles' => ['System Administrator','Supreme Admin','Club Adviser'],
+                    ],
+                    [
+                        'label' => 'Roles',
+                        'route' => 'admin.roles.index',
+                        // FIX: matches route middleware: role:System Administrator
+                        'roles' => ['System Administrator'],
+                    ],
+                    [
+                        'label' => 'Permissions',
+                        'route' => 'admin.permissions.index',
+                        // FIX: was ['System Administrator','Supreme Admin','Adviser'] — those roles
+                        // get 403 because the route is gated to System Administrator only.
+                        'roles' => ['System Administrator'],
+                    ],
+                    [
+                        'label' => 'System Settings',
+                        'route' => 'settings.index',
+                        // FIX: matches route middleware: role:System Administrator,Supreme Admin,Club Adviser
+                        'roles' => ['System Administrator','Supreme Admin','Club Adviser'],
+                    ],
+                    [
+                        'label' => 'Audit Logs',
+                        'route' => 'audit.logs',
+                        // FIX: matches route middleware: role:System Administrator,Supreme Admin
+                        'roles' => ['System Administrator','Supreme Admin'],
+                    ],
                 ],
             ];
 
@@ -386,7 +412,7 @@
     </main>
 </div>
 
-{{-- Notification container (populated by JS) --}}
+{{-- Notification container (populated by JS showNotification()) --}}
 <div id="notification-container"
      class="fixed top-4 left-1/2 -translate-x-1/2 z-50 w-full max-w-md pointer-events-none"></div>
 
@@ -407,6 +433,37 @@
 
         Alpine.store('theme').init();
     });
+
+    // FIX: Auto-show flash notifications that were embedded server-side.
+    // Without this block, session flash messages (e.g. redirect()->with('success', ...))
+    // are encoded into the <meta name="flash-data"> tag but never displayed.
+    document.addEventListener('DOMContentLoaded', () => {
+        const meta = document.querySelector('meta[name="flash-data"]');
+        if (!meta) return;
+        try {
+            const flash = JSON.parse(meta.content);
+            Object.entries(flash).forEach(([type, message]) => {
+                // Small delay so Alpine and the notification container are ready
+                setTimeout(() => showNotification(message, type), 300);
+            });
+        } catch (e) {}
+    });
+
+    function showNotification(message, type = 'success') {
+        const container = document.getElementById('notification-container');
+        if (!container) return;
+        const colors = { success: 'bg-emerald-600', error: 'bg-red-600', warning: 'bg-yellow-600', info: 'bg-blue-600' };
+        const el = document.createElement('div');
+        el.className = `pointer-events-auto ${colors[type] ?? colors.success} text-white text-sm font-medium px-4 py-3 rounded-xl shadow-lg mb-2 flex items-center gap-2 transition-all duration-300`;
+        el.innerHTML = `
+            <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${type === 'error' ? 'M6 18L18 6M6 6l12 12' : 'M5 13l4 4L19 7'}"/>
+            </svg>
+            <span>${message}</span>
+        `;
+        container.appendChild(el);
+        setTimeout(() => { el.style.opacity = '0'; setTimeout(() => el.remove(), 300); }, 3500);
+    }
 </script>
 
 @stack('scripts')

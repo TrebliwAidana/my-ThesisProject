@@ -5,34 +5,51 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
-/**
- * @property int $id
- * @property string $name
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Role> $roles
- * @property-read int|null $roles_count
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Permission newModelQuery()
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Permission newQuery()
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Permission query()
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Permission whereCreatedAt($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Permission whereId($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Permission whereName($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Permission whereUpdatedAt($value)
- * @mixin \Eloquent
- */
 class Permission extends Model
 {
     protected $fillable = [
-        'name',
+        'slug',          // canonical key: "documents.view"
+        'name',          // display name: "View Documents"
+        'module',        // "documents"
+        'action',        // "view"
+        'label',         // optional override display label
         'description',
     ];
 
-    /**
-     * A permission belongs to many roles.
-     */
+    // ── Pivot ─────────────────────────────────────────────────────────────────
+    // singular 'role_permission' — matches Role model and migration
     public function roles(): BelongsToMany
     {
-        return $this->belongsToMany(Role::class, 'role_permissions');
+        return $this->belongsToMany(Role::class, 'role_permission');
+    }
+
+    // ── Accessors ─────────────────────────────────────────────────────────────
+
+    /**
+     * Derive module from slug if the dedicated column is empty.
+     * "documents.view" → "documents"
+     */
+    public function getModuleAttribute($value): string
+    {
+        if ($value) return $value;
+        return explode('.', $this->attributes['slug'] ?? '.')[0];
+    }
+
+    /**
+     * Derive action from slug if the dedicated column is empty.
+     * "documents.view" → "view"
+     */
+    public function getActionAttribute($value): string
+    {
+        if ($value) return $value;
+        $parts = explode('.', $this->attributes['slug'] ?? '.');
+        return $parts[1] ?? '';
+    }
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+
+    public static function groupedByModule(): \Illuminate\Support\Collection
+    {
+        return static::all()->groupBy('module');
     }
 }
