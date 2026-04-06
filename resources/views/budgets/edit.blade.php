@@ -4,15 +4,13 @@
 
 @section('content')
 
-<div class="mb-6">
-    <a href="{{ route('budgets.show', $budget) }}" class="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 transition">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
-        </svg>
-        Back to Budget Details
-    </a>
-    <h1 class="text-2xl font-bold text-gray-900 dark:text-white mt-3">Edit Budget Request</h1>
-    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Modify your budget request before submission</p>
+{{-- Emerald Gradient Header --}}
+<div class="relative overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-600 to-emerald-700 dark:from-emerald-800 dark:to-emerald-900 p-6 mb-6">
+    <div class="relative z-10">
+        <h1 class="text-2xl font-bold text-white">Edit Budget Request</h1>
+        <p class="text-emerald-100 text-sm mt-1">Modify your budget request before submission</p>
+    </div>
+    <div class="absolute top-0 right-0 -mt-8 -mr-8 w-64 h-64 bg-white/5 rounded-full blur-3xl"></div>
 </div>
 
 <div class="bg-white dark:bg-gray-800 rounded-xl border border-gold-200 dark:border-gold-800 p-6 max-w-2xl mx-auto">
@@ -40,14 +38,14 @@
         <div class="mb-4">
             <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Budget Title</label>
             <input type="text" name="title" value="{{ old('title', $budget->title) }}" required
-                   class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent transition">
+                   class="w-full border border-gold-300 dark:border-gold-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent transition">
         </div>
 
         {{-- Description --}}
         <div class="mb-4">
             <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Description</label>
             <textarea name="description" rows="4"
-                      class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent transition"
+                      class="w-full border border-gold-300 dark:border-gold-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent transition"
                       placeholder="Provide details about this budget request...">{{ old('description', $budget->description) }}</textarea>
         </div>
 
@@ -56,12 +54,12 @@
             <div>
                 <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Amount (₱)</label>
                 <input type="number" name="amount" value="{{ old('amount', $budget->amount) }}" required step="0.01" min="0"
-                       class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent transition">
+                       class="w-full border border-gold-300 dark:border-gold-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent transition">
             </div>
             <div>
                 <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Category</label>
                 <select name="category" required
-                        class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent transition">
+                        class="w-full border border-gold-300 dark:border-gold-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent transition">
                     <option value="">Select Category</option>
                     @foreach($categories as $category)
                         <option value="{{ $category->name }}" {{ old('category', $budget->category) == $category->name ? 'selected' : '' }}>
@@ -89,7 +87,7 @@
             </div>
             @endif
             <input type="file" name="attachment" 
-                   class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100 dark:file:bg-primary-900/50 dark:file:text-primary-400">
+                   class="w-full border border-gold-300 dark:border-gold-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 dark:file:bg-emerald-900/50 dark:file:text-emerald-300">
             <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Accepted formats: PDF, DOC, DOCX, XLSX (Max: 5MB). Leave empty to keep current file.</p>
         </div>
 
@@ -112,16 +110,15 @@
         {{-- Buttons --}}
         <div class="flex gap-3 pt-4 border-t border-gold-200 dark:border-gold-800">
             <button type="submit"
-                    class="flex-1 bg-primary-600 hover:bg-gold-500 text-white text-sm font-semibold px-5 py-2.5 rounded-lg transition">
+                    class="flex-1 bg-emerald-600 hover:bg-gold-500 text-white text-sm font-semibold px-5 py-2.5 rounded-lg transition shadow-sm">
                 Update Budget Request
             </button>
             <a href="{{ route('budgets.show', $budget) }}"
-               class="flex-1 text-center text-sm font-semibold text-gray-600 dark:text-gray-400 border border-gray-300 dark:border-gray-600 px-5 py-2.5 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+               class="flex-1 text-center bg-red-600 hover:bg-red-700 text-white text-sm font-semibold px-5 py-2.5 rounded-lg transition shadow-sm">
                 Cancel
             </a>
         </div>
         @endif
     </form>
 </div>
-
 @endsection

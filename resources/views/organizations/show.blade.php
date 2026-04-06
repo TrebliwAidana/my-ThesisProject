@@ -34,7 +34,7 @@
         <div class="flex items-center gap-2">
             @if($user->role->level === 1 || $user->organization_id === $organization->id)
             <a href="{{ route('admin.organizations.edit', $organization) }}"
-               class="inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white text-sm font-medium px-4 py-2 rounded-xl transition">
+               class="inline-flex items-center gap-2 bg-white/10 hover:bg-gold-500/30 text-white text-sm font-medium px-4 py-2 rounded-xl transition">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                 </svg>
@@ -42,7 +42,7 @@
             </a>
             @endif
             <a href="{{ route('admin.organizations.index') }}"
-               class="inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white text-sm font-medium px-4 py-2 rounded-xl transition">
+               class="inline-flex items-center gap-2 bg-white/10 hover:bg-gold-500/30 text-white text-sm font-medium px-4 py-2 rounded-xl transition">
                 ← Back
             </a>
         </div>
@@ -125,7 +125,7 @@
         <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gold-200 dark:border-gold-800 shadow-sm overflow-hidden">
             <div class="flex items-center justify-between px-5 py-3.5 bg-primary-600 dark:bg-primary-700">
                 <h3 class="text-sm font-bold text-white">Recent Documents</h3>
-                <a href="{{ route('documents.index') }}" class="text-xs text-primary-100 hover:text-white transition">View all →</a>
+                <a href="{{ route('documents.index') }}" class="text-xs text-primary-100 hover:text-gold-300 transition">View all →</a>
             </div>
             <div class="divide-y divide-gray-100 dark:divide-gray-700">
                 @forelse($recentDocs as $doc)
@@ -148,7 +148,7 @@
         <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gold-200 dark:border-gold-800 shadow-sm overflow-hidden">
             <div class="flex items-center justify-between px-5 py-3.5 bg-primary-600 dark:bg-primary-700">
                 <h3 class="text-sm font-bold text-white">Recent Budgets</h3>
-                <a href="{{ route('budgets.index') }}" class="text-xs text-primary-100 hover:text-white transition">View all →</a>
+                <a href="{{ route('budgets.index') }}" class="text-xs text-primary-100 hover:text-gold-300 transition">View all →</a>
             </div>
             <div class="divide-y divide-gray-100 dark:divide-gray-700">
                 @forelse($recentBudgets as $budget)

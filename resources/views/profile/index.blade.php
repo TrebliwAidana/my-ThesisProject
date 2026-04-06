@@ -60,18 +60,18 @@
     {{-- ── Profile Information (full edit) ─────────────────────────── --}}
     <div class="lg:col-span-2 space-y-6">
 
-        {{-- Avatar Upload Card (unchanged) --}}
-        <div class="bg-white dark:bg-gray-800 rounded-xl border border-emerald-200 dark:border-emerald-800 overflow-hidden">
-            <div class="px-6 py-4 border-b border-emerald-200 dark:border-emerald-800">
+        {{-- Avatar Upload Card (with gold borders & emerald header) --}}
+        <div class="bg-white dark:bg-gray-800 rounded-xl border border-gold-200 dark:border-gold-800 overflow-hidden">
+            <div class="bg-gradient-to-r from-emerald-600 to-emerald-700 dark:from-emerald-800 dark:to-emerald-900 px-6 py-4 border-b border-emerald-200 dark:border-emerald-800">
                 <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center">
-                        <svg class="w-5 h-5 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div class="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
+                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                         </svg>
                     </div>
                     <div>
-                        <h2 class="font-semibold text-gray-900 dark:text-white">Profile Photo</h2>
-                        <p class="text-xs text-gray-500 dark:text-gray-400">JPG, PNG, GIF, WebP — max 2MB</p>
+                        <h2 class="font-semibold text-white">Profile Photo</h2>
+                        <p class="text-emerald-100 text-xs">JPG, PNG, GIF, WebP — max 2MB</p>
                     </div>
                 </div>
             </div>
@@ -102,7 +102,7 @@
                     <input type="hidden" name="email" value="{{ $user->email }}">
                     <div class="flex flex-col gap-2">
                         <label for="avatarInput"
-                               class="cursor-pointer inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold px-4 py-2 rounded-lg transition w-fit">
+                               class="cursor-pointer inline-flex items-center gap-2 bg-emerald-600 hover:bg-gold-500 text-white text-sm font-semibold px-4 py-2 rounded-lg transition w-fit">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
                             </svg>
@@ -119,18 +119,18 @@
             </div>
         </div>
 
-        {{-- Profile Information Card (with all editable fields) --}}
-        <div class="bg-white dark:bg-gray-800 rounded-xl border border-emerald-200 dark:border-emerald-800 overflow-hidden">
-            <div class="px-6 py-4 border-b border-emerald-200 dark:border-emerald-800">
+        {{-- Profile Information Card (with gold borders & emerald header) --}}
+        <div class="bg-white dark:bg-gray-800 rounded-xl border border-gold-200 dark:border-gold-800 overflow-hidden">
+            <div class="bg-gradient-to-r from-emerald-600 to-emerald-700 dark:from-emerald-800 dark:to-emerald-900 px-6 py-4 border-b border-emerald-200 dark:border-emerald-800">
                 <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center">
-                        <svg class="w-5 h-5 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div class="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
+                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
                         </svg>
                     </div>
                     <div>
-                        <h2 class="font-semibold text-gray-900 dark:text-white">Profile Information</h2>
-                        <p class="text-xs text-gray-500 dark:text-gray-400">Update your personal details</p>
+                        <h2 class="font-semibold text-white">Profile Information</h2>
+                        <p class="text-emerald-100 text-xs">Update your personal details</p>
                     </div>
                 </div>
             </div>
@@ -144,12 +144,12 @@
                     <div>
                         <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">First Name <span class="text-red-500">*</span></label>
                         <input type="text" name="first_name" value="{{ old('first_name', $user->first_name) }}" required
-                               class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition">
+                               class="w-full border border-gold-300 dark:border-gold-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent transition">
                     </div>
                     <div>
                         <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Last Name <span class="text-red-500">*</span></label>
                         <input type="text" name="last_name" value="{{ old('last_name', $user->last_name) }}" required
-                               class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition">
+                               class="w-full border border-gold-300 dark:border-gold-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent transition">
                     </div>
                 </div>
 
@@ -157,13 +157,14 @@
                 <div class="mb-4">
                     <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Middle Name <span class="text-gray-400">(Optional)</span></label>
                     <input type="text" name="middle_name" value="{{ old('middle_name', $user->middle_name) }}"
-                           class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition">
+                           class="w-full border border-gold-300 dark:border-gold-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent transition">
                 </div>
 
                 {{-- Gender --}}
                 <div class="mb-4">
                     <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Gender <span class="text-red-500">*</span></label>
-                    <select name="gender" required class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition">
+                    <select name="gender" required
+                            class="w-full border border-gold-300 dark:border-gold-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent transition">
                         <option value="">Select Gender</option>
                         <option value="Male" {{ old('gender', $user->gender) == 'Male' ? 'selected' : '' }}>Male</option>
                         <option value="Female" {{ old('gender', $user->gender) == 'Female' ? 'selected' : '' }}>Female</option>
@@ -175,37 +176,37 @@
                 <div class="mb-4">
                     <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Birthday</label>
                     <input type="date" name="birthday" value="{{ old('birthday', optional($user->birthday)->format('Y-m-d')) }}"
-                           class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition">
+                           class="w-full border border-gold-300 dark:border-gold-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent transition">
                 </div>
 
                 {{-- Phone Number --}}
                 <div class="mb-4">
                     <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Phone Number</label>
                     <div class="flex">
-                        <span class="inline-flex items-center px-3 rounded-l-lg border border-r-0 border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-500">+63</span>
+                        <span class="inline-flex items-center px-3 rounded-l-lg border border-r-0 border-gold-300 dark:border-gold-600 bg-gray-50 dark:bg-gray-700 text-gray-500">+63</span>
                         <input type="tel" name="phone" value="{{ old('phone', $user->phone ? substr($user->phone, 3) : '') }}" maxlength="10" placeholder="9123456789"
-                               class="flex-1 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-r-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition"
+                               class="flex-1 border border-gold-300 dark:border-gold-600 dark:bg-gray-700 dark:text-white rounded-r-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent transition"
                                oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0,10)">
                     </div>
                     <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Enter 10-digit number (e.g., 9123456789). +63 will be added automatically.</p>
                 </div>
 
-                {{-- Email (read‑only? Actually editable but we keep as editable) --}}
+                {{-- Email (editable) --}}
                 <div class="mb-4">
                     <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Email Address <span class="text-red-500">*</span></label>
                     <input type="email" name="email" value="{{ old('email', $user->email) }}" required
-                           class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition">
+                           class="w-full border border-gold-300 dark:border-gold-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent transition">
                 </div>
 
-                {{-- Student ID (editable by user, but unique) --}}
+                {{-- Student ID (editable) --}}
                 <div class="mb-4">
                     <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Student ID</label>
                     <input type="text" name="student_id" value="{{ old('student_id', $user->student_id) }}" placeholder="2020-12345"
-                           class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition">
+                           class="w-full border border-gold-300 dark:border-gold-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent transition">
                     <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Format: YYYY-XXXXX (e.g., 2020-12345)</p>
                 </div>
 
-                {{-- Year Level (conditional – uses same logic as edit member) --}}
+                {{-- Year Level (conditional) --}}
                 @php
                     $nonStudentRoleIds = [1, 6, 8];
                     $roleId = $user->role_id;
@@ -219,7 +220,8 @@
                 <div class="mb-4" x-data="{ isStudentRole: {{ $isStudentRole ? 'true' : 'false' }} }">
                     <div x-show="isStudentRole" x-cloak>
                         <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Year Level</label>
-                        <select name="year_level" class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition">
+                        <select name="year_level"
+                                class="w-full border border-gold-300 dark:border-gold-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent transition">
                             <option value="">Select Grade</option>
                             <option value="Grade 7" {{ old('year_level', $user->year_level) == 'Grade 7' ? 'selected' : '' }}>Grade 7</option>
                             <option value="Grade 8" {{ old('year_level', $user->year_level) == 'Grade 8' ? 'selected' : '' }}>Grade 8</option>
@@ -248,9 +250,10 @@
                     </div>
                 </div>
 
-                <div class="pt-4 border-t border-emerald-200 dark:border-emerald-800 flex gap-3">
+                {{-- Buttons: Update Profile (left), Cancel (right) --}}
+                <div class="pt-4 border-t border-gold-200 dark:border-gold-800 flex justify-between items-center">
                     <button type="submit"
-                            class="bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold px-6 py-2.5 rounded-lg transition shadow-sm hover:shadow">
+                            class="bg-emerald-600 hover:bg-gold-500 text-white text-sm font-semibold px-6 py-2.5 rounded-lg transition shadow-sm hover:shadow">
                         Update Profile
                     </button>
                     <a href="{{ route('dashboard') }}"
@@ -262,19 +265,19 @@
         </div>
     </div>
 
-    {{-- ── Change Password Card (unchanged) ───────────────────────── --}}
+    {{-- ── Change Password Card ───────────────────────────────────── --}}
     <div class="lg:col-span-1">
-        <div class="bg-white dark:bg-gray-800 rounded-xl border border-emerald-200 dark:border-emerald-800 overflow-hidden sticky top-6">
-            <div class="px-6 py-4 border-b border-emerald-200 dark:border-emerald-800">
+        <div class="bg-white dark:bg-gray-800 rounded-xl border border-gold-200 dark:border-gold-800 overflow-hidden sticky top-6">
+            <div class="bg-gradient-to-r from-emerald-600 to-emerald-700 dark:from-emerald-800 dark:to-emerald-900 px-6 py-4 border-b border-emerald-200 dark:border-emerald-800">
                 <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/50 flex items-center justify-center">
-                        <svg class="w-5 h-5 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div class="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
+                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>
                         </svg>
                     </div>
                     <div>
-                        <h2 class="font-semibold text-gray-900 dark:text-white">Change Password</h2>
-                        <p class="text-xs text-gray-500 dark:text-gray-400">Update your password</p>
+                        <h2 class="font-semibold text-white">Change Password</h2>
+                        <p class="text-emerald-100 text-xs">Update your password</p>
                     </div>
                 </div>
             </div>
@@ -287,7 +290,7 @@
                     <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Current Password</label>
                     <div class="relative">
                         <input type="password" name="current_password" id="field_current"
-                               class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2.5 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition"
+                               class="w-full border border-gold-300 dark:border-gold-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2.5 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent transition"
                                oninput="checkPasswordMatch()">
                         <button type="button" onclick="togglePwd('current')"
                                 class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
@@ -307,7 +310,7 @@
                     <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">New Password</label>
                     <div class="relative">
                         <input type="password" name="new_password" id="field_new"
-                               class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2.5 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition"
+                               class="w-full border border-gold-300 dark:border-gold-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2.5 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent transition"
                                oninput="checkPasswordStrength(); checkPasswordMatch()">
                         <button type="button" onclick="togglePwd('new')"
                                 class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
@@ -339,7 +342,7 @@
                     <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Confirm New Password</label>
                     <div class="relative">
                         <input type="password" name="new_password_confirmation" id="field_confirm"
-                               class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2.5 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition"
+                               class="w-full border border-gold-300 dark:border-gold-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2.5 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent transition"
                                oninput="checkConfirmMatch()">
                         <button type="button" onclick="togglePwd('confirm')"
                                 class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
@@ -356,12 +359,12 @@
                 </div>
 
                 <button type="submit"
-                        class="w-full bg-gray-600 hover:bg-gray-700 text-white text-sm font-semibold px-5 py-2.5 rounded-lg transition">
+                        class="w-full bg-emerald-600 hover:bg-gold-500 text-white text-sm font-semibold px-5 py-2.5 rounded-lg transition">
                     Change Password
                 </button>
             </form>
 
-            <div class="px-6 py-4 bg-gray-50 dark:bg-gray-700/30 border-t border-emerald-200 dark:border-emerald-800">
+            <div class="px-6 py-4 bg-gray-50 dark:bg-gray-700/30 border-t border-gold-200 dark:border-gold-800">
                 <div class="flex items-center gap-2">
                     <svg class="w-4 h-4 text-gray-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
@@ -377,17 +380,17 @@
 
 {{-- Member Information Card (unchanged) --}}
 <div class="mt-6">
-    <div class="bg-white dark:bg-gray-800 rounded-xl border border-emerald-200 dark:border-emerald-800 overflow-hidden">
-        <div class="px-6 py-4 border-b border-emerald-200 dark:border-emerald-800">
+    <div class="bg-white dark:bg-gray-800 rounded-xl border border-gold-200 dark:border-gold-800 overflow-hidden">
+        <div class="bg-gradient-to-r from-emerald-600 to-emerald-700 dark:from-emerald-800 dark:to-emerald-900 px-6 py-4 border-b border-emerald-200 dark:border-emerald-800">
             <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center">
-                    <svg class="w-5 h-5 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
+                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
                     </svg>
                 </div>
                 <div>
-                    <h2 class="font-semibold text-gray-900 dark:text-white">Member Information</h2>
-                    <p class="text-xs text-gray-500 dark:text-gray-400">Additional membership details</p>
+                    <h2 class="font-semibold text-white">Member Information</h2>
+                    <p class="text-emerald-100 text-xs">Additional membership details</p>
                 </div>
             </div>
         </div>
@@ -541,4 +544,4 @@ document.getElementById('passwordForm').addEventListener('submit', function (e) 
 });
 </script>
 
-@endsection
+@endsection 

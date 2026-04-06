@@ -11,15 +11,18 @@
     <div class="absolute top-0 right-0 -mt-8 -mr-8 w-64 h-64 bg-white/5 rounded-full blur-3xl"></div>
 </div>
 
-<div class="bg-white dark:bg-gray-800 rounded-xl border border-emerald-200 dark:border-emerald-800 p-4 mb-6 shadow-sm">
+{{-- Filter Card (gold borders) --}}
+<div class="bg-white dark:bg-gray-800 rounded-xl border border-gold-200 dark:border-gold-800 p-4 mb-6 shadow-sm">
     <form method="GET" class="flex flex-wrap gap-3 items-end">
         <div class="flex-1 min-w-[200px]">
             <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Search</label>
-            <input type="text" name="search" value="{{ request('search') }}" placeholder="Title or description..." class="w-full px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg text-sm dark:bg-gray-700 dark:text-white">
+            <input type="text" name="search" value="{{ request('search') }}" placeholder="Title or description..."
+                   class="w-full px-3 py-1.5 border border-gold-300 dark:border-gold-600 rounded-lg text-sm dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-gold-500">
         </div>
         <div>
             <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Category</label>
-            <select name="category" class="px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg text-sm dark:bg-gray-700 dark:text-white">
+            <select name="category"
+                    class="px-3 py-1.5 border border-gold-300 dark:border-gold-600 rounded-lg text-sm dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-gold-500">
                 <option value="">All</option>
                 @foreach($categories as $cat)
                     <option value="{{ $cat }}" {{ request('category') == $cat ? 'selected' : '' }}>{{ $cat }}</option>
@@ -28,23 +31,30 @@
         </div>
         <div>
             <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Status</label>
-            <select name="status" class="px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg text-sm dark:bg-gray-700 dark:text-white">
+            <select name="status"
+                    class="px-3 py-1.5 border border-gold-300 dark:border-gold-600 rounded-lg text-sm dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-gold-500">
                 <option value="">All</option>
                 <option value="approved" {{ request('status') == 'approved' ? 'selected' : '' }}>Approved</option>
                 <option value="pending"  {{ request('status') == 'pending'  ? 'selected' : '' }}>Pending</option>
             </select>
         </div>
         <div>
-            <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-1.5 rounded-lg text-sm transition">Filter</button>
+            <button type="submit"
+                    class="bg-emerald-600 hover:bg-gold-500 text-white px-4 py-1.5 rounded-lg text-sm transition">
+                Filter
+            </button>
             @if(request()->anyFilled(['search', 'category', 'status']))
-                <a href="{{ route('documents.index') }}" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-1.5 rounded-lg text-sm ml-2 transition">Clear</a>
+                <a href="{{ route('documents.index') }}"
+                   class="bg-gray-500 hover:bg-gold-500 text-white px-4 py-1.5 rounded-lg text-sm ml-2 transition">
+                    Clear
+                </a>
             @endif
         </div>
 
-        {{-- ✅ Fixed: was @can('upload documents', \App\Models\Document::class) which requires DocumentPolicy --}}
         @if(auth()->user()->hasPermission('documents.upload'))
         <div class="ml-auto">
-            <a href="{{ route('documents.create') }}" class="inline-flex items-center gap-1 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold px-3 py-1.5 rounded-lg transition">
+            <a href="{{ route('documents.create') }}"
+               class="inline-flex items-center gap-1 bg-emerald-600 hover:bg-gold-500 text-white text-sm font-semibold px-3 py-1.5 rounded-lg transition">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
                 </svg>
@@ -55,23 +65,24 @@
     </form>
 </div>
 
-{{-- Stats row --}}
+{{-- Stats row (gold borders) --}}
 <div class="grid grid-cols-3 gap-3 mb-6">
-    <div class="bg-white dark:bg-gray-800 rounded-xl border border-emerald-200 dark:border-emerald-800 p-3 shadow-sm text-center">
+    <div class="bg-white dark:bg-gray-800 rounded-xl border border-gold-200 dark:border-gold-800 p-3 shadow-sm text-center">
         <p class="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{{ $documents->total() }}</p>
         <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Total Documents</p>
     </div>
-    <div class="bg-white dark:bg-gray-800 rounded-xl border border-emerald-200 dark:border-emerald-800 p-3 shadow-sm text-center">
+    <div class="bg-white dark:bg-gray-800 rounded-xl border border-gold-200 dark:border-gold-800 p-3 shadow-sm text-center">
         <p class="text-2xl font-bold text-blue-600 dark:text-blue-400">{{ $publicCount }}</p>
         <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Public</p>
     </div>
-    <div class="bg-white dark:bg-gray-800 rounded-xl border border-emerald-200 dark:border-emerald-800 p-3 shadow-sm text-center">
+    <div class="bg-white dark:bg-gray-800 rounded-xl border border-gold-200 dark:border-gold-800 p-3 shadow-sm text-center">
         <p class="text-2xl font-bold text-gray-600 dark:text-gray-400">{{ $privateCount }}</p>
         <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Private</p>
     </div>
 </div>
 
-<div class="bg-white dark:bg-gray-800 rounded-xl border border-emerald-200 dark:border-emerald-800 overflow-hidden shadow-sm">
+{{-- Documents Table (gold border, emerald header) --}}
+<div class="bg-white dark:bg-gray-800 rounded-xl border border-gold-200 dark:border-gold-800 overflow-hidden shadow-sm">
     <div class="overflow-x-auto">
         <table class="w-full text-sm">
             <thead class="bg-emerald-600 dark:bg-emerald-800 text-white">
@@ -90,7 +101,6 @@
                 <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition">
                     <td class="px-5 py-3 font-medium max-w-xs">
                         <div class="flex items-center gap-2">
-                            {{-- File type icon --}}
                             @php
                                 $ext = strtolower(pathinfo($doc->file_name ?? '', PATHINFO_EXTENSION));
                                 $iconColor = match(true) {
@@ -148,16 +158,13 @@
                     <td class="px-5 py-3 text-gray-500 dark:text-gray-400 text-xs">{{ $doc->created_at->format('M d, Y') }}</td>
                     <td class="px-5 py-3 text-right">
                         <div class="flex items-center justify-end gap-1">
-                            {{-- Preview button (images and PDFs only) --}}
                             @if(in_array($ext, ['pdf','jpg','jpeg','png','gif']))
                             <button onclick="openPreview('{{ Storage::url($doc->file_path) }}', '{{ $doc->title }}', '{{ $ext }}')"
                                     class="p-1.5 text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition" title="Preview">
                                 👁️
                             </button>
                             @endif
-                            {{-- Download --}}
                             <a href="{{ route('documents.download', $doc) }}" class="p-1.5 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition" title="Download">⬇️</a>
-                            {{-- Edit / Delete — uses hasPermission, no policy needed --}}
                             @if(auth()->user()->hasPermission('documents.manage'))
                             <a href="{{ route('documents.edit', $doc) }}" class="p-1.5 text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition" title="Edit">✏️</a>
                             <form method="POST" action="{{ route('documents.destroy', $doc) }}" onsubmit="return confirm('Delete this document?')" class="inline">
@@ -194,20 +201,16 @@
     @endif
 </div>
 
-{{-- ═══════════════════════════════════════════════════
-     Preview Modal — for PDFs and images
-     ═══════════════════════════════════════════════════ --}}
+{{-- Preview Modal (unchanged) --}}
 <div id="preview-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4" style="background:rgba(0,0,0,0.7)">
     <div class="relative bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
-        {{-- Header --}}
         <div class="flex items-center justify-between px-5 py-3 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
             <h3 id="preview-title" class="text-sm font-semibold text-gray-800 dark:text-white truncate max-w-md"></h3>
             <div class="flex items-center gap-2">
-                <a id="preview-download-link" href="#" class="text-xs bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1 rounded-lg transition">⬇️ Download</a>
+                <a id="preview-download-link" href="#" class="text-xs bg-emerald-600 hover:bg-gold-500 text-white px-3 py-1 rounded-lg transition">⬇️ Download</a>
                 <button onclick="closePreview()" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition text-xl leading-none">&times;</button>
             </div>
         </div>
-        {{-- Body --}}
         <div class="flex-1 overflow-auto flex items-center justify-center p-4 min-h-0">
             <iframe id="preview-iframe" src="" class="hidden w-full rounded-lg border border-gray-200 dark:border-gray-700" style="height:70vh"></iframe>
             <img id="preview-img" src="" alt="" class="hidden max-w-full max-h-full rounded-lg object-contain">
@@ -251,12 +254,10 @@ function closePreview() {
     document.body.style.overflow = '';
 }
 
-// Close on backdrop click
 document.getElementById('preview-modal').addEventListener('click', function(e) {
     if (e.target === this) closePreview();
 });
 
-// Close on Escape
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') closePreview();
 });
