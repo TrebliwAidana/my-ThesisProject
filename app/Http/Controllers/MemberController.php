@@ -61,7 +61,8 @@ class MemberController extends Controller
             'CA'       => ['Club Adviser'],
             'OA'       => ['Organization President', 'Organization Vice President'],
             'OO'       => ['Organization Secretary', 'Organization Treasurer', 'Organization Auditor', 'Organization PIO'],
-            'OM'       => ['Regular Member'],
+            'OM'       => ['Organization Member'],
+            'G'        => ['Guest'],
         ];
 
         if ($abbreviation && isset($byAbbrev[$abbreviation])) {
@@ -78,7 +79,7 @@ class MemberController extends Controller
             'Org Member'           => ['Regular Member'],
         ];
 
-        return $byName[$roleName] ?? ['Regular Member'];
+        return $byName[$roleName] ?? ['Guest'];
     }
 
     private function getPositionMapping(): array

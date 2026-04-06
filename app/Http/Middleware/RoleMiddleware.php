@@ -9,6 +9,23 @@ use Symfony\Component\HttpFoundation\Response;
 
 class RoleMiddleware
 {
+    /**
+     * Maps route name prefixes to the permission slug required to access them.
+     * If a user's role is not in the allowed list, we check this map as a
+     * fallback — granting access if they have the corresponding permission.
+     */
+    protected array $routePermissionMap = [
+        'members.'   => 'members.view',
+        'documents.' => 'documents.view',
+        'budgets.'   => 'budgets.view',
+        'reports.'   => 'reports.view',
+        'admin.users.'   => 'admin.users',
+        'admin.roles.'   => 'admin.roles',
+        'admin.permissions.' => 'admin.permissions',
+        'audit.'     => 'admin.audit',
+        'settings.'  => 'admin.users',
+    ];
+
     public function handle(Request $request, Closure $next, ...$allowed): Response
     {
         if (!Auth::check()) {
@@ -21,14 +38,14 @@ class RoleMiddleware
             abort(403, 'User role not assigned. Please contact administrator.');
         }
 
-        // No restrictions – allow access
+        // No restrictions on this route — allow through immediately
         if (empty($allowed)) {
             return $next($request);
         }
 
-        // Determine if the allowed values are role names or level numbers
+        // ── Check 1: Role name / level (existing behaviour, unchanged) ────────
         $allowedLevels = [];
-        $allowedRoles = [];
+        $allowedRoles  = [];
 
         foreach ($allowed as $item) {
             if (is_numeric($item)) {
@@ -38,7 +55,6 @@ class RoleMiddleware
             }
         }
 
-        // Check by role name (if any)
         if (!empty($allowedRoles)) {
             foreach ($allowedRoles as $roleName) {
                 if ($user->hasRole($roleName)) {
@@ -47,15 +63,26 @@ class RoleMiddleware
             }
         }
 
-        // Check by level (if any)
         if (!empty($allowedLevels)) {
-            $userLevel = (int) $user->role->level;
-            // If any allowed level is >= user level? Depends on your logic.
-            // With your current "lower = higher authority", a user with level 1 can do everything.
-            // So allow if user level is <= any allowed level? Or <= max allowed?
-            // Let's use: user level <= max allowed level (higher number = less authority)
-            if ($userLevel <= max($allowedLevels)) {
+            if ((int) $user->role->level <= max($allowedLevels)) {
                 return $next($request);
+            }
+        }
+
+        // ── Check 2: Permission-based fallback ────────────────────────────────
+        // If the user's role is not in the allowed list, check whether they
+        // have a permission that grants access to this route. This means an
+        // Org Member with 'members.view' can access /members even though
+        // 'Org Member' is not in the route's role list.
+        $routeName = $request->route()?->getName() ?? '';
+
+        foreach ($this->routePermissionMap as $prefix => $permissionSlug) {
+            if (str_starts_with($routeName, $prefix)) {
+                if ($user->hasPermission($permissionSlug)) {
+                    return $next($request);
+                }
+                // Matched a prefix but no permission — stop checking
+                break;
             }
         }
 

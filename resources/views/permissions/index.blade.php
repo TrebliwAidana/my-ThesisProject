@@ -4,6 +4,18 @@
 @section('page-title', 'Permission Management')
 
 @section('content')
+
+{{-- Pre-build the full permission map for ALL roles in PHP so Alpine
+     never has to read DOM checkboxes. Each role's granted permission IDs
+     are passed as a JSON object keyed by role ID. --}}
+@php
+    $rolePermMap = [];
+    foreach ($roles as $role) {
+        $rolePermMap[$role->id] = $role->permissions->pluck('id')->toArray();
+    }
+    $allPermIds = $permissions->flatten()->pluck('id')->toArray();
+@endphp
+
 <div
     x-data="{
         selectedRoleId: {{ $selectedRoleId ?? 'null' }},
@@ -11,24 +23,30 @@
         saved: false,
         changed: false,
         search: '',
+
+        // Master map: roleId → Set of granted permission IDs
+        // Built once from PHP data — no DOM reading needed
+        rolePermMap: {{ json_encode($rolePermMap) }},
+
+        // Working copy for the currently selected role
         checkedMap: {},
 
         init() {
-            this.buildCheckedMap();
-            this.$watch('selectedRoleId', () => {
+            this.loadRole(this.selectedRoleId);
+            this.$watch('selectedRoleId', id => {
                 this.changed = false;
                 this.saved   = false;
-                this.buildCheckedMap();
+                this.loadRole(id);
             });
         },
 
-        buildCheckedMap() {
-            this.checkedMap = {};
-            document.querySelectorAll('.perm-checkbox').forEach(cb => {
-                if (cb.dataset.role == this.selectedRoleId) {
-                    this.checkedMap[cb.value] = cb.checked;
-                }
+        loadRole(roleId) {
+            const granted = this.rolePermMap[roleId] ?? [];
+            const map = {};
+            {{ json_encode($allPermIds) }}.forEach(id => {
+                map[id] = granted.includes(id);
             });
+            this.checkedMap = map;
         },
 
         toggle(permId) {
@@ -55,13 +73,19 @@
             return Object.values(this.checkedMap).filter(Boolean).length;
         },
 
+        discard() {
+            this.loadRole(this.selectedRoleId);
+            this.changed = false;
+            this.saved   = false;
+        },
+
         async save() {
             if (!this.selectedRoleId || this.saving) return;
             this.saving = true;
 
             const granted = Object.entries(this.checkedMap)
-                .filter(([,v]) => v)
-                .map(([k]) => k);
+                .filter(([, v]) => v)
+                .map(([k]) => parseInt(k));
 
             const formData = new FormData();
             formData.append('_method', 'PUT');
@@ -76,6 +100,8 @@
                 });
                 const data = await res.json();
                 if (data.success) {
+                    // Update the master map so switching away and back reflects saved state
+                    this.rolePermMap[this.selectedRoleId] = granted;
                     this.saved   = true;
                     this.changed = false;
                     showNotification(data.message, 'success');
@@ -118,22 +144,22 @@
 
 {{-- ── Stats Cards ─────────────────────────────────────────────────────────── --}}
 <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-    <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gold-200 dark:border-gold-800 p-5 shadow-sm hover:shadow-lg transition-all duration-300 text-center">
+    <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gold-200 dark:border-gold-800 p-5 shadow-sm hover:shadow-lg transition-all text-center">
         <p class="text-2xl font-bold text-gray-800 dark:text-white" x-text="totalGranted()">—</p>
         <p class="text-sm font-medium text-gray-600 dark:text-gray-400 mt-1">Granted</p>
         <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">For selected role</p>
     </div>
-    <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gold-200 dark:border-gold-800 p-5 shadow-sm hover:shadow-lg transition-all duration-300 text-center">
+    <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gold-200 dark:border-gold-800 p-5 shadow-sm hover:shadow-lg transition-all text-center">
         <p class="text-2xl font-bold text-gray-800 dark:text-white">{{ $permissions->flatten()->count() }}</p>
         <p class="text-sm font-medium text-gray-600 dark:text-gray-400 mt-1">Total Permissions</p>
         <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Across all modules</p>
     </div>
-    <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gold-200 dark:border-gold-800 p-5 shadow-sm hover:shadow-lg transition-all duration-300 text-center">
+    <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gold-200 dark:border-gold-800 p-5 shadow-sm hover:shadow-lg transition-all text-center">
         <p class="text-2xl font-bold text-gray-800 dark:text-white">{{ $modules->count() }}</p>
         <p class="text-sm font-medium text-gray-600 dark:text-gray-400 mt-1">Modules</p>
         <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Feature groups</p>
     </div>
-    <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gold-200 dark:border-gold-800 p-5 shadow-sm hover:shadow-lg transition-all duration-300 text-center">
+    <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gold-200 dark:border-gold-800 p-5 shadow-sm hover:shadow-lg transition-all text-center">
         <p class="text-2xl font-bold text-gray-800 dark:text-white">{{ $roles->count() }}</p>
         <p class="text-sm font-medium text-gray-600 dark:text-gray-400 mt-1">Roles</p>
         <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">User roles configured</p>
@@ -148,9 +174,9 @@
         <div class="flex flex-wrap gap-2 flex-1">
             @foreach($roles as $role)
             @php
+                $total = $permissions->flatten()->count();
                 $granted = $role->permissions->count();
-                $total   = $permissions->flatten()->count();
-                $pct     = $total > 0 ? round($granted / $total * 100) : 0;
+                $pct = $total > 0 ? round($granted / $total * 100) : 0;
             @endphp
             <button
                 @click="selectedRoleId = {{ $role->id }}"
@@ -206,7 +232,7 @@
     </div>
     <button
         x-show="changed"
-        @click="buildCheckedMap(); changed = false; saved = false;"
+        @click="discard()"
         class="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 px-4 py-2.5 rounded-xl border border-gold-200 dark:border-gold-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition"
     >
         Discard Changes
@@ -264,16 +290,6 @@
             </div>
         </div>
 
-        {{-- Hidden checkboxes for Alpine initial state --}}
-        @foreach($modulePerms as $perm)
-        @php $isGranted = $selectedRole && $selectedRole->permissions->contains('id', $perm->id); @endphp
-        <input type="checkbox"
-               class="perm-checkbox hidden"
-               value="{{ $perm->id }}"
-               data-role="{{ $selectedRoleId }}"
-               {{ $isGranted ? 'checked' : '' }}>
-        @endforeach
-
         {{-- Permissions Grid --}}
         <div class="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
             @foreach($modulePerms as $perm)
@@ -310,7 +326,7 @@
                     'permissions' => 'bg-rose-100 text-rose-700 dark:bg-rose-900/50 dark:text-rose-300',
                     'users'       => 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300',
                 ];
-                $cardChecked = $checkedBg[$perm->action]  ?? $checkedBg['manage'];
+                $cardChecked = $checkedBg[$perm->action]   ?? $checkedBg['manage'];
                 $badge       = $actionBadge[$perm->action] ?? $actionBadge['manage'];
             @endphp
 
@@ -322,7 +338,7 @@
                 class="flex items-start gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all duration-150 select-none group"
                 x-show="search === '' || '{{ strtolower($perm->name) }}'.includes(search.toLowerCase()) || '{{ strtolower($perm->slug) }}'.includes(search.toLowerCase())"
             >
-                {{-- Checkbox --}}
+                {{-- Checkbox indicator --}}
                 <div
                     :class="checkedMap[{{ $perm->id }}]
                         ? 'bg-primary-600 border-primary-600'
@@ -366,7 +382,7 @@
         </div>
         <div class="flex items-center gap-2">
             <button
-                @click="buildCheckedMap(); changed = false;"
+                @click="discard()"
                 class="text-xs px-3 py-1.5 rounded-lg border border-gray-600 hover:bg-gray-800 transition"
             >Discard</button>
             <button
@@ -395,7 +411,8 @@ function showNotification(message, type = 'success') {
     el.className = `pointer-events-auto ${colors[type] ?? colors.success} text-white text-sm font-medium px-4 py-3 rounded-xl shadow-lg mb-2 flex items-center gap-2 transition-all duration-300`;
     el.innerHTML = `
         <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${type === 'success' ? 'M5 13l4 4L19 7' : 'M6 18L18 6M6 6l12 12'}"/>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="${type === 'success' ? 'M5 13l4 4L19 7' : 'M6 18L18 6M6 6l12 12'}"/>
         </svg>
         <span>${message}</span>
     `;

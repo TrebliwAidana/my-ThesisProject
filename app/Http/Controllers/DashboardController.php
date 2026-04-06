@@ -5,7 +5,10 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use App\Models\Document;
 use App\Models\Budget;
+use App\Models\Income;
+use App\Models\Expense;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
@@ -19,10 +22,10 @@ class DashboardController extends Controller
         $user = Auth::user()->load('role');
 
         $user->avatar_url = $user->avatar
-        ? asset('storage/' . $user->avatar)
-        : asset('images/default-avatar.png');
+            ? asset('storage/' . $user->avatar)
+            : asset('images/default-avatar.png');
 
-        // Statistics
+        // Statistics (unfiltered, global counts – you may keep as is)
         $totalMembers = User::count();
         $activeMembers = User::where('is_active', true)->count();
         $officersCount = User::whereHas('role', function ($q) {
@@ -39,48 +42,49 @@ class DashboardController extends Controller
             ->whereYear('created_at', now()->year)
             ->count();
 
-        // Recent documents (only if user has permission)
+        // Recent documents (organisation scoped)
         $recentDocuments = null;
         if ($user->hasPermission('documents.view')) {
-            $recentDocuments = Document::with('uploader')
-                ->latest('created_at')
-                ->take(5)
-                ->get();
+            $docQuery = Document::with('uploader')->latest('created_at');
+            if (!in_array($user->role->level, [1,2])) {
+                $docQuery->where('organization_id', $user->organization_id);
+            }
+            $recentDocuments = $docQuery->take(5)->get();
         }
 
-        // Recent budgets (only if user has permission)
+        // Recent budgets & total approved (organisation scoped)
         $recentBudgets = null;
         $totalBudget = null;
         if ($user->hasPermission('budgets.view')) {
-            $recentBudgets = Budget::with('requester')
-                ->latest()
-                ->take(5)
-                ->get();
-            $totalBudget = Budget::where('status', 'approved')->sum('amount');
+            $budgetQuery = Budget::with('requester');
+            if (!in_array($user->role->level, [1,2])) {
+                $budgetQuery->where('organization_id', $user->organization_id);
+            }
+            $recentBudgets = (clone $budgetQuery)->latest()->take(5)->get();
+            $totalBudget = (clone $budgetQuery)->where('status', 'approved')->sum('amount');
         }
 
-        // Pending approvals (only for users who can approve)
+        // Pending approvals (organisation scoped)
         $pendingApprovals = [];
         if ($user->hasPermission('budgets.approve')) {
-            $pendingBudgets = Budget::where('status', 'pending')
-                ->with('requester')
-                ->take(3)
-                ->get()
-                ->map(function ($b) {
-                    return [
-                        'title' => $b->description ?? $b->title ?? 'Budget Request',
-                        'type' => 'Budget Request',
-                        'submitter' => $b->requester->full_name ?? 'Unknown',
-                        'link' => route('budgets.review', $b->id)
-                    ];
-                });
+            $pendingQuery = Budget::where('status', 'pending')->with('requester');
+            if (!in_array($user->role->level, [1,2])) {
+                $pendingQuery->where('organization_id', $user->organization_id);
+            }
+            $pendingBudgets = $pendingQuery->take(3)->get()->map(function ($b) {
+                return [
+                    'title' => $b->description ?? $b->title ?? 'Budget Request',
+                    'type' => 'Budget Request',
+                    'submitter' => $b->requester->full_name ?? 'Unknown',
+                    'link' => route('budgets.review', $b->id)
+                ];
+            });
             $pendingApprovals = $pendingBudgets->toArray();
         }
 
-        // Pending tasks count (e.g., pending budgets)
-        $pendingTasksCount = Budget::where('status', 'pending')->count();
+        $pendingTasksCount = Budget::where('status', 'pending')->count(); // global, but you can scope if needed
 
-        // Role description for the welcome header
+        // Role description (unchanged)
         $roleDescriptions = [
             'System Administrator' => 'Full system control – manage users, roles, budgets, documents, and settings.',
             'Supreme Admin' => 'Oversee all organization activities, approve budgets, and manage key members.',
@@ -92,7 +96,7 @@ class DashboardController extends Controller
         ];
         $roleDescription = $roleDescriptions[$user->role->name] ?? 'Manage your account and participate in organization activities.';
 
-        // User badges (optional)
+        // User badges (unchanged)
         $userBadges = [];
         if ($user->role->name === 'System Administrator') {
             $userBadges[] = ['color' => 'purple', 'text' => 'System Admin'];
@@ -107,6 +111,40 @@ class DashboardController extends Controller
             $userBadges[] = ['color' => 'emerald', 'text' => 'Org Leader'];
         }
 
+        // ── CHART DATA (organisation scoped) ──────────────────────────────
+        $currentYear = now()->year;
+        $months = collect(range(1,12))->map(fn($m) => date('M', mktime(0,0,0,$m,1)))->toArray();
+
+        // Base query for budgets (organisation scoped for non‑level‑1/2)
+        $budgetQuery = Budget::query();
+        if (!in_array($user->role->level, [1,2])) {
+            $budgetQuery->where('organization_id', $user->organization_id);
+        }
+
+        // Monthly totals (all budgets)
+        $monthlyTotals = (clone $budgetQuery)
+            ->selectRaw('MONTH(created_at) as month, SUM(amount) as total')
+            ->whereYear('created_at', $currentYear)
+            ->groupBy('month')
+            ->pluck('total', 'month')
+            ->toArray();
+
+        // Monthly approved amounts
+        $monthlyApproved = (clone $budgetQuery)
+            ->where('status', 'approved')
+            ->selectRaw('MONTH(created_at) as month, SUM(amount) as approved_total')
+            ->whereYear('created_at', $currentYear)
+            ->groupBy('month')
+            ->pluck('approved_total', 'month')
+            ->toArray();
+
+        $chartTotals = [];
+        $chartApproved = [];
+        for ($i=1; $i<=12; $i++) {
+            $chartTotals[] = $monthlyTotals[$i] ?? 0;
+            $chartApproved[] = $monthlyApproved[$i] ?? 0;
+        }
+
         return view('dashboard.index', compact(
             'user',
             'totalMembers',
@@ -119,7 +157,10 @@ class DashboardController extends Controller
             'pendingApprovals',
             'pendingTasksCount',
             'roleDescription',
-            'userBadges'
+            'userBadges',
+            'months',
+            'chartTotals',
+            'chartApproved'
         ));
     }
 }

@@ -17,7 +17,7 @@
     <div class="relative overflow-hidden rounded-2xl bg-gradient-to-r from-primary-600 to-primary-800 dark:from-primary-800 dark:to-primary-900 p-6 md:p-8">
         <div class="relative z-10">
             <h1 class="text-2xl md:text-3xl font-bold text-white tracking-tight">
-                {{ $greeting }}, {{ $user->full_name ?: $user->email }}!
+                {{ $greeting }}, {{ $user->first_name ?: $user->email }}!
             </h1>
             <div class="flex flex-wrap items-center gap-3 mt-3">
                 <span class="inline-flex items-center gap-1.5 px-3 py-1 bg-white/20 rounded-full text-sm text-white">
@@ -66,8 +66,9 @@
         <div class="absolute top-0 right-0 -mt-8 -mr-8 w-64 h-64 bg-white/5 rounded-full blur-3xl"></div>
     </div>
 
-    {{-- Stats Grid (responsive font sizes) --}}
+    {{-- Stats Grid --}}
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        <!-- same stats cards as in your original -->
         <div class="group bg-white dark:bg-gray-800 rounded-2xl border border-gold-200 dark:border-gold-800 p-6 hover:shadow-lg transition-all duration-300 hover:scale-[1.02]">
             <div class="flex items-center justify-between mb-4">
                 <div class="w-12 h-12 bg-primary-50 dark:bg-primary-900/50 rounded-xl flex items-center justify-center">
@@ -121,7 +122,7 @@
         </div>
     </div>
 
-    {{-- Quick Actions – all buttons now use gold hover effect --}}
+    {{-- Quick Actions --}}
     <div class="flex flex-wrap gap-3">
         @if($user->hasPermission('members.create'))
         <a href="{{ route('members.create') }}" class="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-gold-500 text-white text-sm font-medium rounded-xl transition shadow-sm">
@@ -150,9 +151,10 @@
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {{-- Profile Card (sticky only on lg screens) --}}
+        {{-- Profile Card (unchanged) --}}
         <div class="lg:col-span-1">
             <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gold-200 dark:border-gold-800 overflow-hidden lg:sticky lg:top-6">
+                <!-- profile card content same as your original -->
                 <div class="bg-gradient-to-r from-primary-600 to-primary-700 px-6 py-5">
                     <div class="flex items-center gap-3">
                         <div class="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
@@ -208,12 +210,27 @@
             </div>
         </div>
 
-        {{-- Right column: Recent Activity, Budgets, Pending Approvals --}}
+        {{-- Right column --}}
         <div class="lg:col-span-2 space-y-6">
+
+            {{-- Budget Statistics Chart (new) --}}
+            <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gold-200 dark:border-gold-800 p-6">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="w-8 h-8 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg flex items-center justify-center">
+                        <svg class="w-4 h-4 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                        </svg>
+                    </div>
+                    <h3 class="font-semibold text-gray-900 dark:text-white">Monthly Budget Trends (₱)</h3>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 ml-auto">{{ now()->year }}</p>
+                </div>
+                <canvas id="budgetChart" height="300"></canvas>
+            </div>
 
             {{-- Recent Documents --}}
             @if($user->hasPermission('documents.view') && isset($recentDocuments) && count($recentDocuments) > 0)
             <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gold-200 dark:border-gold-800 overflow-hidden">
+                <!-- same as your original -->
                 <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gold-800">
                     <div class="flex items-center gap-3"><div class="w-8 h-8 bg-amber-100 dark:bg-amber-900/30 rounded-lg flex items-center justify-center"><svg class="w-4 h-4 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg></div><h3 class="font-semibold text-gray-900 dark:text-white">Recent Documents</h3></div>
                     <a href="{{ route('documents.index') }}" class="text-sm text-primary-600 hover:text-primary-700 dark:text-primary-400 font-medium flex items-center gap-1">View all <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg></a>
@@ -237,6 +254,7 @@
             {{-- Recent Budgets --}}
             @if($user->hasPermission('budgets.view') && isset($recentBudgets) && count($recentBudgets) > 0)
             <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gold-200 dark:border-gold-800 overflow-hidden">
+                <!-- same as your original -->
                 <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gold-800">
                     <div class="flex items-center gap-3"><div class="w-8 h-8 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg flex items-center justify-center"><svg class="w-4 h-4 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div><h3 class="font-semibold text-gray-900 dark:text-white">Recent Budgets</h3></div>
                     <a href="{{ route('budgets.index') }}" class="text-sm text-primary-600 hover:text-primary-700 dark:text-primary-400 font-medium flex items-center gap-1">View all <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg></a>
@@ -263,6 +281,7 @@
             {{-- Pending Approvals --}}
             @if(($user->hasPermission('budgets.approve')) && isset($pendingApprovals) && count($pendingApprovals) > 0)
             <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gold-200 dark:border-gold-800 overflow-hidden">
+                <!-- same as your original -->
                 <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gold-800">
                     <div class="flex items-center gap-3"><div class="w-8 h-8 bg-orange-100 dark:bg-orange-900/30 rounded-lg flex items-center justify-center"><svg class="w-4 h-4 text-orange-600 dark:text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div><h3 class="font-semibold text-gray-900 dark:text-white">Pending Approvals</h3></div>
                     <a href="{{ route('budgets.index') }}" class="text-sm text-primary-600 hover:text-primary-700 dark:text-primary-400 font-medium flex items-center gap-1">Review all <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg></a>
@@ -290,4 +309,61 @@
         </div>
     </div>
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const ctx = document.getElementById('budgetChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: @json($months),
+                datasets: [
+                    {
+                        label: 'Total Requested',
+                        data: @json($chartTotals),
+                        backgroundColor: 'rgba(59, 130, 246, 0.6)',
+                        borderColor: 'rgb(59, 130, 246)',
+                        borderWidth: 1,
+                        borderRadius: 4,
+                    },
+                    {
+                        label: 'Approved',
+                        data: @json($chartApproved),
+                        backgroundColor: 'rgba(16, 185, 129, 0.6)',
+                        borderColor: 'rgb(16, 185, 129)',
+                        borderWidth: 1,
+                        borderRadius: 4,
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let value = context.raw;
+                                return context.dataset.label + ': ₱' + value.toLocaleString();
+                            }
+                        }
+                    },
+                    legend: {
+                        position: 'top',
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return '₱' + value.toLocaleString();
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    });
+</script>
 @endsection

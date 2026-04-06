@@ -3,6 +3,7 @@
 @section('title', 'Edit Document')
 
 @section('content')
+
 <div class="max-w-3xl mx-auto">
     <div class="bg-white dark:bg-gray-800 rounded-xl border border-emerald-200 dark:border-emerald-800 p-6">
         <h2 class="text-xl font-semibold mb-4">Edit Document Metadata</h2>

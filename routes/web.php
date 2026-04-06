@@ -10,13 +10,14 @@ use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PermissionController;
+use App\Http\Controllers\OrganizationController;
 use App\Http\Controllers\EmailVerificationController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Http\Request;
 
-// Root redirect
+// ── Root redirect ─────────────────────────────────────────────────────────────
 Route::get('/', fn() => redirect()->route('login'));
 
 // ── Guest ─────────────────────────────────────────────────────────────────────
@@ -63,10 +64,10 @@ Route::middleware(['auth.custom', 'verified'])->group(function () {
     Route::middleware('role:System Administrator,Supreme Admin,Supreme Officer,Club Adviser,Org Admin,Org Officer')
         ->group(function () {
             Route::resource('documents', DocumentController::class);
-            Route::get('documents/{document}/download', [DocumentController::class, 'download'])->name('documents.download');
-            Route::get('documents-trash',               [DocumentController::class, 'trash'])->name('documents.trash');
-            Route::patch('documents-trash/{id}/restore',[DocumentController::class, 'restore'])->name('documents.restore');
-            Route::delete('documents-trash/{id}/force', [DocumentController::class, 'forceDelete'])->name('documents.force-delete');
+            Route::get('documents/{document}/download',  [DocumentController::class, 'download'])->name('documents.download');
+            Route::get('documents-trash',                [DocumentController::class, 'trash'])->name('documents.trash');
+            Route::patch('documents-trash/{id}/restore', [DocumentController::class, 'restore'])->name('documents.restore');
+            Route::delete('documents-trash/{id}/force',  [DocumentController::class, 'forceDelete'])->name('documents.force-delete');
         });
 
     // ── Budgets ───────────────────────────────────────────────────────────────
@@ -93,7 +94,7 @@ Route::middleware(['auth.custom', 'verified'])->group(function () {
     // ── Administration ────────────────────────────────────────────────────────
     Route::prefix('admin')->name('admin.')->group(function () {
 
-        // Users — accessible by SA, Supreme Admin, Club Adviser
+        // ── Users ─────────────────────────────────────────────────────────────
         Route::middleware('role:System Administrator,Supreme Admin,Club Adviser')
             ->prefix('users')->name('users.')
             ->group(function () {
@@ -110,23 +111,38 @@ Route::middleware(['auth.custom', 'verified'])->group(function () {
                 Route::delete('/{id}/force-delete',    [AdminController::class, 'forceDeleteUser'])->name('force-delete');
             });
 
-        // Roles — System Administrator only
+        // ── Organizations ─────────────────────────────────────────────────────
+        // {organization} matches the type-hinted parameter in OrganizationController
+        // for Eloquent route model binding to work correctly.
+        Route::middleware('role:System Administrator,Supreme Admin,Club Adviser,Org Admin')
+            ->prefix('organizations')->name('organizations.')
+            ->group(function () {
+                Route::get('/',                       [OrganizationController::class, 'index'])->name('index');
+                Route::get('/create',                 [OrganizationController::class, 'create'])->name('create');
+                Route::post('/',                      [OrganizationController::class, 'store'])->name('store');
+                Route::get('/{organization}',         [OrganizationController::class, 'show'])->name('show');
+                Route::get('/{organization}/edit',    [OrganizationController::class, 'edit'])->name('edit');
+                Route::put('/{organization}',         [OrganizationController::class, 'update'])->name('update');
+                Route::delete('/{organization}',      [OrganizationController::class, 'destroy'])->name('destroy');
+                Route::post('/{organization}/toggle', [OrganizationController::class, 'toggleActive'])->name('toggle');
+            });
+
+        // ── Roles ─────────────────────────────────────────────────────────────
         Route::middleware('role:System Administrator')
             ->prefix('roles')->name('roles.')
             ->group(function () {
-                Route::get('/',           [AdminController::class, 'roles'])->name('index');
-                Route::get('/create',     [AdminController::class, 'createRole'])->name('create');
-                Route::post('/',          [AdminController::class, 'storeRole'])->name('store');
-                Route::get('/{id}/edit',  [AdminController::class, 'editRole'])->name('edit');
-                Route::put('/{id}',       [AdminController::class, 'updateRole'])->name('update');
-                Route::delete('/{id}',    [AdminController::class, 'destroyRole'])->name('destroy');
+                Route::get('/',          [AdminController::class, 'roles'])->name('index');
+                Route::get('/create',    [AdminController::class, 'createRole'])->name('create');
+                Route::post('/',         [AdminController::class, 'storeRole'])->name('store');
+                Route::get('/{id}/edit', [AdminController::class, 'editRole'])->name('edit');
+                Route::put('/{id}',      [AdminController::class, 'updateRole'])->name('update');
+                Route::delete('/{id}',   [AdminController::class, 'destroyRole'])->name('destroy');
             });
 
-        // Permissions — System Administrator only
-        // FIX: Added Route::post alongside Route::put so that the Alpine
-        // fetch() call (which sends POST + _method=PUT FormData spoofing)
-        // is actually matched by Laravel's router. Without the POST route,
-        // the spoofed PUT never reaches the controller and returns 405.
+        // ── Permissions ───────────────────────────────────────────────────────
+        // POST added alongside PUT so Alpine's fetch() with _method=PUT spoofing
+        // is matched by the router (browser fetch does not follow method override
+        // unless the POST route exists).
         Route::middleware('role:System Administrator')
             ->prefix('permissions')->name('permissions.')
             ->group(function () {
@@ -134,15 +150,16 @@ Route::middleware(['auth.custom', 'verified'])->group(function () {
                 Route::put('/{role}',  [PermissionController::class, 'update'])->name('update');
                 Route::post('/{role}', [PermissionController::class, 'update']); // method-spoofing support
             });
+
+        // ── Settings theme (POST under admin prefix) ──────────────────────────
+        Route::post('/settings/theme', [SettingsController::class, 'updateTheme'])
+            ->name('settings.theme.update')
+            ->middleware('role:System Administrator,Supreme Admin,Club Adviser');
     });
 
-    // ── Settings ──────────────────────────────────────────────────────────────
+    // ── Settings (GET — outside admin prefix to keep URL as /settings) ────────
     Route::get('/settings', [SettingsController::class, 'index'])
         ->name('settings.index')
-        ->middleware('role:System Administrator,Supreme Admin,Club Adviser');
-
-    Route::post('/admin/settings/theme', [SettingsController::class, 'updateTheme'])
-        ->name('settings.theme.update')
         ->middleware('role:System Administrator,Supreme Admin,Club Adviser');
 
     // ── Audit Logs ────────────────────────────────────────────────────────────
