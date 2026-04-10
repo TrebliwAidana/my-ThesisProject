@@ -438,13 +438,14 @@ class AdminController extends Controller
         // return redirect()->route('admin.users.index')
         //     ->with('success', "Password for '{$user->full_name}' reset. An email has been sent.");
         try {
-                $user->notify(new PasswordResetNotification($newPassword));
-            } catch (\Exception $e) {
-                \Log::error('Password reset email failed: ' . $e->getMessage());
-            }
+        $user->sendEmailVerificationNotification();
+        $user->notify(new NewUserWelcomeNotification($password));
+        } catch (\Exception $e) {
+            \Log::error('Email failed: ' . $e->getMessage());
+        }
 
-return redirect()->route('admin.users.index')
-    ->with('success', "Password for '{$user->full_name}' has been reset.");
+        return redirect()->route('admin.users.index')
+            ->with('success', "User '{$user->full_name}' created successfully.");
 
     }
 
