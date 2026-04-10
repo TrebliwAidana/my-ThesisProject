@@ -433,10 +433,19 @@ class AdminController extends Controller
         $user->password = Hash::make($newPassword);
         $user->save();
 
-        $user->notify(new PasswordResetNotification($newPassword));
+        // $user->notify(new PasswordResetNotification($newPassword));
 
-        return redirect()->route('admin.users.index')
-            ->with('success', "Password for '{$user->full_name}' reset. An email has been sent.");
+        // return redirect()->route('admin.users.index')
+        //     ->with('success', "Password for '{$user->full_name}' reset. An email has been sent.");
+        try {
+                $user->notify(new PasswordResetNotification($newPassword));
+            } catch (\Exception $e) {
+                \Log::error('Password reset email failed: ' . $e->getMessage());
+            }
+
+return redirect()->route('admin.users.index')
+    ->with('success', "Password for '{$user->full_name}' has been reset.");
+
     }
 
     public function sendVerificationEmail(int $id)
