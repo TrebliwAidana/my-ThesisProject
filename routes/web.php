@@ -37,7 +37,7 @@ Route::middleware('auth.custom')->group(function () {
 });
 
 // ── Auth + Verified ───────────────────────────────────────────────────────────
-Route::middleware('auth.custom')->group(function () {
+Route::middleware(['auth.custom', 'verified'])->group(function () {
 
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
