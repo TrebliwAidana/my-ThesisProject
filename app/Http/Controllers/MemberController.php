@@ -314,6 +314,7 @@ class MemberController extends Controller
                 'birthday'        => $validated['birthday'] ?? null,
                 'is_active'       => $validated['is_active'] ?? true,
                 'organization_id' => $currentUser->organization_id ?? null,
+                'email_verified_at' => now(),
             ]);
 
             Member::create([
@@ -325,7 +326,7 @@ class MemberController extends Controller
 
             DB::commit();
 
-            $user->sendEmailVerificationNotification();
+           // $user->sendEmailVerificationNotification();
             $user->notify(new \App\Notifications\NewUserWelcomeNotification($password));
 
             return redirect()->route('members.index')

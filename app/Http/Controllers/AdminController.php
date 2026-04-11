@@ -274,6 +274,7 @@ class AdminController extends Controller
 
         $password = $validated['password'] ?? Str::random(10);
 
+        // === MODIFIED SECTION START ===
         $user = User::create([
             'first_name'  => $validated['first_name'],
             'middle_name' => $validated['middle_name'] ?? null,
@@ -289,10 +290,13 @@ class AdminController extends Controller
             'phone'       => $validated['phone'] ?? null,
             'birthday'    => $validated['birthday'] ?? null,
             'is_active'   => $validated['is_active'] ?? true,
+            'email_verified_at' => now(), // Auto-verify admin-created users
         ]);
 
-        $user->sendEmailVerificationNotification();
+        // Removed: $user->sendEmailVerificationNotification();
+        // Only send the welcome email
         $user->notify(new NewUserWelcomeNotification($password));
+        // === MODIFIED SECTION END ===
 
         return redirect()->route('admin.users.index')
             ->with('success', "User '{$user->full_name}' created successfully. A welcome email has been sent.");
@@ -433,20 +437,10 @@ class AdminController extends Controller
         $user->password = Hash::make($newPassword);
         $user->save();
 
-        // $user->notify(new PasswordResetNotification($newPassword));
-
-        // return redirect()->route('admin.users.index')
-        //     ->with('success', "Password for '{$user->full_name}' reset. An email has been sent.");
-        try {
-        $user->sendEmailVerificationNotification();
-        $user->notify(new NewUserWelcomeNotification($password));
-        } catch (\Exception $e) {
-            \Log::error('Email failed: ' . $e->getMessage());
-        }
+        $user->notify(new PasswordResetNotification($newPassword));
 
         return redirect()->route('admin.users.index')
-            ->with('success', "User '{$user->full_name}' created successfully.");
-
+            ->with('success', "Password for '{$user->full_name}' reset. An email has been sent.");
     }
 
     public function sendVerificationEmail(int $id)
