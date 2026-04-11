@@ -8,8 +8,12 @@
     "require": {
         "php": "^8.3",
         "doctrine/dbal": "^4.4",
+        "guzzlehttp/guzzle": "^7.10",
         "laravel/framework": "^13.0",
-        "laravel/tinker": "^3.0"
+        "laravel/tinker": "^3.0",
+        "resend/resend-php": "^1.2",
+        "symfony/http-client": "^7.4",
+        "symfony/mailgun-mailer": "^7.4"
     },
     "require-dev": {
         "barryvdh/laravel-ide-helper": "^3.7",
