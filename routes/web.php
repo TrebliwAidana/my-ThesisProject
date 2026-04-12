@@ -93,6 +93,10 @@ Route::middleware(['auth.custom', 'verified'])->group(function () {
             Route::get('/{budget}/copy',      [BudgetController::class, 'copy'])->name('copy');
             Route::post('/{budget}/disburse', [BudgetController::class, 'disburse'])->name('disburse');
         });
+    // ── My Organization (dashboard for user's own organization) ─────────────────
+       Route::get('/my-organization', [OrganizationController::class, 'myOrganization'])
+        ->name('my.organization')
+        ->middleware('auth.custom');
 
     // ── Administration ────────────────────────────────────────────────────────
     Route::prefix('admin')->name('admin.')->group(function () {
@@ -143,16 +147,15 @@ Route::middleware(['auth.custom', 'verified'])->group(function () {
             });
 
         // ── Permissions ───────────────────────────────────────────────────────
-        // POST added alongside PUT so Alpine's fetch() with _method=PUT spoofing
-        // is matched by the router (browser fetch does not follow method override
-        // unless the POST route exists).
-        Route::middleware('role:System Administrator')
-            ->prefix('permissions')->name('permissions.')
-            ->group(function () {
-                Route::get('/',        [PermissionController::class, 'index'])->name('index');
-                Route::put('/{role}',  [PermissionController::class, 'update'])->name('update');
-                Route::post('/{role}', [PermissionController::class, 'update']); // method-spoofing support
-            });
+
+        Route::middleware('role:System Administrator,Supreme Admin,Club Adviser')
+            ->prefix('permissions')
+            ->name('permissions.')
+        ->group(function () {
+            Route::get('/',       [PermissionController::class, 'index'])->name('index');
+            Route::put('/{role}', [PermissionController::class, 'update'])->name('update');
+        });
+
 
         // ── Settings theme (POST under admin prefix) ──────────────────────────
         Route::post('/settings/theme', [SettingsController::class, 'updateTheme'])
@@ -220,3 +223,10 @@ Route::post('/password/reset', function (Request $request) {
         ? redirect()->route('login')->with('status', __($status))
         : back()->withErrors(['email' => [__($status)]]);
 })->name('password.update');
+
+Route::middleware(['auth.custom', 'can:organization.manage'])
+    ->prefix('admin/organizations')
+    ->name('admin.organizations.')
+    ->group(function () {
+        // your routes
+    });

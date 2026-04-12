@@ -144,14 +144,12 @@ class User extends Authenticatable implements MustVerifyEmail
 
     public function hasPermission(string $moduleOrSlug, string $action = ''): bool
     {
-        // Build the slug from whichever form was passed
         $slug = $action
             ? "{$moduleOrSlug}.{$action}"
             : $moduleOrSlug;
 
         if (!$this->role_id) return false;
 
-        // Load role if needed
         if (!$this->relationLoaded('role')) {
             $this->load('role');
         }
@@ -163,21 +161,28 @@ class User extends Authenticatable implements MustVerifyEmail
             return true;
         }
 
-        // Cache a plain array of permission slugs for this user.
-        // Storing a plain array (not an Eloquent Collection) prevents
-        // double-serialization issues with the database/file cache driver,
-        // which caused "Call to a member function contains() on string".
         $cacheKey = "user_perms_{$this->id}";
 
-        $permissions = cache()->remember($cacheKey, now()->addMinutes(5), function () {
+        $permissions = cache()->remember($cacheKey, now()->addMinutes(1), function () {
             $perms = $this->role?->load('permissions')->permissions ?? collect();
-            return $perms->pluck('slug')->toArray(); // plain array — safe to cache
+            return $perms->pluck('slug')->toArray();
         });
 
-        // Use in_array() since $permissions is always a plain array
-        return in_array($slug, $permissions);
-    }
+        // 1. Direct match — e.g. user has members.view explicitly granted
+        if (in_array($slug, $permissions)) return true;
 
+        // 2. Manage fallback (Option C) — if the role has members.manage,
+        //    it automatically passes any members.* check.
+        //    This means checking ONE box in the matrix grants full module access.
+        //    Individual permissions still work independently for partial access.
+        $parts = explode('.', $slug);
+        if (count($parts) === 2) {
+            $manageSlug = $parts[0] . '.manage';
+            if (in_array($manageSlug, $permissions)) return true;
+        }
+
+        return false;
+    }
     /**
      * Readable alias: $user->canDo('budgets', 'approve')
      */
@@ -412,4 +417,16 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         return $this->hasMany(PositionChangeLog::class, 'member_id');
     }
-}
+        public function canAccessModule(string $module): bool
+    {
+        // Super admin or system admin can access everything
+        if ($this->hasRole('System Administrator') || $this->hasRole('Supreme Admin')) {
+            return true;
+        }
+
+        // Check if the user has any permission belonging to this module
+        return $this->permissions()
+            ->whereHas('module', fn($q) => $q->where('name', $module))
+            ->exists();
+    }
+    }

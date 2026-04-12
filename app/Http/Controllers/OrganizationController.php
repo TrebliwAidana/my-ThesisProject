@@ -223,4 +223,40 @@ class OrganizationController extends Controller
             abort(403, 'Only System Administrators can perform this action.');
         }
     }
+        public function myOrganization()
+    {
+        $user = Auth::user();
+
+        // Guard: user must belong to an organization
+        if (! $user->organization_id) {
+            return redirect()->route('dashboard')
+                ->with('info', 'ℹ️ You are not assigned to any organization yet.');
+        }
+
+        $organization = Organization::with(['adviser', 'users.role'])
+            ->withCount(['users', 'documents', 'budgets'])
+            ->findOrFail($user->organization_id);
+
+        $membersByRole = $organization->users->groupBy(fn($u) => $u->role->name ?? 'Unknown');
+
+        $recentDocs = \App\Models\Document::where('organization_id', $organization->id)
+            ->latest()->take(5)->get();
+
+        $recentBudgets = \App\Models\Budget::where('organization_id', $organization->id)
+            ->latest()->take(5)->get();
+
+        $documentCount = \App\Models\Document::where('organization_id', $organization->id)->count();
+
+        $budgetSummary = [
+            'total'    => \App\Models\Budget::where('organization_id', $organization->id)->count(),
+            'approved' => \App\Models\Budget::where('organization_id', $organization->id)->where('status', 'approved')->sum('amount'),
+            'pending'  => \App\Models\Budget::where('organization_id', $organization->id)->where('status', 'pending')->count(),
+        ];
+
+        // Reuses the same organizations.show blade
+        return view('organizations.show', compact(
+            'organization', 'membersByRole', 'recentDocs',
+            'recentBudgets', 'budgetSummary', 'documentCount'
+        ));
+    }
 }

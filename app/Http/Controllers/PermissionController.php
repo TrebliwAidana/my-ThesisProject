@@ -5,27 +5,68 @@ namespace App\Http\Controllers;
 use App\Models\Permission;
 use App\Models\Role;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Collection;
 
 class PermissionController extends Controller
 {
     public function __construct()
     {
-        // FIX: Removed duplicate auth.custom + manual level-1 check that was
-        // inside every method. The route is already gated with:
-        //   middleware('role:System Administrator')
-        // so auth + role enforcement happens before the controller is reached.
         $this->middleware('auth.custom');
     }
 
     public function index(Request $request)
     {
-        $roles       = Role::with('permissions')->orderBy('level')->get();
-        $permissions = Permission::all()->groupBy('module');
-        $modules     = $permissions->keys();
+        $roles = Role::with('permissions')->orderBy('level')->get();
 
-        $selectedRoleId = $request->get('role_id', $roles->first()?->id);
-        $selectedRole   = $roles->find($selectedRoleId);
+        // FIX: Cast to int and use firstWhere instead of find() —
+        // Laravel 13 Collection::find() throws BadMethodCallException
+        // when passed a string from $request->input().
+        $selectedRoleId = (int) $request->input('role_id', $roles->first()?->id);
+        $selectedRole   = $roles->firstWhere('id', $selectedRoleId);
+
+        // Define logical display order — core features first, system last.
+        $moduleOrder = [
+            'members',
+            'documents',
+            'budgets',
+            'reports',
+            'organization',
+            'users',
+            'roles',
+            'permissions',
+            'admin',
+        ];
+
+        // FIX: Avoid chaining merge() between a plain Collection and an
+        // Eloquent Collection — Laravel 13 is strict about collection types
+        // and throws BadMethodCallException on the merge.
+        // Instead, build a plain array sorted by $moduleOrder, then wrap once.
+        $allPerms = Permission::all();
+        $grouped  = $allPerms->groupBy('module')->toArray(); // plain array keyed by module
+
+        // This is now just plain PHP array manipulation — no Collection conflicts.
+        $sorted = [];
+
+        // 1. Add modules in the defined order first
+        foreach ($moduleOrder as $module) {
+            if (isset($grouped[$module])) {
+                $sorted[$module] = $grouped[$module];
+                unset($grouped[$module]);
+            }
+        }
+
+        // 2. Append any remaining modules alphabetically
+        ksort($grouped);
+        foreach ($grouped as $module => $perms) {
+            $sorted[$module] = $perms;
+        }
+
+        // 3. Re-wrap as a Collection of Collections so the view works as before
+        $permissions = collect($sorted)->map(fn($perms) => collect($perms)->map(
+            fn($perm) => (object) $perm
+        ));
+
+        $modules = $permissions->keys();
 
         return view('permissions.index', compact(
             'roles', 'permissions', 'modules', 'selectedRole', 'selectedRoleId'
@@ -43,8 +84,6 @@ class PermissionController extends Controller
 
         $role->permissions()->sync($grantedIds);
 
-        // Bust cached permission sets for every user with this role.
-        // Role::users() is hasMany so each() works correctly.
         $role->users()->each(fn($u) => cache()->forget("user_perms_{$u->id}"));
 
         if ($request->expectsJson() || $request->wantsJson()) {

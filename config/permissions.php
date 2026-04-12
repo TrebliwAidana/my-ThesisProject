@@ -69,4 +69,13 @@ return [
             ],
         ],
     ],
+    'visibility' => [
+        'System Administrator' => ['*'],
+        'Supreme Admin'        => ['*'],
+        'Club Adviser'         => ['view', 'create', 'edit'],
+        'Org Admin'            => ['view', 'create', 'edit', 'delete', 'approve'],
+        'Org Officer'          => ['view', 'create', 'edit'],
+        'Org Member'           => ['view'],
+    ],
+    
 ];
