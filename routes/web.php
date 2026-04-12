@@ -16,6 +16,9 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+
+
 
 // ── Root redirect ─────────────────────────────────────────────────────────────
 Route::get('/', fn() => redirect()->route('login'));
