@@ -28,14 +28,20 @@ class Member extends Model
     ];
 
     public const VALID_POSITIONS = [
-        1 => [],
-        2 => ['SSLG President', 'SSLG Adviser', 'Student Affairs Head'],
-        3 => ['SSLG Secretary', 'SSLG Treasurer', 'SSLG PIO'],
-        4 => ['Organization President', 'Organization Vice President'],
-        5 => ['Organization Secretary', 'Organization Treasurer', 'Organization Auditor', 'Organization PIO'],
-        6 => ['Club Adviser'],
-        7 => ['Regular Member'],
-        8 => ['Guest'],
+        // 1 => [],
+        // 2 => ['SSLG President', 'SSLG Adviser', 'Student Affairs Head'],
+        // 3 => ['SSLG Secretary', 'SSLG Treasurer', 'SSLG PIO'],
+        // 4 => ['Organization President', 'Organization Vice President'],
+        // 5 => ['Organization Secretary', 'Organization Treasurer', 'Organization Auditor', 'Organization PIO'],
+        // 6 => ['Club Adviser'],
+        // 7 => ['Regular Member'],
+        // 8 => ['Guest'],
+        1=> ['Adviser'],
+        2=>['Treasurer'],
+        3=>['Audito'],
+        4=>['Member'],
+        5=>['Guest'],
+
     ];
 
     protected static function booted(): void
