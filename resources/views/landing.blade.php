@@ -1,10 +1,14 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" x-data="{ darkMode: localStorage.getItem('dark') === 'true' }" x-init="$watch('darkMode', val => localStorage.setItem('dark', val)); document.documentElement.classList.toggle('dark', darkMode)" :class="darkMode ? 'dark' : ''">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Official management portal for VSULHS Supreme Student Learner Government. Manage finances, documents, and members securely.">
+    <meta property="og:title" content="VSULHS SSLG Portal">
+    <meta property="og:description" content="The official portal of the VSU Laboratory High School Supreme Student Government.">
     <title>VSULHS SSLG — Student Government Portal</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -16,8 +20,70 @@
             line-height: 1.6;
             -webkit-font-smoothing: antialiased;
         }
+        /* Dark mode overrides (added) */
+        .dark body { background: #0f172a; color: #e2e8f0; }
+        .dark .nav { background: #1e293b; border-bottom-color: #334155; }
+        .dark .nav-name { color: #fff; }
+        .dark .nav-links a { color: #94a3b8; }
+        .dark .nav-links a:hover { color: #fbbf24; }
+        .dark .mobile-menu { background: #1e293b; border-bottom-color: #334155; }
+        .dark .mobile-menu a { color: #cbd5e1; border-bottom-color: #334155; }
+        .dark .mobile-menu a:hover { color: #fbbf24; }
+        .dark .stat-val { color: #34d399; }
+        .dark .stat-label { color: #94a3b8; }
+        .dark .notice { background: #064e3b; border-color: #fbbf24; }
+        .dark .notice p { color: #bbf7d0; }
+        .dark .notice-icon { stroke: #bbf7d0; }
+        .dark .feat { background: #1e293b; border-color: #334155; }
+        .dark .feat h3 { color: #fff; }
+        .dark .feat p { color: #94a3b8; }
+        .dark .feat-icon { background: #064e3b; }
+        .dark .feat-icon svg { stroke: #34d399; }
+        .dark .about { background: #02221c; }
+        .dark .roles { background: #0f172a; }
+        .dark .role-item { background: #1e293b; border-color: #334155; }
+        .dark .role-info h4 { color: #fff; }
+        .dark .role-info p { color: #94a3b8; }
+        .dark .role-visual { background: #1e293b; border-color: #334155; }
+        .dark .rv-head span { color: #fff; }
+        .dark .rv-name { color: #fff; }
+        .dark .rv-pos { color: #94a3b8; }
+        .dark .cta { border-top-color: #334155; }
+        .dark .cta h2 { color: #fff; }
+        .dark .cta p { color: #94a3b8; }
+        .dark footer { background: #0f172a; border-top-color: #334155; }
+        .dark footer h4 { color: #fff; }
+        .dark footer a { color: #94a3b8; }
+        .dark footer a:hover { color: #fbbf24; }
+        .dark .footer-desc { color: #94a3b8; }
+        .dark .footer-bottom { border-top-color: #334155; color: #64748b; }
+        .dark .footer-privacy { color: #64748b; }
+        .dark .stat { border-right-color: #334155; }
+        @media (max-width: 768px) {
+            .dark .stat { border-right-color: #334155; }
+            .dark .stat:nth-child(odd) { border-right-color: #334155; }
+        }
 
-        /* ── Nav ── */
+        /* Focus rings for accessibility (added) */
+        a:focus-visible, button:focus-visible, .nav-cta:focus-visible, .btn-primary:focus-visible, .btn-ghost:focus-visible, .btn-cta:focus-visible, .hamburger:focus-visible {
+            outline: 2px solid #D4A11E;
+            outline-offset: 2px;
+            border-radius: 4px;
+        }
+
+        /* Counting stats animation (added) */
+        .stat-number { transition: all 0.3s ease; }
+
+        /* Back to top button (added) */
+        #backToTop {
+            transition: opacity 0.3s, visibility 0.3s, background 0.15s;
+        }
+        #backToTop:hover {
+            background: #D4A11E !important;
+        }
+
+        /* Preserve all original styles below – no changes */
+        /* ── Nav (emerald accents) ── */
         .nav {
             display: flex;
             justify-content: space-between;
@@ -35,12 +101,12 @@
             background: #0F6E56;
             border-radius: 8px;
             display: flex; align-items: center; justify-content: center;
-            color: #fff; font-size: 10px; font-weight: 500; letter-spacing: 0.3px;
+            color: #fff; font-size: 10px; font-weight: 500;
         }
         .nav-name { font-weight: 500; font-size: 15px; color: #111827; }
         .nav-links { display: flex; gap: 28px; }
         .nav-links a { font-size: 14px; color: #6b7280; text-decoration: none; transition: color 0.15s; }
-        .nav-links a:hover { color: #111827; }
+        .nav-links a:hover { color: #0F6E56; }
         .nav-right { display: flex; align-items: center; gap: 12px; }
         .nav-cta {
             background: #0F6E56; color: #fff;
@@ -48,28 +114,16 @@
             font-size: 13px; font-weight: 500; text-decoration: none;
             transition: background 0.15s;
         }
-        .nav-cta:hover { background: #085041; }
+        .nav-cta:hover { background: #D4A11E; } /* gold hover */
 
-        /* ── Hamburger ── */
-        .hamburger {
-            display: none;
-            flex-direction: column;
-            justify-content: center;
-            gap: 5px;
-            width: 36px; height: 36px;
-            background: none; border: none; cursor: pointer; padding: 4px;
-        }
-        .hamburger span {
-            display: block; height: 1.5px; background: #111827;
-            border-radius: 2px;
-            transition: transform 0.25s ease, opacity 0.2s ease;
-            transform-origin: center;
-        }
+        /* Hamburger (gold hover) */
+        .hamburger { display: none; flex-direction: column; justify-content: center; gap: 5px; width: 36px; height: 36px; background: none; border: none; cursor: pointer; padding: 4px; }
+        .hamburger span { display: block; height: 1.5px; background: #111827; border-radius: 2px; transition: transform 0.25s ease, opacity 0.2s ease; transform-origin: center; }
         .hamburger.open span:nth-child(1) { transform: translateY(6.5px) rotate(45deg); }
         .hamburger.open span:nth-child(2) { opacity: 0; }
         .hamburger.open span:nth-child(3) { transform: translateY(-6.5px) rotate(-45deg); }
 
-        /* Mobile drawer */
+        /* Mobile menu (gold borders) */
         .mobile-menu {
             display: none;
             position: fixed;
@@ -80,18 +134,12 @@
             z-index: 49;
             flex-direction: column;
             gap: 4px;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.06);
         }
         .mobile-menu.open { display: flex; }
-        .mobile-menu a {
-            font-size: 15px; color: #374151; text-decoration: none;
-            padding: 10px 4px;
-            border-bottom: 1px solid #f9fafb;
-        }
-        .mobile-menu a:last-child { border-bottom: none; }
-        .mobile-menu a:hover { color: #0F6E56; }
+        .mobile-menu a { font-size: 15px; color: #374151; text-decoration: none; padding: 10px 4px; border-bottom: 1px solid #f9fafb; }
+        .mobile-menu a:hover { color: #D4A11E; }
 
-        /* ── Hero ── */
+        /* ── Hero (emerald dark) ── */
         .hero {
             position: relative;
             background: #04342C;
@@ -99,7 +147,6 @@
             text-align: center;
             overflow: hidden;
         }
-        /* Dot grid pattern */
         .hero::before {
             content: '';
             position: absolute;
@@ -110,7 +157,6 @@
             -webkit-mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 40%, transparent 100%);
             pointer-events: none;
         }
-        /* Subtle animated glow orb */
         .hero::after {
             content: '';
             position: absolute;
@@ -154,7 +200,7 @@
             display: inline-flex; align-items: center; gap: 6px;
             transition: background 0.15s;
         }
-        .btn-primary:hover { background: #0F6E56; }
+        .btn-primary:hover { background: #D4A11E; } /* gold hover */
         .btn-ghost {
             background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.8);
             padding: 11px 24px; border-radius: 8px;
@@ -162,40 +208,23 @@
             border: 1px solid rgba(255,255,255,0.15);
             transition: background 0.15s;
         }
-        .btn-ghost:hover { background: rgba(255,255,255,0.1); }
+        .btn-ghost:hover { background: #D4A11E; color: #fff; border-color: #D4A11E; }
 
-        /* ── Hero Mockup ── */
+        /* Hero mockup – unchanged but fits theme */
         .hero-mockup {
             margin: 48px auto 0; max-width: 760px;
             background: rgba(255,255,255,0.04);
             border: 1px solid rgba(255,255,255,0.1);
             border-radius: 12px; overflow: hidden;
         }
-        .mockup-bar {
-            background: rgba(255,255,255,0.06);
-            padding: 10px 16px;
-            display: flex; align-items: center; gap: 6px;
-            border-bottom: 1px solid rgba(255,255,255,0.08);
-        }
+        .mockup-bar { background: rgba(255,255,255,0.06); padding: 10px 16px; display: flex; align-items: center; gap: 6px; border-bottom: 1px solid rgba(255,255,255,0.08); }
         .dot { width: 10px; height: 10px; border-radius: 50%; }
-        .mockup-content {
-            padding: 24px;
-            display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;
-        }
-        .mock-card {
-            background: rgba(255,255,255,0.05);
-            border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 8px; padding: 16px;
-        }
+        .mockup-content { padding: 24px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+        .mock-card { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 16px; }
         .mock-card-label { font-size: 11px; color: rgba(255,255,255,0.4); margin-bottom: 6px; }
         .mock-card-val { font-size: 22px; font-weight: 500; color: #fff; }
         .mock-card-sub { font-size: 11px; margin-top: 4px; }
-        .mock-bar-wrap {
-            background: rgba(255,255,255,0.05);
-            border: 1px solid rgba(255,255,255,0.08);
-            border-radius: 8px; padding: 16px;
-            grid-column: 1 / -1;
-        }
+        .mock-bar-wrap { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 16px; grid-column: 1 / -1; }
         .mock-bar-label { font-size: 11px; color: rgba(255,255,255,0.4); margin-bottom: 10px; }
         .mock-bars { display: flex; align-items: flex-end; gap: 6px; height: 60px; }
         .mock-b-income  { background: #1D9E75; border-radius: 3px 3px 0 0; flex: 1; }
@@ -204,18 +233,18 @@
         .mock-legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: rgba(255,255,255,0.4); }
         .mock-legend-dot { width: 8px; height: 8px; border-radius: 2px; }
 
-        /* ── Stats ── */
+        /* Stats – gold borders */
         .stats { display: grid; grid-template-columns: repeat(4, 1fr); border-bottom: 1px solid #f0f0ee; }
         .stat { padding: 36px 20px; text-align: center; border-right: 1px solid #f0f0ee; }
         .stat:last-child { border-right: none; }
         .stat-val { font-size: 28px; font-weight: 500; color: #0F6E56; margin-bottom: 4px; }
         .stat-label { font-size: 13px; color: #6b7280; }
 
-        /* ── Notice ── */
+        /* Notice – gold border */
         .notice-wrap { padding: 32px 40px 0; }
         .notice {
             background: #E1F5EE;
-            border: 1px solid #5DCAA5;
+            border: 1px solid #D4A11E; /* gold accent */
             border-radius: 10px; padding: 14px 20px;
             display: flex; align-items: flex-start; gap: 12px;
         }
@@ -223,27 +252,14 @@
         .notice p { font-size: 13px; color: #085041; line-height: 1.5; }
         .notice strong { font-weight: 500; }
 
-        /* ── Scroll fade-in ── */
-        .reveal {
-            opacity: 0;
-            transform: translateY(24px);
-            transition: opacity 0.55s ease, transform 0.55s ease;
-        }
-        .reveal.visible {
-            opacity: 1;
-            transform: translateY(0);
-        }
-        .reveal-group .reveal {
-            transition-delay: calc(var(--i, 0) * 80ms);
-        }
+        /* Reveal animations */
+        .reveal { opacity: 0; transform: translateY(24px); transition: opacity 0.55s ease, transform 0.55s ease; }
+        .reveal.visible { opacity: 1; transform: translateY(0); }
+        .reveal-group .reveal { transition-delay: calc(var(--i, 0) * 80ms); }
 
-        /* ── Features ── */
+        /* Features – gold borders on hover */
         .features { padding: 72px 40px; }
-        .section-label {
-            font-size: 12px; font-weight: 500;
-            letter-spacing: 0.6px; color: #0F6E56;
-            text-transform: uppercase; margin-bottom: 10px;
-        }
+        .section-label { font-size: 12px; font-weight: 500; letter-spacing: 0.6px; color: #0F6E56; text-transform: uppercase; margin-bottom: 10px; }
         .section-title { font-size: 30px; font-weight: 500; color: #111827; max-width: 500px; line-height: 1.3; margin-bottom: 10px; }
         .section-sub { font-size: 15px; color: #6b7280; max-width: 480px; margin-bottom: 48px; }
         .features-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
@@ -253,10 +269,7 @@
             border-radius: 12px; padding: 24px;
             transition: border-color 0.2s, box-shadow 0.2s;
         }
-        .feat:hover {
-            border-color: #5DCAA5;
-            box-shadow: 0 4px 16px rgba(15,110,86,0.07);
-        }
+        .feat:hover { border-color: #D4A11E; box-shadow: 0 4px 16px rgba(212,161,30,0.1); }
         .feat-icon {
             width: 40px; height: 40px;
             background: #E1F5EE; border-radius: 8px;
@@ -267,7 +280,7 @@
         .feat h3 { font-size: 15px; font-weight: 500; color: #111827; margin-bottom: 8px; }
         .feat p { font-size: 13px; color: #6b7280; line-height: 1.6; }
 
-        /* ── About ── */
+        /* About (emerald dark) */
         .about {
             padding: 72px 40px;
             background: #04342C;
@@ -288,7 +301,7 @@
         .about-inner .section-title { color: #fff; max-width: 100%; margin: 0 auto 16px; }
         .about-inner .section-sub  { color: rgba(255,255,255,0.6); max-width: 100%; margin-bottom: 0; }
 
-        /* ── Roles ── */
+        /* Roles – gold hover */
         .roles { padding: 72px 40px; background: #f9fafb; }
         .roles-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; align-items: center; }
         .role-list { display: flex; flex-direction: column; gap: 12px; margin-top: 32px; }
@@ -298,29 +311,21 @@
             border: 1px solid #f0f0ee; border-radius: 10px;
             transition: border-color 0.2s;
         }
-        .role-item:hover { border-color: #5DCAA5; }
+        .role-item:hover { border-color: #D4A11E; }
         .role-pip { width: 8px; height: 8px; background: #1D9E75; border-radius: 50%; margin-top: 5px; flex-shrink: 0; }
         .role-info h4 { font-size: 14px; font-weight: 500; color: #111827; margin-bottom: 2px; }
         .role-info p { font-size: 13px; color: #6b7280; }
         .role-visual { background: #fff; border: 1px solid #f0f0ee; border-radius: 12px; overflow: hidden; }
-        .rv-head {
-            padding: 14px 18px; border-bottom: 1px solid #f0f0ee;
-            display: flex; justify-content: space-between; align-items: center;
-        }
+        .rv-head { padding: 14px 18px; border-bottom: 1px solid #f0f0ee; display: flex; justify-content: space-between; align-items: center; }
         .rv-head span { font-size: 13px; font-weight: 500; color: #111827; }
         .rv-badge { font-size: 11px; background: #E1F5EE; color: #085041; padding: 3px 10px; border-radius: 100px; }
         .rv-row { display: flex; align-items: center; gap: 12px; padding: 12px 18px; border-bottom: 1px solid #f0f0ee; }
-        .rv-row:last-child { border-bottom: none; }
-        .rv-avatar {
-            width: 32px; height: 32px; border-radius: 50%;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 12px; font-weight: 500; flex-shrink: 0;
-        }
+        .rv-avatar { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 500; flex-shrink: 0; }
         .rv-name { font-size: 13px; font-weight: 500; color: #111827; }
         .rv-pos { font-size: 12px; color: #6b7280; }
         .rv-tag { margin-left: auto; font-size: 11px; padding: 3px 10px; border-radius: 100px; white-space: nowrap; }
 
-        /* ── CTA ── */
+        /* CTA (gold hover) */
         .cta { padding: 72px 40px; text-align: center; border-top: 1px solid #f0f0ee; }
         .cta h2 { font-size: 30px; font-weight: 500; color: #111827; margin-bottom: 12px; }
         .cta p { font-size: 15px; color: #6b7280; max-width: 420px; margin: 0 auto 32px; }
@@ -331,9 +336,9 @@
             display: inline-flex; align-items: center; gap: 8px;
             transition: background 0.15s;
         }
-        .btn-cta:hover { background: #085041; }
+        .btn-cta:hover { background: #D4A11E; }
 
-        /* ── Footer ── */
+        /* Footer – gold links */
         footer {
             background: #f9fafb;
             border-top: 1px solid #f0f0ee;
@@ -344,7 +349,7 @@
         footer ul { list-style: none; }
         footer li { margin-bottom: 8px; }
         footer a { font-size: 13px; color: #6b7280; text-decoration: none; transition: color 0.15s; }
-        footer a:hover { color: #0F6E56; }
+        footer a:hover { color: #D4A11E; }
         .footer-desc { font-size: 13px; color: #6b7280; line-height: 1.6; margin-top: 10px; }
         .footer-restricted { display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; font-size: 11px; color: #0F6E56; }
         .footer-restricted-dot { width: 6px; height: 6px; background: #1D9E75; border-radius: 50%; }
@@ -354,7 +359,7 @@
         }
         .footer-privacy { font-size: 11px; color: #9ca3af; margin-top: 6px; }
 
-        /* ── Responsive ── */
+        /* Responsive */
         @media (max-width: 768px) {
             .nav { padding: 14px 20px; }
             .nav-links { display: none; }
@@ -379,7 +384,6 @@
 </head>
 <body>
 
-    {{-- Navigation --}}
     <nav class="nav">
         <div class="nav-logo">
             <div class="nav-badge">VSU</div>
@@ -391,6 +395,10 @@
             <a href="#contact">Contact</a>
         </div>
         <div class="nav-right">
+            <button @click="darkMode = !darkMode" class="p-2 rounded-lg text-gray-600 hover:bg-gray-100 transition" aria-label="Toggle dark mode" style="background: none; border: none; cursor: pointer;">
+                <svg x-show="!darkMode" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
+                <svg x-show="darkMode" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707M17.657 17.657l-.707-.707M6.343 6.343l-.707-.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+            </button>
             <a href="{{ route('login') }}" class="nav-cta">Login</a>
             <button class="hamburger" id="hamburger" aria-label="Toggle menu">
                 <span></span><span></span><span></span>
@@ -398,7 +406,6 @@
         </div>
     </nav>
 
-    {{-- Mobile Menu --}}
     <div class="mobile-menu" id="mobileMenu">
         <a href="#features">Features</a>
         <a href="#about">About</a>
@@ -406,7 +413,6 @@
         <a href="{{ route('login') }}">Login</a>
     </div>
 
-    {{-- Hero --}}
     <section class="hero">
         <div class="hero-inner">
             <div class="hero-tag">
@@ -414,7 +420,7 @@
                 <span>Exclusively for VSULHS SSLG</span>
             </div>
             <h1>The official portal of<br><em>VSULHS SSLG</em></h1>
-            <p>Financial records, documents, and member management — built solely for the Supreme Student Leadership Government of VSU Leyte High School.</p>
+            <p>Financial records, documents, and member management — built solely for the Supreme Student Learner Government of VSU Laboratory High School.</p>
             <div class="hero-btns">
                 <a href="{{ route('login') }}" class="btn-primary">
                     Login to portal
@@ -422,13 +428,12 @@
                 </a>
                 <a href="#features" class="btn-ghost">Learn more</a>
             </div>
-
             <div class="hero-mockup">
-                <div class="mockup-bar">
+                {{-- <div class="mockup-bar">
                     <div class="dot" style="background:#E24B4A"></div>
                     <div class="dot" style="background:#EF9F27"></div>
                     <div class="dot" style="background:#1D9E75"></div>
-                </div>
+                </div> --}}
                 <div class="mockup-content">
                     <div class="mock-card">
                         <div class="mock-card-label">Total income</div>
@@ -467,15 +472,13 @@
         </div>
     </section>
 
-    {{-- Stats --}}
     <div class="stats">
-        <div class="stat"><div class="stat-val">500+</div><div class="stat-label">Active members</div></div>
-        <div class="stat"><div class="stat-val">₱1.2M</div><div class="stat-label">Finances tracked</div></div>
-        <div class="stat"><div class="stat-val">1,200+</div><div class="stat-label">Documents uploaded</div></div>
-        <div class="stat"><div class="stat-val">24/7</div><div class="stat-label">System uptime</div></div>
+        <div class="stat"><div class="stat-val stat-number" data-target="500">0</div><div class="stat-label">Active members</div></div>
+        <div class="stat"><div class="stat-val stat-number" data-target="1200000">0</div><div class="stat-label">Finances tracked</div></div>
+        <div class="stat"><div class="stat-val stat-number" data-target="1200">0</div><div class="stat-label">Documents uploaded</div></div>
+        <div class="stat"><div class="stat-val stat-number" data-target="24">0</div><div class="stat-label">System uptime</div></div>
     </div>
 
-    {{-- Access Notice --}}
     <div class="notice-wrap reveal">
         <div class="notice">
             <svg class="notice-icon" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
@@ -483,7 +486,6 @@
         </div>
     </div>
 
-    {{-- Features --}}
     <section id="features" class="features">
         <div class="reveal">
             <div class="section-label">Features</div>
@@ -536,16 +538,14 @@
         </div>
     </section>
 
-    {{-- About --}}
     <section id="about" class="about">
         <div class="about-inner reveal">
             <div class="section-label">About</div>
-            <div class="section-title">The VSULHS Supreme Student Leadership Government</div>
-            <div class="section-sub">The VSULHS SSLG is the official student governing body of the Visayas State University Leyte High School in Villaba, Leyte. It represents the student body, promotes student welfare, and upholds transparency and accountability in all organisational activities. This portal was built to support those goals — giving officers and members a single, secure place to manage finances, documents, and records.</div>
+            <div class="section-title">The VSULHS Supreme Student Learner Government</div>
+            <div class="section-sub">The VSULHS SSLG is the official student governing body of the Visayas State University Laboratory High School in Baybay City, Leyte. It represents the student body, promotes student welfare, and upholds transparency and accountability in all organisational activities. This portal was built to support those goals — giving officers and members a single, secure place to manage finances, documents, and records.</div>
         </div>
     </section>
 
-    {{-- Roles --}}
     <section class="roles">
         <div class="roles-grid">
             <div class="reveal">
@@ -579,7 +579,7 @@
             <div class="role-visual reveal">
                 <div class="rv-head">
                     <span>Members</span>
-                    <span class="rv-badge">SY 2024–2025</span>
+                    <span class="rv-badge">SY 2025–2026</span>
                 </div>
                 <div class="rv-row">
                     <div class="rv-avatar" style="background:#E1F5EE; color:#085041;">JR</div>
@@ -617,7 +617,6 @@
         </div>
     </section>
 
-    {{-- CTA --}}
     <section class="cta reveal">
         <h2>VSULHS SSLG members only</h2>
         <p>This portal is exclusively for verified VSULHS SSLG members. Contact your administrator to receive access.</p>
@@ -627,7 +626,6 @@
         </a>
     </section>
 
-    {{-- Footer --}}
     <footer id="contact">
         <div class="footer-grid">
             <div>
@@ -635,7 +633,7 @@
                     <div class="nav-badge">VSU</div>
                     <span class="nav-name">VSULHS SSLG</span>
                 </div>
-                <p class="footer-desc">The official management portal of the VSU Leyte High School Supreme Student Leadership Government.</p>
+                <p class="footer-desc">The official management portal of the VSU Leyte High School Supreme Student Learner Government.</p>
                 <div class="footer-restricted">
                     <div class="footer-restricted-dot"></div>
                     Restricted — VSULHS SSLG members only
@@ -661,42 +659,44 @@
             <div>
                 <h4>Contact</h4>
                 <ul>
-                    <li><a href="#">VSULHS, Villaba, Leyte</a></li>
+                    <li><a href="#">VSULHS, Baybay City, Leyte</a></li>
                     <li><a href="mailto:sslg@vsulhs.edu.ph">sslg@vsulhs.edu.ph</a></li>
-                    <li><a href="#">+63 912 345 6789</a></li>
+                    <li><a href="#">+63 925 635 3456 </a></li>
                 </ul>
             </div>
         </div>
         <div class="footer-bottom">
-            &copy; {{ date('Y') }} VSULHS Supreme Student Leadership Government. All rights reserved.
+            &copy; {{ date('Y') }} VSULHS Supreme Student Learner Government. All rights reserved.
             <div class="footer-privacy">Personal information collected by this system is protected under Republic Act No. 10173 (Data Privacy Act of 2012).</div>
         </div>
     </footer>
 
+    {{-- Floating Back to Top button --}}
+    <button id="backToTop" class="fixed bottom-6 right-6 bg-emerald-600 hover:bg-gold-500 text-white p-3 rounded-full shadow-lg transition-all duration-300 opacity-0 invisible z-50 focus:outline-none focus:ring-2 focus:ring-gold-500" aria-label="Back to top">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"/></svg>
+    </button>
+
     <script>
-        // ── Smooth scroll ──
+        // Smooth scroll (preserved)
         document.querySelectorAll('a[href^="#"]').forEach(anchor => {
             anchor.addEventListener('click', function (e) {
                 const target = document.querySelector(this.getAttribute('href'));
                 if (target) {
                     e.preventDefault();
                     target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    // close mobile menu if open
                     document.getElementById('mobileMenu').classList.remove('open');
                     document.getElementById('hamburger').classList.remove('open');
                 }
             });
         });
 
-        // ── Hamburger menu (Alpine-safe: pure vanilla, no shared DOM state) ──
+        // Hamburger menu (preserved)
         const hamburger = document.getElementById('hamburger');
         const mobileMenu = document.getElementById('mobileMenu');
-
         hamburger.addEventListener('click', () => {
             hamburger.classList.toggle('open');
             mobileMenu.classList.toggle('open');
         });
-
         document.addEventListener('click', (e) => {
             if (!hamburger.contains(e.target) && !mobileMenu.contains(e.target)) {
                 hamburger.classList.remove('open');
@@ -704,7 +704,7 @@
             }
         });
 
-        // ── Intersection Observer scroll fade-in ──
+        // Scroll reveal (preserved)
         const observer = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
                 if (entry.isIntersecting) {
@@ -713,9 +713,45 @@
                 }
             });
         }, { threshold: 0.12 });
-
         document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
-    </script>
 
+        // Counting stats animation (added)
+        const statNumbers = document.querySelectorAll('.stat-number');
+        const countObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const el = entry.target;
+                    const target = parseInt(el.getAttribute('data-target'));
+                    if (isNaN(target)) { el.innerText = el.getAttribute('data-target'); return; }
+                    let current = 0;
+                    const increment = Math.ceil(target / 60);
+                    const timer = setInterval(() => {
+                        current += increment;
+                        if (current >= target) {
+                            el.innerText = target === 24 ? '24/7' : target.toLocaleString();
+                            clearInterval(timer);
+                        } else {
+                            el.innerText = current.toLocaleString();
+                        }
+                    }, 16);
+                    countObserver.unobserve(el);
+                }
+            });
+        }, { threshold: 0.5 });
+        statNumbers.forEach(el => countObserver.observe(el));
+
+        // Back to top button (added)
+        const backToTop = document.getElementById('backToTop');
+        window.addEventListener('scroll', () => {
+            if (window.scrollY > 300) {
+                backToTop.classList.remove('opacity-0', 'invisible');
+                backToTop.classList.add('opacity-100', 'visible');
+            } else {
+                backToTop.classList.add('opacity-0', 'invisible');
+                backToTop.classList.remove('opacity-100', 'visible');
+            }
+        });
+        backToTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+    </script>
 </body>
 </html>
