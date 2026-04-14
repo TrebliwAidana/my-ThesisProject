@@ -14,1008 +14,1448 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Official management portal for VSULHS Supreme Student Learner Government. Manage finances, documents, and members securely.">
-    <meta property="og:title" content="VSULHS SSLG Portal">
-    <meta property="og:description" content="The official portal of the VSU Laboratory High School Supreme Student Learner Government.">
     <title>VSULHS SSLG — Student Government Portal</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-    <style>
-        /* ── x-cloak: hide Alpine-controlled elements before boot ── */
-        [x-cloak] { display: none !important; }
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet">
 
-        * { box-sizing: border-box; margin: 0; padding: 0; }
+    <style>
+        [x-cloak] { display: none !important; }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --forest:   #0A4A38;
+            --jade:     #12745A;
+            --mint:     #1DB384;
+            --pale:     #D6F0E7;
+            --gold:     #C89B2A;
+            --gold-lt:  #F5D98B;
+            --ink:      #0D1510;
+            --mist:     #F3F5F2;
+            --cloud:    #E8EDE9;
+            --slate:    #5C6B61;
+            --serif:    'DM Serif Display', Georgia, serif;
+            --sans:     'DM Sans', ui-sans-serif, system-ui, sans-serif;
+            --r:        .6s cubic-bezier(.22,.68,0,1.2);
+            --brilliant-gold: #D4AF37;
+            --emerald:  #059669;      /* uniform emerald green */
+            --emerald-dark: #047857;  /* darker for dark mode base */
+            --emerald-hover: #10B981; /* slightly lighter on hover (before gold) */
+        }
+
+        /* ── Dark tokens ── */
+        .dark {
+            --forest:   #1DB384;
+            --jade:     #25D49A;
+            --mint:     #4EEDB5;
+            --pale:     #0D2B22;
+            --gold:     #F5D98B;
+            --gold-lt:  #FFF3C4;
+            --ink:      #EBF0EC;
+            --mist:     #0C1510;
+            --cloud:    #162319;
+            --slate:    #94A89C;
+            --emerald:  #10B981;      /* brighter emerald for dark mode */
+        }
+
+        html { scroll-behavior: smooth; }
 
         body {
-            font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
-            color: #111827;
-            background: #ffffff;
-            font-size: 15px;
-            line-height: 1.6;
+            font-family: var(--sans);
+            background: #FAFBF9;
+            color: var(--ink);
+            font-size: 16px;
+            line-height: 1.65;
             -webkit-font-smoothing: antialiased;
+            transition: background .3s, color .3s;
         }
+        .dark body { background: #0B110E; }
+        body.modal-open { overflow: hidden; }
 
-        /* ── Dark mode overrides ── */
-        .dark body                          { background: #0f172a; color: #e2e8f0; }
-        .dark .nav                          { background: #1e293b; border-bottom-color: #334155; }
-        .dark .nav-name                     { color: #fff; }
-        .dark .nav-links a                  { color: #94a3b8; }
-        .dark .nav-links a:hover            { color: #fbbf24; }
-        .dark .mobile-menu                  { background: #1e293b; border-bottom-color: #334155; }
-        .dark .mobile-menu a,
-        .dark .mobile-menu button           { color: #cbd5e1; border-bottom-color: #334155; }
-        .dark .mobile-menu a:hover,
-        .dark .mobile-menu button:hover     { color: #fbbf24; }
-        .dark .hamburger span               { background: #e2e8f0; }
-        .dark .stat                         { border-right-color: #334155; border-bottom-color: #334155; }
-        .dark .stat-val                     { color: #34d399; }
-        .dark .stat-label                   { color: #94a3b8; }
-        .dark .notice                       { background: #064e3b; border-color: #fbbf24; }
-        .dark .notice p                     { color: #bbf7d0; }
-        .dark .notice-icon                  { stroke: #bbf7d0; }
-        .dark .feat                         { background: #1e293b; border-color: #334155; }
-        .dark .feat h3                      { color: #fff; }
-        .dark .feat p                       { color: #94a3b8; }
-        .dark .feat-icon                    { background: #064e3b; }
-        .dark .feat-icon svg                { stroke: #34d399; }
-        .dark .about                        { background: #02221c; }
-        .dark .roles                        { background: #0f172a; }
-        .dark .role-item                    { background: #1e293b; border-color: #334155; }
-        .dark .role-info h4                 { color: #fff; }
-        .dark .role-info p                  { color: #94a3b8; }
-        .dark .role-visual                  { background: #1e293b; border-color: #334155; }
-        .dark .rv-head                      { border-bottom-color: #334155; }
-        .dark .rv-head span                 { color: #fff; }
-        .dark .rv-row                       { border-bottom-color: #334155; }
-        .dark .rv-name                      { color: #fff; }
-        .dark .rv-badge                     { background: #1D9E75; color: #fff; }
-        .dark .rv-tag                       { filter: brightness(1.3); }
-        /* Prevent body scroll when modal is open */
-        body.modal-open                     { overflow: hidden; }
-        .dark .section-title                { color: #fff; }
-        .dark .section-sub                  { color: #94a3b8; }
-        .dark .cta                          { border-top-color: #334155; }
-        .dark .cta h2                       { color: #fff; }
-        .dark .cta p                        { color: #94a3b8; }
-        .dark footer                        { background: #0f172a; border-top-color: #334155; }
-        .dark footer h4                     { color: #fff; }
-        .dark footer a                      { color: #94a3b8; }
-        .dark footer a:hover                { color: #fbbf24; }
-        .dark .footer-desc                  { color: #94a3b8; }
-        .dark .footer-bottom                { border-top-color: #334155; color: #64748b; }
-        .dark .footer-privacy               { color: #64748b; }
-        .dark .stats                        { border-bottom-color: #334155; }
-        @media (max-width: 768px) {
-            .dark .stat:nth-child(odd)      { border-right-color: #334155; }
-        }
-
-        /* ── Focus rings ── */
-        a:focus-visible,
-        button:focus-visible {
-            outline: 2px solid #D4A11E;
-            outline-offset: 2px;
+        /* ─── FOCUS ─── */
+        a:focus-visible, button:focus-visible {
+            outline: 2px solid var(--brilliant-gold);
+            outline-offset: 3px;
             border-radius: 4px;
         }
 
-        /* ── Back to top ── */
-        #backToTop { transition: opacity 0.3s, visibility 0.3s, background 0.15s; }
-        #backToTop:hover { background: #D4A11E !important; }
-
-        /* ══════════════════════════════════════
+        /* ════════════════════════════════════
            NAV
-        ══════════════════════════════════════ */
+        ════════════════════════════════════ */
         .nav {
-            display: flex; justify-content: space-between; align-items: center;
-            padding: 18px 40px;
-            border-bottom: 1px solid #f0f0ee;
-            background: #ffffff;
-            position: sticky; top: 0; z-index: 50;
+            position: sticky; top: 0; z-index: 100;
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0 48px;
+            height: 64px;
+            background: rgba(250,251,249,.85);
+            backdrop-filter: blur(16px) saturate(1.4);
+            -webkit-backdrop-filter: blur(16px) saturate(1.4);
+            border-bottom: 1px solid rgba(12,45,30,.08);
+            transition: background .3s;
         }
-        .nav-logo { display: flex; align-items: center; gap: 10px; }
-        .nav-badge {
-            width: 32px; height: 32px; background: #0F6E56; border-radius: 8px;
-            display: flex; align-items: center; justify-content: center;
-            color: #fff; font-size: 10px; font-weight: 500;
+        .dark .nav {
+            background: rgba(11,17,14,.85);
+            border-bottom-color: rgba(255,255,255,.07);
         }
-        .nav-name { font-weight: 500; font-size: 15px; color: #111827; }
-        .nav-links { display: flex; gap: 28px; }
-        .nav-links a { font-size: 14px; color: #6b7280; text-decoration: none; transition: color 0.15s; }
-        .nav-links a:hover { color: #0F6E56; }
-        .nav-right { display: flex; align-items: center; gap: 12px; }
-        .nav-cta {
-            background: #0F6E56; color: #fff;
-            padding: 8px 18px; border-radius: 8px;
-            font-size: 13px; font-weight: 500;
-            border: none; cursor: pointer;
-            transition: background 0.15s;
-        }
-        .nav-cta:hover { background: #D4A11E; }
 
-        /* ── Dark mode toggle button ── */
-        .dark-toggle {
+        .nav-brand { display: flex; align-items: center; gap: 12px; text-decoration: none; }
+
+        .nav-crest {
+            width: 34px; height: 34px; border-radius: 8px;
+            background: var(--emerald);
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0;
+            transition: background .3s;
+        }
+        .dark .nav-crest { background: var(--emerald); }
+        .nav-crest svg { width: 16px; height: 16px; stroke: #fff; fill: none; stroke-width: 1.8; }
+
+        .nav-wordmark {
+            font-family: var(--serif);
+            font-size: 17px;
+            color: var(--ink);
+            letter-spacing: -.01em;
+            transition: color .3s;
+        }
+
+        .nav-links {
+            display: flex; gap: 32px; list-style: none;
+        }
+        .nav-links a {
+            font-size: 14px; font-weight: 400;
+            color: var(--slate);
+            text-decoration: none;
+            letter-spacing: .01em;
+            transition: color .2s;
+        }
+        .nav-links a:hover { color: var(--brilliant-gold); }
+        .dark .nav-links a:hover { color: var(--brilliant-gold); }
+
+        .nav-actions { display: flex; align-items: center; gap: 10px; }
+
+        .btn-toggle {
+            width: 36px; height: 36px;
             background: none; border: none; cursor: pointer;
-            padding: 6px; border-radius: 8px;
-            color: #6b7280;
-            transition: background 0.15s, color 0.15s;
+            border-radius: 8px;
             display: flex; align-items: center; justify-content: center;
+            color: var(--slate);
+            transition: background .15s, color .15s;
         }
-        .dark-toggle:hover { background: #f3f4f6; color: #111827; }
-        .dark .dark-toggle { color: #94a3b8; }
-        .dark .dark-toggle:hover { background: #334155; color: #fff; }
+        .btn-toggle:hover { background: var(--cloud); color: var(--ink); }
+        .dark .btn-toggle:hover { background: rgba(255,255,255,.08); color: #fff; }
+        .btn-toggle svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.8; }
 
-        /* ── Hamburger ── */
+        /* Nav sign in button – now emerald */
+        .btn-login {
+            font-family: var(--sans);
+            font-size: 13px; font-weight: 500;
+            padding: 8px 20px;
+            border-radius: 8px;
+            background: var(--emerald);
+            color: #fff;
+            border: none; cursor: pointer;
+            letter-spacing: .02em;
+            transition: background .2s, transform .15s;
+        }
+        .btn-login:hover { background: var(--brilliant-gold); transform: translateY(-1px); }
+        .dark .btn-login { background: var(--emerald); }
+        .dark .btn-login:hover { background: var(--brilliant-gold); }
+
+        /* Hamburger */
         .hamburger {
-            display: none; flex-direction: column; justify-content: center;
-            gap: 5px; width: 36px; height: 36px;
-            background: none; border: none; cursor: pointer; padding: 4px;
+            display: none;
+            flex-direction: column; gap: 5px;
+            width: 36px; height: 36px;
+            background: none; border: none; cursor: pointer;
+            padding: 8px; border-radius: 8px;
         }
         .hamburger span {
-            display: block; height: 1.5px; background: #111827;
+            display: block; height: 1.5px;
+            background: var(--ink);
             border-radius: 2px;
-            transition: transform 0.25s ease, opacity 0.2s ease;
+            transition: transform .25s, opacity .2s;
             transform-origin: center;
         }
+        .dark .hamburger span { background: #e2e8f0; }
         .hamburger.open span:nth-child(1) { transform: translateY(6.5px) rotate(45deg); }
         .hamburger.open span:nth-child(2) { opacity: 0; }
         .hamburger.open span:nth-child(3) { transform: translateY(-6.5px) rotate(-45deg); }
 
-        /* ── Mobile drawer ── */
+        /* Mobile drawer */
         .mobile-menu {
-            display: none; position: fixed;
-            top: 65px; left: 0; right: 0;
-            background: #fff; border-bottom: 1px solid #f0f0ee;
-            padding: 16px 24px 20px; z-index: 49;
-            flex-direction: column; gap: 4px;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+            display: none;
+            position: fixed; top: 64px; left: 0; right: 0;
+            background: #FAFBF9;
+            border-bottom: 1px solid rgba(12,45,30,.08);
+            padding: 12px 24px 20px;
+            flex-direction: column; gap: 2px;
+            z-index: 99;
+            box-shadow: 0 16px 48px rgba(0,0,0,.1);
+        }
+        .dark .mobile-menu {
+            background: #0B110E;
+            border-bottom-color: rgba(255,255,255,.07);
         }
         .mobile-menu.open { display: flex; }
-        .mobile-menu a,
-        .mobile-menu button {
-            font-size: 15px; color: #374151; text-decoration: none;
-            padding: 10px 4px; border-bottom: 1px solid #f9fafb;
-            text-align: left; background: none; border-left: none;
-            border-right: none; border-top: none; cursor: pointer;
-            width: 100%;
+        .mobile-menu a, .mobile-menu button {
+            font-size: 15px; color: var(--slate);
+            text-decoration: none; padding: 12px 4px;
+            border-bottom: 1px solid var(--cloud);
+            background: none; border-left: none; border-right: none; border-top: none;
+            text-align: left; cursor: pointer; width: 100%;
+            transition: color .2s;
         }
-        .mobile-menu a:last-child,
-        .mobile-menu button:last-child { border-bottom: none; }
-        .mobile-menu a:hover,
-        .mobile-menu button:hover { color: #D4A11E; }
+        .dark .mobile-menu a, .dark .mobile-menu button { border-bottom-color: rgba(255,255,255,.06); }
+        .mobile-menu a:hover, .mobile-menu button:hover { color: var(--brilliant-gold); }
 
-        /* ══════════════════════════════════════
+
+        /* ════════════════════════════════════
            HERO
-        ══════════════════════════════════════ */
+        ════════════════════════════════════ */
         .hero {
-            position: relative; background: #04342C;
-            padding: 80px 40px 60px; text-align: center; overflow: hidden;
+            position: relative;
+            min-height: 92vh;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            padding: 80px 48px 64px;
+            text-align: center;
+            overflow: hidden;
+            background: #061009;
         }
+
+        /* Dot grid */
         .hero::before {
-            content: ''; position: absolute; inset: 0;
-            background-image: radial-gradient(circle, rgba(255,255,255,0.12) 1px, transparent 1px);
-            background-size: 28px 28px;
-            mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 40%, transparent 100%);
-            -webkit-mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 40%, transparent 100%);
+            content: '';
+            position: absolute; inset: 0;
+            background-image: radial-gradient(rgba(29,179,132,.18) 1px, transparent 1px);
+            background-size: 32px 32px;
+            mask-image: radial-gradient(ellipse 75% 75% at 50% 40%, black 30%, transparent 100%);
+            -webkit-mask-image: radial-gradient(ellipse 75% 75% at 50% 40%, black 30%, transparent 100%);
+        }
+
+        /* Radial glow */
+        .hero-glow {
+            position: absolute;
+            top: -10%; left: 50%; transform: translateX(-50%);
+            width: 900px; height: 600px;
+            background: radial-gradient(ellipse at center, rgba(18,116,90,.35) 0%, transparent 65%);
             pointer-events: none;
+            animation: breathe 8s ease-in-out infinite;
         }
-        .hero::after {
-            content: ''; position: absolute;
-            width: 500px; height: 500px;
-            background: radial-gradient(circle, rgba(29,158,117,0.15) 0%, transparent 70%);
-            top: -100px; left: 50%; transform: translateX(-50%);
-            pointer-events: none;
-            animation: pulse-orb 6s ease-in-out infinite;
+        @keyframes breathe {
+            0%, 100% { opacity: .6; transform: translateX(-50%) scale(1); }
+            50%       { opacity: 1; transform: translateX(-50%) scale(1.08); }
         }
-        @keyframes pulse-orb {
-            0%,100% { opacity: 0.6; transform: translateX(-50%) scale(1); }
-            50%      { opacity: 1;   transform: translateX(-50%) scale(1.1); }
+
+        .hero-inner { position: relative; z-index: 1; max-width: 720px; }
+
+        /* Eyebrow pill */
+        .hero-eyebrow {
+            display: inline-flex; align-items: center; gap: 8px;
+            background: rgba(29,179,132,.12);
+            border: 1px solid rgba(29,179,132,.28);
+            border-radius: 100px;
+            padding: 5px 16px 5px 8px;
+            margin-bottom: 36px;
         }
-        .hero-inner { position: relative; z-index: 1; }
-        .hero-tag {
-            display: inline-flex; align-items: center; gap: 6px;
-            background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15);
-            border-radius: 100px; padding: 5px 14px; margin-bottom: 28px;
+        .eyebrow-dot {
+            width: 22px; height: 22px; border-radius: 50%;
+            background: rgba(29,179,132,.15);
+            display: flex; align-items: center; justify-content: center;
         }
-        .hero-tag span { font-size: 12px; color: #9FE1CB; font-weight: 500; letter-spacing: 0.3px; }
-        .hero-tag-dot { width: 6px; height: 6px; background: #1D9E75; border-radius: 50%; }
+        .eyebrow-dot::after {
+            content: '';
+            width: 8px; height: 8px; border-radius: 50%;
+            background: #1DB384;
+            animation: ping 2s ease-in-out infinite;
+        }
+        @keyframes ping {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: .6; transform: scale(.8); }
+        }
+        .hero-eyebrow span {
+            font-size: 12px; color: #6BE8BF;
+            font-weight: 500; letter-spacing: .04em;
+        }
+
+        /* Heading */
         .hero h1 {
-            font-size: 44px; font-weight: 500; color: #fff;
-            line-height: 1.2; margin-bottom: 18px;
-            max-width: 620px; margin-left: auto; margin-right: auto;
+            font-family: var(--serif);
+            font-size: clamp(42px, 6vw, 72px);
+            color: #FFFFFF;
+            line-height: 1.08;
+            letter-spacing: -.02em;
+            margin-bottom: 24px;
         }
-        .hero h1 em { font-style: normal; color: #5DCAA5; }
-        .hero p {
-            font-size: 16px; color: rgba(255,255,255,0.6);
-            max-width: 480px; margin: 0 auto 36px; line-height: 1.7;
+        .hero h1 em {
+            font-style: italic;
+            color: #5DDCAA;
         }
-        .hero-btns { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; }
+
+        .hero-sub {
+            font-size: 17px;
+            color: rgba(255,255,255,.5);
+            max-width: 460px;
+            margin: 0 auto 44px;
+            line-height: 1.7;
+            font-weight: 300;
+        }
+
+        /* CTA row */
+        .hero-btns {
+            display: flex; justify-content: center; gap: 12px; flex-wrap: wrap;
+            margin-bottom: 72px;
+        }
+
+        /* Hero primary button – emerald */
         .btn-primary {
-            background: #1D9E75; color: #fff;
-            padding: 11px 24px; border-radius: 8px;
+            display: inline-flex; align-items: center; gap: 8px;
+            font-family: var(--sans);
             font-size: 14px; font-weight: 500;
-            border: none; cursor: pointer;
-            display: inline-flex; align-items: center; gap: 6px;
-            transition: background 0.15s;
+            padding: 13px 28px;
+            background: var(--emerald);
+            color: #fff;
+            border: none; border-radius: 10px; cursor: pointer;
+            letter-spacing: .02em;
+            transition: background .2s, transform .15s, box-shadow .2s;
+            box-shadow: 0 0 0 0 rgba(5,150,105,0);
         }
-        .btn-primary:hover { background: #D4A11E; }
-        .btn-ghost {
-            background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.8);
-            padding: 11px 24px; border-radius: 8px;
-            font-size: 14px; font-weight: 500; text-decoration: none;
-            border: 1px solid rgba(255,255,255,0.15); transition: background 0.15s;
+        .btn-primary:hover {
+            background: var(--brilliant-gold);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 32px rgba(212,175,55,.35);
         }
-        .btn-ghost:hover { background: #D4A11E; color: #fff; border-color: #D4A11E; }
+        .btn-primary svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2.2; transition: transform .2s; }
+        .btn-primary:hover svg { transform: translateX(3px); }
 
-        /* ── Hero mockup ── */
-        .hero-mockup {
-            margin: 48px auto 0; max-width: 760px;
-            background: rgba(255,255,255,0.04);
-            border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 12px; overflow: hidden;
+        .btn-outline {
+            display: inline-flex; align-items: center; gap: 8px;
+            font-size: 14px; font-weight: 400;
+            padding: 13px 28px;
+            background: rgba(255,255,255,.05);
+            color: rgba(255,255,255,.7);
+            border: 1px solid rgba(255,255,255,.14);
+            border-radius: 10px;
+            text-decoration: none;
+            transition: background .2s, color .2s, border-color .2s;
         }
-        .mockup-bar {
-            background: rgba(255,255,255,0.06); padding: 10px 16px;
-            display: flex; align-items: center; gap: 6px;
-            border-bottom: 1px solid rgba(255,255,255,0.08);
+        .btn-outline:hover {
+            background: rgba(255,255,255,.1);
+            color: #fff;
+            border-color: rgba(255,255,255,.25);
         }
-        .dot { width: 10px; height: 10px; border-radius: 50%; }
-        .mockup-content { padding: 24px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
-        .mock-card {
-            background: rgba(255,255,255,0.05);
-            border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 8px; padding: 16px;
-        }
-        .mock-card-label { font-size: 11px; color: rgba(255,255,255,0.4); margin-bottom: 6px; }
-        .mock-card-val { font-size: 22px; font-weight: 500; color: #fff; }
-        .mock-card-sub { font-size: 11px; margin-top: 4px; }
-        .mock-bar-wrap {
-            background: rgba(255,255,255,0.05);
-            border: 1px solid rgba(255,255,255,0.08);
-            border-radius: 8px; padding: 16px; grid-column: 1 / -1;
-        }
-        .mock-bar-label { font-size: 11px; color: rgba(255,255,255,0.4); margin-bottom: 10px; }
-        .mock-bars { display: flex; align-items: flex-end; gap: 6px; height: 60px; }
-        .mock-b-income  { background: #1D9E75; border-radius: 3px 3px 0 0; flex: 1; }
-        .mock-b-expense { background: #E24B4A; border-radius: 3px 3px 0 0; flex: 1; opacity: 0.7; }
-        .mock-legend { display: flex; gap: 16px; margin-top: 8px; }
-        .mock-legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: rgba(255,255,255,0.4); }
-        .mock-legend-dot { width: 8px; height: 8px; border-radius: 2px; }
 
-        /* ══════════════════════════════════════
-           STATS
-        ══════════════════════════════════════ */
-        .stats { display: grid; grid-template-columns: repeat(4, 1fr); border-bottom: 1px solid #f0f0ee; }
-        .stat { padding: 36px 20px; text-align: center; border-right: 1px solid #f0f0ee; }
-        .stat:last-child { border-right: none; }
-        .stat-val { font-size: 28px; font-weight: 500; color: #0F6E56; margin-bottom: 4px; }
-        .stat-label { font-size: 13px; color: #6b7280; }
+        /* ── Dashboard mockup ── */
+        .hero-dash {
+            position: relative; z-index: 1;
+            width: 100%; max-width: 820px;
+            margin: 0 auto;
+            background: rgba(255,255,255,.04);
+            border: 1px solid rgba(255,255,255,.1);
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 40px 80px rgba(0,0,0,.5), 0 0 0 1px rgba(255,255,255,.06) inset;
+        }
+        .dash-bar {
+            background: rgba(255,255,255,.06);
+            border-bottom: 1px solid rgba(255,255,255,.08);
+            padding: 12px 20px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .dash-dot { width: 10px; height: 10px; border-radius: 50%; }
+        .dash-bar-label {
+            margin-left: 8px;
+            font-size: 12px; color: rgba(255,255,255,.3);
+            font-weight: 300; letter-spacing: .04em;
+        }
+        .dash-body { padding: 24px; }
 
-        /* ══════════════════════════════════════
+        .dash-title {
+            font-size: 11px; font-weight: 500;
+            color: rgba(255,255,255,.3);
+            letter-spacing: .08em;
+            text-transform: uppercase;
+            margin-bottom: 20px;
+        }
+
+        .dash-cards {
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+            margin-bottom: 16px;
+        }
+        .dash-card {
+            background: rgba(255,255,255,.05);
+            border: 1px solid rgba(255,255,255,.08);
+            border-radius: 10px;
+            padding: 18px;
+        }
+        .dash-card-label { font-size: 11px; color: rgba(255,255,255,.35); margin-bottom: 8px; letter-spacing: .04em; }
+        .dash-card-val { font-family: var(--serif); font-size: 26px; color: #fff; line-height: 1; margin-bottom: 6px; }
+        .dash-card-trend { font-size: 11px; display: flex; align-items: center; gap: 4px; }
+
+        .dash-chart {
+            background: rgba(255,255,255,.04);
+            border: 1px solid rgba(255,255,255,.07);
+            border-radius: 10px;
+            padding: 18px;
+        }
+        .dash-chart-label { font-size: 11px; color: rgba(255,255,255,.3); margin-bottom: 14px; letter-spacing: .04em; }
+        .dash-bars { display: flex; align-items: flex-end; gap: 5px; height: 64px; }
+        .db-i { background: #1DB384; border-radius: 3px 3px 0 0; flex: 1; opacity: .85; }
+        .db-e { background: #E05050; border-radius: 3px 3px 0 0; flex: 1; opacity: .6; }
+        .dash-legend { display: flex; gap: 20px; margin-top: 10px; }
+        .dl-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: rgba(255,255,255,.35); }
+        .dl-dot { width: 8px; height: 8px; border-radius: 2px; }
+
+
+        /* ════════════════════════════════════
+           STATS BAND
+        ════════════════════════════════════ */
+        .stats-band {
+            display: grid; grid-template-columns: repeat(4, 1fr);
+            border-bottom: 1px solid var(--cloud);
+            background: #FAFBF9;
+            transition: background .3s, border-color .3s;
+        }
+        .dark .stats-band { background: #0B110E; border-bottom-color: rgba(255,255,255,.07); }
+        .stat-cell {
+            padding: 40px 24px; text-align: center;
+            border-right: 1px solid var(--cloud);
+            transition: border-color .3s;
+        }
+        .dark .stat-cell { border-right-color: rgba(255,255,255,.07); }
+        .stat-cell:last-child { border-right: none; }
+        .stat-num {
+            font-family: var(--serif);
+            font-size: 34px; color: #0A4A38;
+            line-height: 1;
+            margin-bottom: 6px;
+            transition: color .3s;
+        }
+        .dark .stat-num { color: #1DB384; }
+        .stat-lbl { font-size: 13px; color: var(--slate); font-weight: 300; letter-spacing: .02em; }
+
+
+        /* ════════════════════════════════════
            NOTICE
-        ══════════════════════════════════════ */
-        .notice-wrap { padding: 32px 40px 0; }
+        ════════════════════════════════════ */
+        .notice-wrap { padding: 40px 48px 0; }
         .notice {
-            background: #E1F5EE; border: 1px solid #D4A11E;
-            border-radius: 10px; padding: 14px 20px;
-            display: flex; align-items: flex-start; gap: 12px;
+            display: flex; align-items: flex-start; gap: 14px;
+            background: #EBF7F2;
+            border: 1px solid rgba(10,74,56,.15);
+            border-left: 3px solid var(--emerald);
+            border-radius: 10px;
+            padding: 16px 20px;
         }
-        .notice-icon { width: 18px; height: 18px; stroke: #085041; fill: none; stroke-width: 1.5; flex-shrink: 0; margin-top: 1px; }
-        .notice p { font-size: 13px; color: #085041; line-height: 1.5; }
+        .dark .notice { background: rgba(13,43,34,.6); border-left-color: var(--emerald); border-color: rgba(5,150,105,.2); }
+        .notice-ico { flex-shrink: 0; margin-top: 1px; }
+        .notice-ico svg { width: 16px; height: 16px; stroke: var(--emerald); fill: none; stroke-width: 1.8; }
+        .dark .notice-ico svg { stroke: #5DDCAA; }
+        .notice p { font-size: 13.5px; color: #0A4A38; line-height: 1.6; font-weight: 300; }
+        .dark .notice p { color: #9FE1CB; }
         .notice strong { font-weight: 500; }
 
-        /* ══════════════════════════════════════
-           SCROLL REVEAL
-        ══════════════════════════════════════ */
+
+        /* ════════════════════════════════════
+           REVEAL
+        ════════════════════════════════════ */
         .reveal {
-            opacity: 0; transform: translateY(24px);
-            transition: opacity 0.55s ease, transform 0.55s ease;
+            opacity: 0; transform: translateY(28px);
+            transition: opacity .6s ease, transform .6s ease;
         }
         .reveal.visible { opacity: 1; transform: translateY(0); }
-        .reveal-group .reveal { transition-delay: calc(var(--i, 0) * 80ms); }
+        .reveal-group .reveal { transition-delay: calc(var(--i, 0) * 90ms); }
 
-        /* ══════════════════════════════════════
+
+        /* ════════════════════════════════════
+           SECTION SHARED
+        ════════════════════════════════════ */
+        .section-eyebrow {
+            font-size: 11px; font-weight: 500; letter-spacing: .1em;
+            text-transform: uppercase; color: var(--emerald);
+            margin-bottom: 12px;
+            transition: color .3s;
+        }
+        .dark .section-eyebrow { color: #1DB384; }
+        .section-hed {
+            font-family: var(--serif);
+            font-size: clamp(28px, 3.5vw, 40px);
+            color: var(--ink);
+            line-height: 1.15;
+            letter-spacing: -.02em;
+            margin-bottom: 14px;
+        }
+        .section-sub { font-size: 15.5px; color: var(--slate); font-weight: 300; line-height: 1.7; max-width: 500px; }
+
+
+        /* ════════════════════════════════════
            FEATURES
-        ══════════════════════════════════════ */
-        .features { padding: 72px 40px; }
-        .section-label {
-            font-size: 12px; font-weight: 500; letter-spacing: 0.6px;
-            color: #0F6E56; text-transform: uppercase; margin-bottom: 10px;
-        }
-        .section-title { font-size: 30px; font-weight: 500; color: #111827; max-width: 500px; line-height: 1.3; margin-bottom: 10px; }
-        .section-sub { font-size: 15px; color: #6b7280; max-width: 480px; margin-bottom: 48px; }
-        .features-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+        ════════════════════════════════════ */
+        .features { padding: 80px 48px; }
+        .features-intro { margin-bottom: 56px; }
+        .features-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; background: var(--cloud); border: 1px solid var(--cloud); border-radius: 14px; overflow: hidden; }
+        .dark .features-grid { background: rgba(255,255,255,.06); border-color: rgba(255,255,255,.06); }
         .feat {
-            background: #f9fafb; border: 1px solid #f0f0ee;
-            border-radius: 12px; padding: 24px;
-            transition: border-color 0.2s, box-shadow 0.2s;
+            background: #FAFBF9;
+            padding: 32px 28px;
+            transition: background .2s;
         }
-        .feat:hover { border-color: #D4A11E; box-shadow: 0 4px 16px rgba(212,161,30,0.1); }
-        .feat-icon {
-            width: 40px; height: 40px; background: #E1F5EE;
-            border-radius: 8px; display: flex; align-items: center;
-            justify-content: center; margin-bottom: 16px;
+        .dark .feat { background: #0B110E; }
+        .feat:hover { background: #fff; }
+        .dark .feat:hover { background: #0F1A14; }
+        .feat-ico {
+            width: 44px; height: 44px;
+            background: var(--pale);
+            border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            margin-bottom: 20px;
+            transition: background .3s;
         }
-        .feat-icon svg { width: 18px; height: 18px; stroke: #0F6E56; fill: none; stroke-width: 1.5; }
-        .feat h3 { font-size: 15px; font-weight: 500; color: #111827; margin-bottom: 8px; }
-        .feat p { font-size: 13px; color: #6b7280; line-height: 1.6; }
+        .dark .feat-ico { background: rgba(5,150,105,.12); }
+        .feat-ico svg { width: 20px; height: 20px; stroke: var(--emerald); fill: none; stroke-width: 1.7; transition: stroke .3s; }
+        .dark .feat-ico svg { stroke: #1DB384; }
+        .feat h3 { font-family: var(--serif); font-size: 18px; color: var(--ink); margin-bottom: 10px; letter-spacing: -.01em; }
+        .feat p { font-size: 14px; color: var(--slate); line-height: 1.65; font-weight: 300; }
 
-        /* ══════════════════════════════════════
-           ABOUT
-        ══════════════════════════════════════ */
+
+        /* ════════════════════════════════════
+           ABOUT SECTION
+        ════════════════════════════════════ */
         .about {
-            padding: 72px 40px; background: #04342C;
-            position: relative; overflow: hidden; text-align: center;
+            position: relative;
+            background: #051009;
+            padding: 96px 48px;
+            text-align: center;
+            overflow: hidden;
         }
         .about::before {
             content: ''; position: absolute; inset: 0;
-            background-image: radial-gradient(circle, rgba(255,255,255,0.07) 1px, transparent 1px);
-            background-size: 28px 28px; pointer-events: none;
+            background-image: radial-gradient(rgba(5,150,105,.12) 1px, transparent 1px);
+            background-size: 28px 28px;
         }
-        .about-inner { position: relative; z-index: 1; max-width: 680px; margin: 0 auto; }
-        .about-inner .section-label { color: #9FE1CB; }
-        .about-inner .section-title { color: #fff; max-width: 100%; margin: 0 auto 16px; }
-        .about-inner .section-sub  { color: rgba(255,255,255,0.6); max-width: 100%; margin-bottom: 0; }
+        .about::after {
+            content: ''; position: absolute;
+            top: -150px; left: 50%; transform: translateX(-50%);
+            width: 700px; height: 500px;
+            background: radial-gradient(ellipse, rgba(5,150,105,.22) 0%, transparent 70%);
+            pointer-events: none;
+        }
+        .about-inner { position: relative; z-index: 1; max-width: 660px; margin: 0 auto; }
+        .about .section-eyebrow { color: #4EEDB5; }
+        .about .section-hed { color: #fff; max-width: 100%; }
+        .about .section-sub { color: rgba(255,255,255,.48); max-width: 100%; margin: 0 auto; }
 
-        /* ══════════════════════════════════════
+        /* ════════════════════════════════════
            ROLES
-        ══════════════════════════════════════ */
-        .roles { padding: 72px 40px; background: #f9fafb; }
-        .roles-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; align-items: center; }
-        .role-list { display: flex; flex-direction: column; gap: 12px; margin-top: 32px; }
-        .role-item {
-            display: flex; align-items: flex-start; gap: 12px;
-            padding: 16px; background: #fff;
-            border: 1px solid #f0f0ee; border-radius: 10px; transition: border-color 0.2s;
+        ════════════════════════════════════ */
+        .roles {
+            padding: 80px 48px;
+            background: var(--mist);
+            transition: background .3s;
         }
-        .role-item:hover { border-color: #D4A11E; }
-        .role-pip { width: 8px; height: 8px; background: #1D9E75; border-radius: 50%; margin-top: 5px; flex-shrink: 0; }
-        .role-info h4 { font-size: 14px; font-weight: 500; color: #111827; margin-bottom: 2px; }
-        .role-info p  { font-size: 13px; color: #6b7280; }
-        .role-visual { background: #fff; border: 1px solid #f0f0ee; border-radius: 12px; overflow: hidden; }
-        .rv-head {
-            padding: 14px 18px; border-bottom: 1px solid #f0f0ee;
+        .dark .roles { background: #060D09; }
+        .roles-grid { display: grid; grid-template-columns: 1fr 1.2fr; gap: 72px; align-items: center; }
+
+        .role-list { display: flex; flex-direction: column; gap: 10px; margin-top: 36px; }
+        .role-card {
+            display: flex; align-items: flex-start; gap: 16px;
+            padding: 20px 20px;
+            background: #fff;
+            border: 1px solid var(--cloud);
+            border-radius: 12px;
+            transition: border-color .2s, box-shadow .2s;
+        }
+        .dark .role-card { background: #0D1B12; border-color: rgba(255,255,255,.07); }
+        .role-card:hover { border-color: var(--brilliant-gold); box-shadow: 0 4px 20px rgba(212,175,55,.1); }
+        .role-pip {
+            width: 36px; height: 36px; border-radius: 8px;
+            background: var(--pale); flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center;
+            transition: background .3s;
+        }
+        .dark .role-pip { background: rgba(5,150,105,.12); }
+        .role-pip svg { width: 16px; height: 16px; stroke: var(--emerald); fill: none; stroke-width: 1.8; transition: stroke .3s; }
+        .dark .role-pip svg { stroke: #1DB384; }
+        .role-info h4 { font-size: 14.5px; font-weight: 500; color: var(--ink); margin-bottom: 3px; }
+        .role-info p  { font-size: 13px; color: var(--slate); font-weight: 300; line-height: 1.5; }
+
+        /* Member table visual */
+        .members-panel {
+            background: #fff;
+            border: 1px solid var(--cloud);
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 4px 24px rgba(0,0,0,.06);
+        }
+        .dark .members-panel { background: #0D1B12; border-color: rgba(255,255,255,.07); }
+        .mp-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--cloud);
             display: flex; justify-content: space-between; align-items: center;
         }
-        .rv-head span { font-size: 13px; font-weight: 500; color: #111827; }
-        .rv-badge { font-size: 11px; background: #E1F5EE; color: #085041; padding: 3px 10px; border-radius: 100px; }
-        .rv-row { display: flex; align-items: center; gap: 12px; padding: 12px 18px; border-bottom: 1px solid #f0f0ee; }
-        .rv-row:last-child { border-bottom: none; }        /* ← Fix: removes stray bottom border */
-        .rv-avatar {
-            width: 32px; height: 32px; border-radius: 50%;
+        .dark .mp-header { border-bottom-color: rgba(255,255,255,.07); }
+        .mp-title { font-family: var(--serif); font-size: 15px; color: var(--ink); }
+        .mp-badge {
+            font-size: 11px; font-weight: 500;
+            padding: 4px 12px; border-radius: 100px;
+            background: var(--pale); color: var(--emerald);
+            transition: background .3s, color .3s;
+        }
+        .dark .mp-badge { background: rgba(5,150,105,.15); color: #5DDCAA; }
+        .mp-row {
+            display: flex; align-items: center; gap: 14px;
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--cloud);
+            transition: background .15s;
+        }
+        .dark .mp-row { border-bottom-color: rgba(255,255,255,.06); }
+        .mp-row:last-child { border-bottom: none; }
+        .mp-row:hover { background: var(--mist); }
+        .dark .mp-row:hover { background: rgba(255,255,255,.03); }
+        .mp-avatar {
+            width: 34px; height: 34px; border-radius: 50%;
             display: flex; align-items: center; justify-content: center;
             font-size: 12px; font-weight: 500; flex-shrink: 0;
         }
-        .rv-name { font-size: 13px; font-weight: 500; color: #111827; }
-        .rv-pos  { font-size: 12px; color: #6b7280; }
-        .rv-tag  { margin-left: auto; font-size: 11px; padding: 3px 10px; border-radius: 100px; white-space: nowrap; }
+        .mp-name  { font-size: 13.5px; font-weight: 500; color: var(--ink); }
+        .mp-pos   { font-size: 12px; color: var(--slate); font-weight: 300; }
+        .mp-role  {
+            margin-left: auto; font-size: 11px; font-weight: 500;
+            padding: 3px 12px; border-radius: 100px; white-space: nowrap;
+        }
 
-        /* ══════════════════════════════════════
+
+        /* ════════════════════════════════════
            CTA
-        ══════════════════════════════════════ */
-        .cta { padding: 72px 40px; text-align: center; border-top: 1px solid #f0f0ee; }
-        .cta h2 { font-size: 30px; font-weight: 500; color: #111827; margin-bottom: 12px; }
-        .cta p  { font-size: 15px; color: #6b7280; max-width: 420px; margin: 0 auto 32px; }
+        ════════════════════════════════════ */
+        .cta-section {
+            padding: 96px 48px;
+            text-align: center;
+            border-top: 1px solid var(--cloud);
+            transition: border-color .3s;
+        }
+        .dark .cta-section { border-top-color: rgba(255,255,255,.07); }
+        .cta-section h2 {
+            font-family: var(--serif);
+            font-size: clamp(30px, 4vw, 48px);
+            color: var(--ink);
+            letter-spacing: -.02em;
+            margin-bottom: 16px;
+        }
+        .cta-section p { font-size: 16px; color: var(--slate); font-weight: 300; max-width: 400px; margin: 0 auto 40px; }
+        /* CTA button – emerald */
         .btn-cta {
-            background: #0F6E56; color: #fff;
-            padding: 13px 28px; border-radius: 8px;
-            font-size: 14px; font-weight: 500;
-            border: none; cursor: pointer;
             display: inline-flex; align-items: center; gap: 8px;
-            transition: background 0.15s;
+            font-size: 15px; font-weight: 500;
+            padding: 15px 36px;
+            background: var(--emerald);
+            color: #fff;
+            border: none; border-radius: 12px; cursor: pointer;
+            letter-spacing: .02em;
+            transition: background .2s, transform .15s, box-shadow .2s;
         }
-        .btn-cta:hover { background: #D4A11E; }
+        .btn-cta:hover {
+            background: var(--brilliant-gold);
+            transform: translateY(-2px);
+            box-shadow: 0 12px 40px rgba(212,175,55,.3);
+        }
+        .dark .btn-cta { background: var(--emerald); }
+        .dark .btn-cta:hover { background: var(--brilliant-gold); }
 
-        /* ══════════════════════════════════════
+
+        /* ════════════════════════════════════
            FOOTER
-        ══════════════════════════════════════ */
-        footer { background: #f9fafb; border-top: 1px solid #f0f0ee; padding: 48px 40px 24px; }
-        .footer-grid { display: grid; grid-template-columns: 1.5fr 1fr 1fr 1fr; gap: 40px; margin-bottom: 36px; }
-        footer h4   { font-size: 13px; font-weight: 500; color: #111827; margin-bottom: 14px; }
-        footer ul   { list-style: none; }
-        footer li   { margin-bottom: 8px; }
-        footer a    { font-size: 13px; color: #6b7280; text-decoration: none; transition: color 0.15s; }
-        footer a:hover { color: #D4A11E; }
-        footer button {
-            font-size: 13px; color: #6b7280; background: none;
-            border: none; cursor: pointer; padding: 0; transition: color 0.15s;
+        ════════════════════════════════════ */
+        footer {
+            background: var(--mist);
+            border-top: 1px solid var(--cloud);
+            padding: 56px 48px 28px;
+            transition: background .3s, border-color .3s;
         }
-        footer button:hover { color: #D4A11E; }
-        .footer-desc { font-size: 13px; color: #6b7280; line-height: 1.6; margin-top: 10px; }
-        .footer-restricted { display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; font-size: 11px; color: #0F6E56; }
-        .footer-restricted-dot { width: 6px; height: 6px; background: #1D9E75; border-radius: 50%; }
-        .footer-bottom { border-top: 1px solid #f0f0ee; padding-top: 20px; font-size: 12px; color: #9ca3af; text-align: center; }
-        .footer-privacy { font-size: 11px; color: #9ca3af; margin-top: 6px; }
+        .dark footer { background: #060D09; border-top-color: rgba(255,255,255,.07); }
 
-        /* ══════════════════════════════════════
+        .footer-grid {
+            display: grid; grid-template-columns: 2fr 1fr 1fr 1fr;
+            gap: 48px; margin-bottom: 48px;
+        }
+        .footer-about-name {
+            font-family: var(--serif);
+            font-size: 16px; color: var(--ink);
+            margin-bottom: 12px;
+        }
+        .footer-about-desc { font-size: 13px; color: var(--slate); line-height: 1.65; font-weight: 300; margin-bottom: 16px; }
+        .footer-tag {
+            display: inline-flex; align-items: center; gap: 6px;
+            font-size: 11px; color: var(--emerald);
+            font-weight: 500;
+        }
+        .dark .footer-tag { color: #1DB384; }
+        .footer-tag-dot { width: 6px; height: 6px; background: var(--emerald); border-radius: 50%; }
+
+        footer h4 {
+            font-size: 11px; font-weight: 500; letter-spacing: .08em;
+            text-transform: uppercase; color: var(--slate);
+            margin-bottom: 18px;
+        }
+        footer ul { list-style: none; }
+        footer li { margin-bottom: 10px; }
+        footer a, footer button {
+            font-size: 13.5px; color: var(--slate); font-weight: 300;
+            text-decoration: none; background: none; border: none; cursor: pointer; padding: 0;
+            transition: color .2s;
+        }
+        footer a:hover, footer button:hover { color: var(--brilliant-gold); }
+        .dark footer a:hover, .dark footer button:hover { color: var(--brilliant-gold); }
+
+        .footer-bottom {
+            border-top: 1px solid var(--cloud);
+            padding-top: 24px;
+            font-size: 12px; color: var(--slate); font-weight: 300;
+            text-align: center; line-height: 1.6;
+        }
+        .dark .footer-bottom { border-top-color: rgba(255,255,255,.07); }
+
+
+        /* ════════════════════════════════════
+           MODAL (smaller size)
+        ════════════════════════════════════ */
+        .modal-overlay {
+            position: fixed; inset: 0; z-index: 200;
+            display: flex; align-items: center; justify-content: center;
+            padding: 16px;
+            background: rgba(4,8,6,.7);
+            backdrop-filter: blur(12px) saturate(1.3);
+            -webkit-backdrop-filter: blur(12px) saturate(1.3);
+        }
+        .modal-box {
+            background: #fff;
+            border-radius: 20px;
+            width: 100%; max-width: 360px;
+            overflow: hidden;
+            border: 1px solid rgba(0,0,0,.06);
+        }
+        .dark .modal-box { background: #0D1B12; border-color: rgba(255,255,255,.09); }
+        .modal-head {
+            padding: 24px 24px 18px;
+            text-align: center;
+            border-bottom: 1px solid var(--cloud);
+        }
+        .dark .modal-head { border-bottom-color: rgba(255,255,255,.07); }
+        .modal-crest {
+            width: 48px; height: 48px;
+            border-radius: 12px;
+            background: var(--emerald);
+            display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 12px;
+        }
+        .modal-crest svg { width: 20px; height: 20px; stroke: #fff; fill: none; stroke-width: 1.8; }
+        .modal-head h2 {
+            font-family: var(--serif);
+            font-size: 20px; color: var(--ink);
+            letter-spacing: -.01em; margin-bottom: 4px;
+        }
+        .modal-head p { font-size: 12px; color: var(--slate); font-weight: 300; }
+        .modal-body { padding: 20px 24px 24px; }
+
+        /* flash */
+        .flash {
+            display: flex; align-items: flex-start; gap: 10px;
+            padding: 10px 14px; border-radius: 10px;
+            font-size: 12px; margin-bottom: 16px;
+            transition: opacity .4s;
+        }
+        .flash-ok { background: #EBF7F2; border: 1px solid rgba(5,150,105,.15); color: var(--emerald); }
+        .flash-err { background: #FEF2F2; border: 1px solid rgba(220,38,38,.15); color: #991B1B; }
+        .dark .flash-ok { background: rgba(13,43,34,.6); color: #9FE1CB; }
+        .dark .flash-err { background: rgba(127,29,29,.3); color: #FCA5A5; }
+        .flash svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 1.8; flex-shrink: 0; margin-top: 1px; }
+
+        /* form fields */
+        .field { margin-bottom: 14px; }
+        .field label {
+            display: block; font-size: 12px; font-weight: 500;
+            color: var(--ink); margin-bottom: 5px;
+        }
+        .field-wrap { position: relative; }
+        .field-ico {
+            position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
+            pointer-events: none;
+        }
+        .field-ico svg { width: 14px; height: 14px; stroke: var(--slate); fill: none; stroke-width: 1.8; }
+        .field input[type="email"],
+        .field input[type="password"],
+        .field input[type="text"] {
+            width: 100%; padding: 8px 10px 8px 34px;
+            font-family: var(--sans); font-size: 13px;
+            background: #F5F7F5; border: 1px solid var(--cloud);
+            border-radius: 8px; color: var(--ink);
+            outline: none; transition: border-color .2s, box-shadow .2s, background .2s;
+        }
+        .dark .field input { background: rgba(255,255,255,.06); border-color: rgba(255,255,255,.1); color: #e2efe8; }
+        .field input:focus {
+            border-color: var(--emerald);
+            box-shadow: 0 0 0 3px rgba(5,150,105,.1);
+            background: #fff;
+        }
+        .dark .field input:focus { border-color: #1DB384; box-shadow: 0 0 0 3px rgba(29,179,132,.15); background: rgba(255,255,255,.08); }
+
+        /* pw toggle */
+        .pw-toggle {
+            position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+            background: none; border: none; cursor: pointer;
+            color: var(--slate); padding: 4px;
+            display: flex; align-items: center;
+            transition: color .15s;
+        }
+        .pw-toggle:hover { color: var(--ink); }
+        .pw-toggle svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 1.8; }
+
+        .form-opts {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 18px; font-size: 12px;
+        }
+        .form-opts label { display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--slate); font-weight: 300; }
+        .form-opts input[type="checkbox"] { width: 13px; height: 13px; accent-color: var(--emerald); }
+        .form-opts a { color: var(--emerald); text-decoration: none; font-weight: 500; transition: color .2s; }
+        .dark .form-opts a { color: #1DB384; }
+        .form-opts a:hover { color: var(--brilliant-gold); }
+
+        /* Sign in button – emerald, gold hover */
+        .btn-submit {
+            width: 100%; padding: 10px;
+            font-family: var(--sans); font-size: 13px; font-weight: 500;
+            background: var(--emerald);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background .2s, transform .15s, box-shadow .2s;
+            margin-bottom: 8px;
+        }
+        .btn-submit:hover:not(:disabled) {
+            background: var(--brilliant-gold);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(212,175,55,0.3);
+        }
+        .btn-submit:focus-visible {
+            outline: 2px solid var(--brilliant-gold);
+            outline-offset: 2px;
+            border-radius: 8px;
+        }
+        .btn-submit:disabled { opacity: .7; cursor: not-allowed; }
+
+        .dark .btn-submit {
+            background: var(--emerald);
+        }
+        .dark .btn-submit:hover:not(:disabled) {
+            background: #E6C358;
+            box-shadow: 0 4px 14px rgba(230,195,88,0.4);
+        }
+
+        /* Cancel button – red */
+        .btn-cancel {
+            width: 100%; padding: 10px;
+            font-family: var(--sans); font-size: 13px; font-weight: 500;
+            background: #C0392B;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background .2s, transform .15s;
+        }
+        .btn-cancel:hover {
+            background: #A93226;
+            transform: translateY(-1px);
+        }
+        .btn-cancel:focus-visible {
+            outline: 2px solid var(--brilliant-gold);
+            outline-offset: 2px;
+        }
+        .dark .btn-cancel {
+            background: #B03A2E;
+        }
+        .dark .btn-cancel:hover {
+            background: #962D22;
+        }
+
+        .modal-note {
+            margin-top: 16px; padding-top: 16px;
+            border-top: 1px solid var(--cloud);
+            display: flex; align-items: flex-start; gap: 8px;
+            font-size: 11px; color: var(--slate); font-weight: 300; line-height: 1.5;
+        }
+        .dark .modal-note { border-top-color: rgba(255,255,255,.07); }
+        .modal-note svg { width: 12px; height: 12px; stroke: var(--slate); fill: none; stroke-width: 1.8; flex-shrink: 0; margin-top: 1px; }
+
+
+        /* ── Back to top ── */
+        #backToTop {
+            position: fixed; bottom: 24px; right: 24px; z-index: 50;
+            width: 42px; height: 42px; border-radius: 10px;
+            background: var(--emerald);
+            color: #fff;
+            border: none; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            opacity: 0; visibility: hidden;
+            transition: opacity .3s, visibility .3s, background .2s, transform .2s;
+        }
+        #backToTop.show { opacity: 1; visibility: visible; }
+        #backToTop:hover { background: var(--brilliant-gold); transform: translateY(-2px); }
+        #backToTop svg { width: 18px; height: 18px; stroke: #fff; fill: none; stroke-width: 2; }
+
+
+        /* ════════════════════════════════════
            RESPONSIVE
-        ══════════════════════════════════════ */
+        ════════════════════════════════════ */
         @media (max-width: 768px) {
-            .nav { padding: 14px 20px; }
+            .nav { padding: 0 20px; }
             .nav-links { display: none; }
             .hamburger { display: flex; }
-            .hero { padding: 60px 20px 40px; }
-            .hero h1 { font-size: 30px; }
-            .mockup-content { grid-template-columns: 1fr 1fr; }
-            .stats { grid-template-columns: 1fr 1fr; }
-            .stat { border-right: none; border-bottom: 1px solid #f0f0ee; }
-            .stat:nth-child(odd) { border-right: 1px solid #f0f0ee; }
-            .notice-wrap { padding: 24px 20px 0; }
-            .features { padding: 48px 20px; }
+            .hero { padding: 60px 24px 48px; min-height: auto; }
+            .hero h1 { font-size: 36px; }
+            .hero-sub { font-size: 15px; }
+            .dash-cards { grid-template-columns: 1fr 1fr; }
+            .stats-band { grid-template-columns: 1fr 1fr; }
+            .stat-cell { border-right: none; border-bottom: 1px solid var(--cloud); }
+            .stat-cell:nth-child(odd) { border-right: 1px solid var(--cloud); }
+            .stat-cell:last-child { border-bottom: none; }
+            .notice-wrap { padding: 32px 24px 0; }
+            .features { padding: 56px 24px; }
             .features-grid { grid-template-columns: 1fr; }
-            .about { padding: 48px 20px; }
-            .roles { padding: 48px 20px; }
-            .roles-grid { grid-template-columns: 1fr; }
-            .cta { padding: 48px 20px; }
-            footer { padding: 40px 20px 20px; }
-            .footer-grid { grid-template-columns: 1fr 1fr; gap: 24px; }
+            .about { padding: 64px 24px; }
+            .roles { padding: 56px 24px; }
+            .roles-grid { grid-template-columns: 1fr; gap: 40px; }
+            .cta-section { padding: 64px 24px; }
+            footer { padding: 48px 24px 24px; }
+            .footer-grid { grid-template-columns: 1fr 1fr; gap: 32px; }
         }
     </style>
 </head>
 <body>
 
-    {{-- ══ NAV ══ --}}
-    <nav class="nav">
-        <div class="nav-logo">
-            <div class="nav-badge">VSU</div>
-            <span class="nav-name">VSULHS SSLG</span>
+{{-- ═══ NAV ═══ --}}
+<nav class="nav">
+    <a href="#" class="nav-brand">
+        <div class="nav-crest">
+            <svg viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 21l9-18 9 18M6.5 15h11"/></svg>
         </div>
-        <div class="nav-links">
-            <a href="#features">Features</a>
-            <a href="#about">About</a>
-            <a href="#contact">Contact</a>
-        </div>
-        <div class="nav-right">
-            {{-- Dark mode toggle — x-cloak prevents flash before Alpine boots --}}
-            <button @click="darkMode = !darkMode" class="dark-toggle" aria-label="Toggle dark mode">
-                <svg x-show="!darkMode" x-cloak class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/>
-                </svg>
-                <svg x-show="darkMode" x-cloak class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707M17.657 17.657l-.707-.707M6.343 6.343l-.707-.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>
-                </svg>
-            </button>
-            <button @click="loginModalOpen = true" class="nav-cta">Login</button>
-            <button class="hamburger" id="hamburger" aria-label="Toggle menu">
-                <span></span><span></span><span></span>
-            </button>
-        </div>
-    </nav>
+        <span class="nav-wordmark">VSULHS SSLG</span>
+    </a>
 
-    {{-- ══ MOBILE MENU ══ --}}
-    <div class="mobile-menu" id="mobileMenu">
-        <a href="#features">Features</a>
-        <a href="#about">About</a>
-        <a href="#contact">Contact</a>
-        <button @click="loginModalOpen = true; document.getElementById('mobileMenu').classList.remove('open'); document.getElementById('hamburger').classList.remove('open');">Login</button>
-    </div>
+    <ul class="nav-links">
+        <li><a href="#features">Features</a></li>
+        <li><a href="#about">About</a></li>
+        <li><a href="#contact">Contact</a></li>
+    </ul>
 
-    {{-- ══ HERO ══ --}}
-    <section class="hero">
-        <div class="hero-inner">
-            <div class="hero-tag">
-                <div class="hero-tag-dot"></div>
-                <span>Exclusively for VSULHS SSLG</span>
-            </div>
-            <h1>The official portal of<br><em>VSULHS SSLG</em></h1>
-            <p>Financial records, documents, and member management — built solely for the Supreme Student Learner Government of VSU Leyte High School.</p>
-            <div class="hero-btns">
-                <button @click="loginModalOpen = true" class="btn-primary">
-                    Login to portal
-                    <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
-                </button>
-                <a href="#features" class="btn-ghost">Learn more</a>
-            </div>
-
-            <div class="hero-mockup">
-                <div class="mockup-bar">
-                    <div class="dot" style="background:#E24B4A"></div>
-                    <div class="dot" style="background:#EF9F27"></div>
-                    <div class="dot" style="background:#1D9E75"></div>
-                </div>
-                <div class="mockup-content">
-                    <div class="mock-card">
-                        <div class="mock-card-label">Total income</div>
-                        <div class="mock-card-val">₱84,500</div>
-                        <div class="mock-card-sub" style="color:#5DCAA5;">This term</div>
-                    </div>
-                    <div class="mock-card">
-                        <div class="mock-card-label">Total expenses</div>
-                        <div class="mock-card-val">₱52,300</div>
-                        <div class="mock-card-sub" style="color:#F09595;">This term</div>
-                    </div>
-                    <div class="mock-card">
-                        <div class="mock-card-label">Net balance</div>
-                        <div class="mock-card-val">₱32,200</div>
-                        <div class="mock-card-sub" style="color:#5DCAA5;">Remaining</div>
-                    </div>
-                    <div class="mock-bar-wrap">
-                        <div class="mock-bar-label">Income vs expenses — monthly</div>
-                        <div class="mock-bars">
-                            <div class="mock-b-income"  style="height:40%"></div>
-                            <div class="mock-b-expense" style="height:25%"></div>
-                            <div class="mock-b-income"  style="height:55%"></div>
-                            <div class="mock-b-expense" style="height:38%"></div>
-                            <div class="mock-b-income"  style="height:70%"></div>
-                            <div class="mock-b-expense" style="height:50%"></div>
-                            <div class="mock-b-income"  style="height:85%"></div>
-                            <div class="mock-b-expense" style="height:62%"></div>
-                        </div>
-                        <div class="mock-legend">
-                            <div class="mock-legend-item"><div class="mock-legend-dot" style="background:#1D9E75"></div> Income</div>
-                            <div class="mock-legend-item"><div class="mock-legend-dot" style="background:#E24B4A"></div> Expenses</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    {{-- ══ STATS — animated counters ══ --}}
-    <div class="stats">
-        <div class="stat">
-            <div class="stat-val stat-number" data-target="500" data-suffix="+">0</div>
-            <div class="stat-label">Active members</div>
-        </div>
-        <div class="stat">
-            <div class="stat-val stat-number" data-target="1200000" data-prefix="₱" data-format="compact">0</div>
-            <div class="stat-label">Finances tracked</div>
-        </div>
-        <div class="stat">
-            <div class="stat-val stat-number" data-target="1200" data-suffix="+">0</div>
-            <div class="stat-label">Documents uploaded</div>
-        </div>
-        <div class="stat">
-            <div class="stat-val" style="color:#0F6E56;">24/7</div>
-            <div class="stat-label">System uptime</div>
-        </div>
-    </div>
-
-    {{-- ══ NOTICE ══ --}}
-    <div class="notice-wrap reveal">
-        <div class="notice">
-            <svg class="notice-icon" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
-            </svg>
-            <p><strong>Restricted access.</strong> This portal is exclusively for verified members of the VSULHS Supreme Student Learner Government. Accounts are issued by the system administrator — public registration is not available.</p>
-        </div>
-    </div>
-
-    {{-- ══ FEATURES ══ --}}
-    <section id="features" class="features">
-        <div class="reveal">
-            <div class="section-label">Features</div>
-            <div class="section-title">Everything VSULHS SSLG needs</div>
-            <div class="section-sub">Purpose-built tools to keep your organisation's finances, documents, and members in one secure place.</div>
-        </div>
-        <div class="features-grid reveal-group">
-            <div class="feat reveal" style="--i:0">
-                <div class="feat-icon"><svg viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div>
-                <h3>Financial records</h3>
-                <p>Log income and expenses with categories, dates, and attachments. Track your net balance and view monthly summaries at a glance.</p>
-            </div>
-            <div class="feat reveal" style="--i:1">
-                <div class="feat-icon"><svg viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></div>
-                <h3>Document library</h3>
-                <p>Centralised storage with version control, public and private access controls, and easy sharing across teams.</p>
-            </div>
-            <div class="feat reveal" style="--i:2">
-                <div class="feat-icon"><svg viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg></div>
-                <h3>Member management</h3>
-                <p>Organise members by role, track positions, and manage your organisational hierarchy with clarity.</p>
-            </div>
-            <div class="feat reveal" style="--i:3">
-                <div class="feat-icon"><svg viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg></div>
-                <h3>Reports & analytics</h3>
-                <p>Visualise income and expense trends, member activity, and document usage through clean dashboards.</p>
-            </div>
-            <div class="feat reveal" style="--i:4">
-                <div class="feat-icon"><svg viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg></div>
-                <h3>Notifications</h3>
-                <p>Stay informed with alerts for new financial entries, document updates, and important announcements.</p>
-            </div>
-            <div class="feat reveal" style="--i:5">
-                <div class="feat-icon"><svg viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg></div>
-                <h3>Role-based access</h3>
-                <p>Fine-grained permissions ensure every member sees only what they need, keeping sensitive records secure.</p>
-            </div>
-        </div>
-    </section>
-
-    {{-- ══ ABOUT ══ --}}
-    <section id="about" class="about">
-        <div class="about-inner reveal">
-            <div class="section-label">About</div>
-            <div class="section-title">The VSULHS Supreme Student Learner Government</div>
-            <div class="section-sub">The VSULHS SSLG is the official student governing body of the Visayas State University Laboratory High School in Baybay City, Leyte. It represents the student body, promotes student welfare, and upholds transparency and accountability in all organisational activities. This portal was built to support those goals — giving officers and members a single, secure place to manage finances, documents, and records.</div>
-        </div>
-    </section>
-
-    {{-- ══ ROLES ══ --}}
-    <section class="roles">
-        <div class="roles-grid">
-            <div class="reveal">
-                <div class="section-label">Access control</div>
-                <div class="section-title">Built around your org structure</div>
-                <div class="section-sub">Every role gets a tailored experience — advisers, officers, and members each have the right level of access.</div>
-                <div class="role-list">
-                    <div class="role-item">
-                        <div class="role-pip"></div>
-                        <div class="role-info"><h4>Administrator / Adviser</h4><p>Full access to all modules, financial records, audit logs, and system settings</p></div>
-                    </div>
-                    <div class="role-item">
-                        <div class="role-pip"></div>
-                        <div class="role-info"><h4>Officer</h4><p>Log income and expenses, upload documents, and manage org members</p></div>
-                    </div>
-                    <div class="role-item">
-                        <div class="role-pip"></div>
-                        <div class="role-info"><h4>Member</h4><p>View public documents and org-wide financial summaries</p></div>
-                    </div>
-                </div>
-            </div>
-            <div class="role-visual reveal">
-                <div class="rv-head">
-                    <span>Members</span>
-                    <span class="rv-badge">SY 2025–2026</span>
-                </div>
-                <div class="rv-row">
-                    <div class="rv-avatar" style="background:#E1F5EE; color:#085041;">JR</div>
-                    <div><div class="rv-name">Juan Reyes</div><div class="rv-pos">Student President</div></div>
-                    <div class="rv-tag" style="background:#E1F5EE; color:#085041;">Adviser</div>
-                </div>
-                <div class="rv-row">
-                    <div class="rv-avatar" style="background:#E6F1FB; color:#0C447C;">MA</div>
-                    <div><div class="rv-name">Maria Andres</div><div class="rv-pos">Secretary General</div></div>
-                    <div class="rv-tag" style="background:#E6F1FB; color:#0C447C;">Officer</div>
-                </div>
-                <div class="rv-row">
-                    <div class="rv-avatar" style="background:#EEEDFE; color:#3C3489;">KC</div>
-                    <div><div class="rv-name">Karl Cruz</div><div class="rv-pos">Finance Head</div></div>
-                    <div class="rv-tag" style="background:#EEEDFE; color:#3C3489;">Officer</div>
-                </div>
-                <div class="rv-row">
-                    <div class="rv-avatar" style="background:#F1EFE8; color:#444441;">RL</div>
-                    <div><div class="rv-name">Rose Lim</div><div class="rv-pos">Grade 11 — STEM</div></div>
-                    <div class="rv-tag" style="background:#F1EFE8; color:#444441;">Member</div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    {{-- ══ CTA ══ --}}
-    <section class="cta reveal">
-        <h2>VSULHS SSLG members only</h2>
-        <p>This portal is exclusively for verified VSULHS SSLG members. Contact your administrator to receive access.</p>
-        <button @click="loginModalOpen = true" class="btn-cta">
-            Login to the portal
-            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
+    <div class="nav-actions">
+        <button @click="darkMode = !darkMode" class="btn-toggle" aria-label="Toggle dark mode">
+            <svg x-show="!darkMode" x-cloak viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
+            <svg x-show="darkMode" x-cloak viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707M17.657 17.657l-.707-.707M6.343 6.343l-.707-.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
         </button>
-    </section>
+        <button @click="loginModalOpen = true" class="btn-login">Sign in</button>
+        <button class="hamburger" id="hamburger" aria-label="Toggle menu">
+            <span></span><span></span><span></span>
+        </button>
+    </div>
+</nav>
 
-    {{-- ══ FOOTER ══ --}}
-    <footer id="contact">
-        <div class="footer-grid">
-            <div>
-                <div class="nav-logo">
-                    <div class="nav-badge">VSU</div>
-                    <span class="nav-name">VSULHS SSLG</span>
-                </div>
-                <p class="footer-desc">The official management portal of the VSU Laboratory High School Supreme Student Learner Government.</p>
-                <div class="footer-restricted">
-                    <div class="footer-restricted-dot"></div>
-                    Restricted — VSULHS SSLG members only
-                </div>
-            </div>
-            <div>
-                <h4>Navigation</h4>
-                <ul>
-                    <li><a href="#features">Features</a></li>
-                    <li><a href="#about">About</a></li>
-                    <li><a href="#contact">Contact</a></li>
-                    <li><button @click="loginModalOpen = true">Login</button></li>
-                </ul>
-            </div>
-            <div>
-                <h4>Resources</h4>
-                <ul>
-                    <li><a href="#">Help centre</a></li>
-                    <li><a href="#">Privacy policy</a></li>
-                    <li><a href="#">Terms of service</a></li>
-                </ul>
-            </div>
-            <div>
-                <h4>Contact</h4>
-                <ul>
-                    <li><a href="https://maps.google.com/?q=Visayas+State+University+Integrated+High+School" target="_blank" rel="noopener">VSULHS, Baybay City, Leyte</a></li>
-                    <li><a href="/cdn-cgi/l/email-protection#5c2f2f303b1c2a2f2930342f72393829722c34"><span class="__cf_email__" data-cfemail="e596968982a5939690898d96cb808190cb958d">[email&#160;protected]</span></a></li>
-                    <li><a href="tel:+639256353456">+63 925 635 3456</a></li>
-                </ul>
-            </div>
+{{-- Mobile drawer --}}
+<div class="mobile-menu" id="mobileMenu">
+    <a href="#features">Features</a>
+    <a href="#about">About</a>
+    <a href="#contact">Contact</a>
+    <button @click="loginModalOpen = true; document.getElementById('mobileMenu').classList.remove('open'); document.getElementById('hamburger').classList.remove('open');">Sign in</button>
+</div>
+
+
+{{-- ═══ HERO ═══ --}}
+<section class="hero">
+    <div class="hero-glow"></div>
+    <div class="hero-inner">
+        <div class="hero-eyebrow">
+            <div class="eyebrow-dot"></div>
+            <span>Exclusively for VSULHS SSLG members</span>
         </div>
-        <div class="footer-bottom">
-            &copy; {{ date('Y') }} VSULHS Supreme Student Learner Government. All rights reserved.
-            <div class="footer-privacy">Personal information collected by this system is protected under Republic Act No. 10173 (Data Privacy Act of 2012).</div>
+
+        <h1>The official portal of<br><em>VSULHS SSLG</em></h1>
+        <p class="hero-sub">Financial records, documents, and member management — purpose-built for the Supreme Student Learner Government of VSU Leyte High School.</p>
+
+        <div class="hero-btns">
+            <button @click="loginModalOpen = true" class="btn-primary">
+                Sign in to portal
+                <svg viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
+            </button>
+            <a href="#features" class="btn-outline">Explore features</a>
         </div>
-    </footer>
 
-    {{-- ══ LOGIN MODAL ══ --}}
-        {{-- ══ LOGIN MODAL ══ --}}
-    <div x-show="loginModalOpen"
-         x-cloak
-         class="fixed inset-0 z-50 flex items-center justify-center p-4"
-         style="background: rgba(0,0,0,0.6); backdrop-filter: blur(8px);"
-         @click.self="loginModalOpen = false"
-         @keydown.window.escape="loginModalOpen = false">
-
-        <div x-data="loginForm()"
-             class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-gray-200 dark:border-gray-700"
-             @click.stop>
-
-            {{-- Modal header — no X button; Cancel button in the form handles closing --}}
-            <div class="px-8 py-6 text-center" style="background: linear-gradient(135deg, #0F6E56, #085041);">
-                <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-4" style="background: rgba(255,255,255,0.15);">
-                    <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                              d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
-                    </svg>
-                </div>
-                <h2 class="text-2xl font-bold text-white tracking-tight">VSULHS SSLG</h2>
-                <p class="text-sm mt-1" style="color: rgba(255,255,255,0.7);">Supreme Student Learner Government</p>
+        {{-- Dashboard card --}}
+        <div class="hero-dash">
+            <div class="dash-bar">
+                <div class="dash-dot" style="background:#E05050"></div>
+                <div class="dash-dot" style="background:#E8A030"></div>
+                <div class="dash-dot" style="background:#1DB384"></div>
+                <span class="dash-bar-label">SSLG Portal — Financial Overview</span>
             </div>
-
-            <div class="p-8">
-
-                {{-- Flash: success --}}
-                @if (session('success'))
-                    <div class="flash-message mb-4 flex items-center gap-2 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 text-green-800 dark:text-green-300 px-4 py-3 rounded-lg text-sm">
-                        <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                        </svg>
-                        {{ session('success') }}
-                    </div>
-                @endif
-
-                {{-- Flash: errors --}}
-                @if ($errors->any())
-                    <div class="flash-message mb-4 flex items-start gap-2 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-800 dark:text-red-300 px-4 py-3 rounded-lg text-sm">
-                        <svg class="w-4 h-4 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                        </svg>
-                        <div><span class="font-semibold">Error:</span> {{ $errors->first() }}</div>
-                    </div>
-                @endif
-
-                <form method="POST" action="{{ route('login.post') }}" @submit="loading = true" class="space-y-5">
-                    @csrf
-
-                    {{-- Email --}}
-                    <div>
-                        <label for="modal_email" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                            Email address
-                        </label>
-                        <div class="relative">
-                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207"/>
-                                </svg>
-                            </div>
-                            <input type="email"
-                                   id="modal_email"
-                                   name="email"
-                                   value="{{ old('email') }}"
-                                   required
-                                   autocomplete="email"
-                                   placeholder="yourname@gmail.com"
-                                   class="w-full pl-10 pr-4 py-2.5 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-gold-500 transition dark:bg-gray-700 dark:text-white {{ $errors->has('email') ? 'border-red-400' : 'border-gray-300 dark:border-gray-600' }}">
+            <div class="dash-body">
+                <div class="dash-title">Academic Year 2025–2026 · Summary</div>
+                <div class="dash-cards">
+                    <div class="dash-card">
+                        <div class="dash-card-label">TOTAL INCOME</div>
+                        <div class="dash-card-val">₱84,500</div>
+                        <div class="dash-card-trend" style="color:#5DDCAA">
+                            <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 15l7-7 7 7"/></svg>
+                            This term
                         </div>
                     </div>
-
-                    {{-- Password --}}
-                    <div>
-                        <label for="modal_password" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                            Password
-                        </label>
-                        <div class="relative">
-                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6-4h12a2 2 0 002-2v-4a2 2 0 00-2-2H6a2 2 0 00-2 2v4a2 2 0 002 2zm10-2V9a2 2 0 00-2-2H8a2 2 0 00-2 2v4"/>
-                                </svg>
-                            </div>
-                            <input :type="showPassword ? 'text' : 'password'"
-                                   id="modal_password"
-                                   name="password"
-                                   required
-                                   autocomplete="current-password"
-                                   placeholder="••••••••"
-                                   class="w-full pl-10 pr-10 py-2.5 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-gold-500 transition dark:bg-gray-700 dark:text-white {{ $errors->has('password') ? 'border-red-400' : 'border-gray-300 dark:border-gray-600' }}">
-                            <button type="button"
-                                    @click="showPassword = !showPassword"
-                                    class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition"
-                                    aria-label="Toggle password visibility">
-                                <svg x-show="!showPassword" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"/>
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                                </svg>
-                                <svg x-show="showPassword" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 01-4.243-4.243m4.242 4.242L9.88 9.88"/>
-                                </svg>
-                            </button>
+                    <div class="dash-card">
+                        <div class="dash-card-label">TOTAL EXPENSES</div>
+                        <div class="dash-card-val">₱52,300</div>
+                        <div class="dash-card-trend" style="color:#F09595">
+                            <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7"/></svg>
+                            This term
                         </div>
                     </div>
-
-                    {{-- Remember me + Forgot password --}}
-                    <div class="flex items-center justify-between">
-                        <label class="flex items-center gap-2 cursor-pointer select-none">
-                            <input type="checkbox"
-                                   name="remember"
-                                   id="modal_remember"
-                                   x-model="rememberMe"
-                                   class="rounded border-gray-300 dark:border-gray-600 text-emerald-600 focus:ring-2 focus:ring-gold-500 transition">
-                            <span class="text-sm text-gray-600 dark:text-gray-400">Remember me</span>
-                        </label>
-                        <a href="{{ route('password.request') }}"
-                           class="text-sm font-medium text-emerald-700 hover:text-yellow-600 dark:text-emerald-400 transition">
-                            Forgot password?
-                        </a>
+                    <div class="dash-card">
+                        <div class="dash-card-label">NET BALANCE</div>
+                        <div class="dash-card-val">₱32,200</div>
+                        <div class="dash-card-trend" style="color:#5DDCAA">
+                            <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 15l7-7 7 7"/></svg>
+                            Remaining
+                        </div>
                     </div>
-
-                    {{-- Submit + Cancel --}}
-                    <div class="flex gap-3">
-                        <button type="submit"
-                                :disabled="loading"
-                                class="flex-1 text-white font-semibold py-2.5 rounded-lg text-sm transition-all shadow-sm focus:outline-none focus:ring-2 focus:ring-gold-500"
-                                :style="loading ? 'background:#0F6E56; opacity:0.8; cursor:not-allowed;' : 'background:#0F6E56;'"
-                                onmouseover="if(!this.disabled) this.style.background='#D4A11E'"
-                                onmouseout="if(!this.disabled) this.style.background='#0F6E56'">
-                            <span x-show="!loading">Sign in</span>
-                            <span x-show="loading" class="flex items-center justify-center gap-2">
-                                <svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
-                                </svg>
-                                Signing in…
-                            </span>
-                        </button>
-                        <button type="button"
-                                @click="loginModalOpen = false"
-                                class="flex-1 rounded-lg text-sm font-semibold py-2.5 transition focus:outline-none focus:ring-2 focus:ring-gold-500"
-                                style="background:#dc2626; color:#fff; border:none;"
-                                onmouseover="this.style.background='#b91c1c'"
-                                onmouseout="this.style.background='#dc2626'">
-                            Cancel
-                        </button>
+                </div>
+                <div class="dash-chart">
+                    <div class="dash-chart-label">INCOME VS EXPENSES — MONTHLY</div>
+                    <div class="dash-bars">
+                        <div class="db-i" style="height:40%"></div><div class="db-e" style="height:25%"></div>
+                        <div class="db-i" style="height:55%"></div><div class="db-e" style="height:38%"></div>
+                        <div class="db-i" style="height:68%"></div><div class="db-e" style="height:52%"></div>
+                        <div class="db-i" style="height:84%"></div><div class="db-e" style="height:60%"></div>
+                        <div class="db-i" style="height:72%"></div><div class="db-e" style="height:44%"></div>
+                        <div class="db-i" style="height:90%"></div><div class="db-e" style="height:65%"></div>
                     </div>
-                </form>
-
-                {{-- Footer note --}}
-                <div class="mt-6 pt-4 border-t border-gray-100 dark:border-gray-700">
-                    <div class="flex items-start gap-2 text-xs text-gray-500 dark:text-gray-400">
-                        <svg class="w-3.5 h-3.5 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6-4h12a2 2 0 002-2v-4a2 2 0 00-2-2H6a2 2 0 00-2 2v4a2 2 0 002 2zm10-2V9a2 2 0 00-2-2H8a2 2 0 00-2 2v4"/>
-                        </svg>
-                        <span>Only check "Remember me" on your personal device. Always log out on shared computers.</span>
+                    <div class="dash-legend">
+                        <div class="dl-item"><div class="dl-dot" style="background:#1DB384"></div>Income</div>
+                        <div class="dl-item"><div class="dl-dot" style="background:#E05050"></div>Expenses</div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+</section>
 
-    {{-- ══ BACK TO TOP ══ --}}
-    <button id="backToTop"
-            class="fixed bottom-6 right-6 text-white p-3 rounded-full shadow-lg z-50 opacity-0 invisible"
-            style="background: #0F6E56;"
-            aria-label="Back to top">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"/>
-        </svg>
+
+{{-- ═══ STATS ═══ --}}
+<div class="stats-band">
+    <div class="stat-cell">
+        <div class="stat-num stat-number" data-target="500" data-suffix="+">0</div>
+        <div class="stat-lbl">Active members</div>
+    </div>
+    <div class="stat-cell">
+        <div class="stat-num stat-number" data-target="1200000" data-prefix="₱" data-format="compact">0</div>
+        <div class="stat-lbl">Finances tracked</div>
+    </div>
+    <div class="stat-cell">
+        <div class="stat-num stat-number" data-target="1200" data-suffix="+">0</div>
+        <div class="stat-lbl">Documents uploaded</div>
+    </div>
+    <div class="stat-cell">
+        <div class="stat-num">24/7</div>
+        <div class="stat-lbl">System uptime</div>
+    </div>
+</div>
+
+
+{{-- ═══ NOTICE ═══ --}}
+<div class="notice-wrap reveal">
+    <div class="notice">
+        <div class="notice-ico">
+            <svg viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+        </div>
+        <p><strong>Restricted access.</strong> This portal is exclusively for verified members of the VSULHS Supreme Student Learner Government. Accounts are issued by the system administrator — public registration is not available.</p>
+    </div>
+</div>
+
+
+{{-- ═══ FEATURES ═══ --}}
+<section id="features" class="features">
+    <div class="features-intro reveal">
+        <div class="section-eyebrow">Features</div>
+        <div class="section-hed">Everything SSLG needs,<br>in one secure place</div>
+        <p class="section-sub">Purpose-built tools to keep your organisation's finances, documents, and members managed with clarity and control.</p>
+    </div>
+
+    <div class="features-grid reveal-group">
+        <div class="feat reveal" style="--i:0">
+            <div class="feat-ico">
+                <svg viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            </div>
+            <h3>Financial records</h3>
+            <p>Log income and expenses with categories, dates, and attachments. Track net balance and view monthly summaries at a glance.</p>
+        </div>
+        <div class="feat reveal" style="--i:1">
+            <div class="feat-ico">
+                <svg viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            </div>
+            <h3>Document library</h3>
+            <p>Centralised storage with version control, public and private access controls, and easy sharing across committees.</p>
+        </div>
+        <div class="feat reveal" style="--i:2">
+            <div class="feat-ico">
+                <svg viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+            </div>
+            <h3>Member management</h3>
+            <p>Organise members by role, track positions, and manage your organisational hierarchy with clarity.</p>
+        </div>
+        <div class="feat reveal" style="--i:3">
+            <div class="feat-ico">
+                <svg viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+            </div>
+            <h3>Reports & analytics</h3>
+            <p>Visualise income and expense trends, member activity, and document usage through clean dashboards.</p>
+        </div>
+        <div class="feat reveal" style="--i:4">
+            <div class="feat-ico">
+                <svg viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+            </div>
+            <h3>Notifications</h3>
+            <p>Stay informed with alerts for new financial entries, document updates, and important org announcements.</p>
+        </div>
+        <div class="feat reveal" style="--i:5">
+            <div class="feat-ico">
+                <svg viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+            </div>
+            <h3>Role-based access</h3>
+            <p>Fine-grained permissions ensure every member sees only what they need, keeping sensitive records secure.</p>
+        </div>
+    </div>
+</section>
+
+
+{{-- ═══ ABOUT ═══ --}}
+<section id="about" class="about">
+    <div class="about-inner reveal">
+        <div class="section-eyebrow">About</div>
+        <div class="section-hed">The VSULHS Supreme Student<br>Learner Government</div>
+        <p class="section-sub" style="margin-top:16px">The VSULHS SSLG is the official student governing body of the Visayas State University Laboratory High School in Baybay City, Leyte. It represents the student body, promotes student welfare, and upholds transparency and accountability in all organisational activities. This portal was built to support those goals — giving officers and members a single, secure place to manage finances, documents, and records.</p>
+    </div>
+</section>
+
+
+{{-- ═══ ROLES ═══ --}}
+<section class="roles">
+    <div class="roles-grid">
+        <div class="reveal">
+            <div class="section-eyebrow">Access control</div>
+            <div class="section-hed">Built around your<br>org structure</div>
+            <p class="section-sub">Every role gets a tailored experience. Advisers, officers, and members each have exactly the right level of access.</p>
+
+            <div class="role-list">
+                <div class="role-card">
+                    <div class="role-pip">
+                        <svg viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                    </div>
+                    <div class="role-info">
+                        <h4>Administrator / Adviser</h4>
+                        <p>Full access to all modules, financial records, audit logs, and system settings</p>
+                    </div>
+                </div>
+                <div class="role-card">
+                    <div class="role-pip">
+                        <svg viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                    </div>
+                    <div class="role-info">
+                        <h4>Officer</h4>
+                        <p>Log income and expenses, upload documents, and manage org members</p>
+                    </div>
+                </div>
+                <div class="role-card">
+                    <div class="role-pip">
+                        <svg viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                    </div>
+                    <div class="role-info">
+                        <h4>Member</h4>
+                        <p>View public documents and org-wide financial summaries</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="members-panel reveal">
+            <div class="mp-header">
+                <span class="mp-title">Members</span>
+                <span class="mp-badge">SY 2025–2026</span>
+            </div>
+            <div class="mp-row">
+                <div class="mp-avatar" style="background:#EBF7F2; color:#0A4A38;">JR</div>
+                <div>
+                    <div class="mp-name">Juan Reyes</div>
+                    <div class="mp-pos">Student President</div>
+                </div>
+                <div class="mp-role" style="background:#EBF7F2; color:#0A4A38;">Adviser</div>
+            </div>
+            <div class="mp-row">
+                <div class="mp-avatar" style="background:#E6F1FB; color:#0C447C;">MA</div>
+                <div>
+                    <div class="mp-name">Maria Andres</div>
+                    <div class="mp-pos">Secretary General</div>
+                </div>
+                <div class="mp-role" style="background:#E6F1FB; color:#0C447C;">Officer</div>
+            </div>
+            <div class="mp-row">
+                <div class="mp-avatar" style="background:#EEEDFE; color:#3C3489;">KC</div>
+                <div>
+                    <div class="mp-name">Karl Cruz</div>
+                    <div class="mp-pos">Finance Head</div>
+                </div>
+                <div class="mp-role" style="background:#EEEDFE; color:#3C3489;">Officer</div>
+            </div>
+            <div class="mp-row">
+                <div class="mp-avatar" style="background:#F1EFE8; color:#444441;">RL</div>
+                <div>
+                    <div class="mp-name">Rose Lim</div>
+                    <div class="mp-pos">Grade 11 — STEM</div>
+                </div>
+                <div class="mp-role" style="background:#F1EFE8; color:#444441;">Member</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+
+{{-- ═══ CTA ═══ --}}
+<section class="cta-section reveal">
+    <div class="section-eyebrow" style="margin-bottom:16px">Access portal</div>
+    <h2>VSULHS SSLG members only</h2>
+    <p>This portal is exclusively for verified VSULHS SSLG members. Contact your administrator to receive access credentials.</p>
+    <button @click="loginModalOpen = true" class="btn-cta">
+        Sign in to the portal
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
     </button>
+</section>
 
-    <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
-        // ── Alpine component — loginForm ──────────────────────────────────
-        document.addEventListener('alpine:init', () => {
-            Alpine.data('loginForm', () => ({
-                showPassword: false,
-                rememberMe:   {{ old('remember') ? 'true' : 'false' }},
-                loading:      false,
-            }));
+
+{{-- ═══ FOOTER ═══ --}}
+<footer id="contact">
+    <div class="footer-grid">
+        <div>
+            <div class="footer-about-name">VSULHS SSLG</div>
+            <p class="footer-about-desc">The official management portal of the VSU Laboratory High School Supreme Student Learner Government, Baybay City, Leyte.</p>
+            <div class="footer-tag">
+                <div class="footer-tag-dot"></div>
+                Restricted — VSULHS SSLG members only
+            </div>
+        </div>
+        <div>
+            <h4>Navigation</h4>
+            <ul>
+                <li><a href="#features">Features</a></li>
+                <li><a href="#about">About</a></li>
+                <li><a href="#contact">Contact</a></li>
+                <li><button @click="loginModalOpen = true">Sign in</button></li>
+            </ul>
+        </div>
+        <div>
+            <h4>Resources</h4>
+            <ul>
+                <li><a href="#">Help centre</a></li>
+                <li><a href="#">Privacy policy</a></li>
+                <li><a href="#">Terms of service</a></li>
+            </ul>
+        </div>
+        <div>
+            <h4>Contact</h4>
+            <ul>
+                <li><a href="https://maps.google.com/?q=Visayas+State+University+Integrated+High+School" target="_blank" rel="noopener">VSULHS, Baybay City, Leyte</a></li>
+                <li><a href="/cdn-cgi/l/email-protection#e596968982a5939690898d96cb808190cb958d"><span class="__cf_email__">[email&#160;protected]</span></a></li>
+                <li><a href="tel:+639256353456">+63 925 635 3456</a></li>
+            </ul>
+        </div>
+    </div>
+    <div class="footer-bottom">
+        &copy; {{ date('Y') }} VSULHS Supreme Student Learner Government. All rights reserved.<br>
+        <span style="font-size:11px; opacity:.7;">Personal information collected by this system is protected under Republic Act No. 10173 (Data Privacy Act of 2012).</span>
+    </div>
+</footer>
+
+
+{{-- ═══ LOGIN MODAL (smaller, emerald sign in, red cancel) ═══ --}}
+<div x-show="loginModalOpen"
+     x-cloak
+     class="modal-overlay"
+     @click.self="loginModalOpen = false"
+     @keydown.window.escape="loginModalOpen = false">
+
+    <div x-data="loginForm()" class="modal-box" @click.stop>
+
+        <div class="modal-head">
+            <div class="modal-crest">
+                <svg viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+            </div>
+            <h2>Welcome back</h2>
+            <p>Sign in to the VSULHS SSLG portal</p>
+        </div>
+
+        <div class="modal-body">
+
+            @if (session('success'))
+                <div class="flash flash-ok">
+                    <svg viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    {{ session('success') }}
+                </div>
+            @endif
+
+            @if ($errors->any())
+                <div class="flash flash-err">
+                    <svg viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    <div><strong>Error:</strong> {{ $errors->first() }}</div>
+                </div>
+            @endif
+
+            <form method="POST" action="{{ route('login.post') }}" @submit="loading = true">
+                @csrf
+
+                <div class="field">
+                    <label for="m_email">Email address</label>
+                    <div class="field-wrap">
+                        <div class="field-ico">
+                            <svg viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207"/></svg>
+                        </div>
+                        <input type="email" id="m_email" name="email" value="{{ old('email') }}"
+                               required autocomplete="email" placeholder="yourname@gmail.com">
+                    </div>
+                </div>
+
+                <div class="field">
+                    <label for="m_password">Password</label>
+                    <div class="field-wrap">
+                        <div class="field-ico">
+                            <svg viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6-4h12a2 2 0 002-2v-4a2 2 0 00-2-2H6a2 2 0 00-2 2v4a2 2 0 002 2zm10-2V9a2 2 0 00-2-2H8a2 2 0 00-2 2v4"/></svg>
+                        </div>
+                        <input :type="showPassword ? 'text' : 'password'" id="m_password" name="password"
+                               required autocomplete="current-password" placeholder="••••••••">
+                        <button type="button" class="pw-toggle" @click="showPassword = !showPassword" aria-label="Toggle password">
+                            <svg x-show="!showPassword" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                            <svg x-show="showPassword" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 01-4.243-4.243m4.242 4.242L9.88 9.88"/></svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="form-opts">
+                    <label>
+                        <input type="checkbox" name="remember" x-model="rememberMe">
+                        Remember me
+                    </label>
+                    <a href="{{ route('password.request') }}">Forgot password?</a>
+                </div>
+
+                <button type="submit" class="btn-submit" :disabled="loading">
+                    <span x-show="!loading">Sign in</span>
+                    <span x-show="loading" style="display:flex;align-items:center;justify-content:center;gap:8px">
+                        <svg class="animate-spin" style="width:15px;height:15px" fill="none" viewBox="0 0 24 24">
+                            <circle style="opacity:.25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                            <path style="opacity:.75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                        </svg>
+                        Signing in…
+                    </span>
+                </button>
+
+                <button type="button" class="btn-cancel" @click="loginModalOpen = false">Cancel</button>
+            </form>
+
+            <div class="modal-note">
+                <svg viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6-4h12a2 2 0 002-2v-4a2 2 0 00-2-2H6a2 2 0 00-2 2v4a2 2 0 002 2zm10-2V9a2 2 0 00-2-2H8a2 2 0 00-2 2v4"/></svg>
+                Only check "Remember me" on your personal device. Always log out on shared computers.
+            </div>
+        </div>
+    </div>
+</div>
+
+
+{{-- Back to top --}}
+<button id="backToTop" aria-label="Back to top">
+    <svg viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18"/></svg>
+</button>
+
+
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script>
+<script>
+    document.addEventListener('alpine:init', () => {
+        Alpine.data('loginForm', () => ({
+            showPassword: false,
+            rememberMe:   {{ old('remember') ? 'true' : 'false' }},
+            loading:      false,
+        }));
+    });
+
+    /* Hamburger */
+    const hbg = document.getElementById('hamburger');
+    const mob = document.getElementById('mobileMenu');
+    hbg.addEventListener('click', () => {
+        hbg.classList.toggle('open');
+        mob.classList.toggle('open');
+    });
+    document.addEventListener('click', e => {
+        if (!hbg.contains(e.target) && !mob.contains(e.target)) {
+            hbg.classList.remove('open');
+            mob.classList.remove('open');
+        }
+    });
+
+    /* Smooth scroll */
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', function(e) {
+            const t = document.querySelector(this.getAttribute('href'));
+            if (t) { e.preventDefault(); t.scrollIntoView({ behavior: 'smooth', block: 'start' }); mob.classList.remove('open'); hbg.classList.remove('open'); }
         });
+    });
 
-        // ── Hamburger menu ────────────────────────────────────────────────
-        const hamburger = document.getElementById('hamburger');
-        const mobileMenu = document.getElementById('mobileMenu');
+    /* Scroll reveal */
+    const ro = new IntersectionObserver(entries => {
+        entries.forEach(en => { if (en.isIntersecting) { en.target.classList.add('visible'); ro.unobserve(en.target); } });
+    }, { threshold: 0.1 });
+    document.querySelectorAll('.reveal').forEach(el => ro.observe(el));
 
-        hamburger.addEventListener('click', () => {
-            hamburger.classList.toggle('open');
-            mobileMenu.classList.toggle('open');
-        });
-        document.addEventListener('click', (e) => {
-            if (!hamburger.contains(e.target) && !mobileMenu.contains(e.target)) {
-                hamburger.classList.remove('open');
-                mobileMenu.classList.remove('open');
-            }
-        });
-
-        // ── Smooth scroll ─────────────────────────────────────────────────
-        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-            anchor.addEventListener('click', function (e) {
-                const target = document.querySelector(this.getAttribute('href'));
-                if (target) {
-                    e.preventDefault();
-                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    mobileMenu.classList.remove('open');
-                    hamburger.classList.remove('open');
+    /* Counting numbers */
+    const co = new IntersectionObserver(entries => {
+        entries.forEach(en => {
+            if (!en.isIntersecting) return;
+            const el = en.target;
+            const target = parseInt(el.dataset.target);
+            const prefix = el.dataset.prefix || '';
+            const suffix = el.dataset.suffix || '';
+            const fmt = el.dataset.format;
+            if (isNaN(target)) return;
+            let current = 0;
+            const steps = 60, inc = Math.ceil(target / steps);
+            const format = n => {
+                if (fmt === 'compact') {
+                    if (n >= 1e6) return prefix + (n / 1e6).toFixed(1) + 'M' + suffix;
+                    if (n >= 1e3) return prefix + (n / 1e3).toFixed(1) + 'K' + suffix;
                 }
-            });
+                return prefix + n.toLocaleString() + suffix;
+            };
+            const t = setInterval(() => {
+                current += inc;
+                if (current >= target) { el.textContent = format(target); clearInterval(t); }
+                else { el.textContent = format(current); }
+            }, 16);
+            co.unobserve(el);
         });
+    }, { threshold: 0.5 });
+    document.querySelectorAll('.stat-number').forEach(el => co.observe(el));
 
-        // ── Scroll reveal ─────────────────────────────────────────────────
-        const revealObserver = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    entry.target.classList.add('visible');
-                    revealObserver.unobserve(entry.target);
-                }
-            });
-        }, { threshold: 0.12 });
-        document.querySelectorAll('.reveal').forEach(el => revealObserver.observe(el));
+    /* Back to top */
+    const btt = document.getElementById('backToTop');
+    window.addEventListener('scroll', () => btt.classList.toggle('show', window.scrollY > 300));
+    btt.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
 
-        // ── Counting stats ────────────────────────────────────────────────
-        // Handles data-prefix, data-suffix, data-format="compact"
-        const countObserver = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (!entry.isIntersecting) return;
-                const el       = entry.target;
-                const target   = parseInt(el.getAttribute('data-target'));
-                const prefix   = el.getAttribute('data-prefix') || '';
-                const suffix   = el.getAttribute('data-suffix') || '';
-                const fmt      = el.getAttribute('data-format');
-                if (isNaN(target)) return;
-
-                let current = 0;
-                const steps = 60;
-                const increment = Math.ceil(target / steps);
-
-                const format = (n) => {
-                    if (fmt === 'compact') {
-                        if (n >= 1000000) return prefix + (n / 1000000).toFixed(1) + 'M' + suffix;
-                        if (n >= 1000)    return prefix + (n / 1000).toFixed(1) + 'K' + suffix;
-                    }
-                    return prefix + n.toLocaleString() + suffix;
-                };
-
-                const timer = setInterval(() => {
-                    current += increment;
-                    if (current >= target) {
-                        el.innerText = format(target);
-                        clearInterval(timer);
-                    } else {
-                        el.innerText = format(current);
-                    }
-                }, 16);
-
-                countObserver.unobserve(el);
-            });
-        }, { threshold: 0.5 });
-        document.querySelectorAll('.stat-number').forEach(el => countObserver.observe(el));
-
-        // ── Back to top ───────────────────────────────────────────────────
-        const backToTop = document.getElementById('backToTop');
-        window.addEventListener('scroll', () => {
-            if (window.scrollY > 300) {
-                backToTop.classList.remove('opacity-0', 'invisible');
-                backToTop.classList.add('opacity-100', 'visible');
-            } else {
-                backToTop.classList.add('opacity-0', 'invisible');
-                backToTop.classList.remove('opacity-100', 'visible');
-            }
-        });
-        backToTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
-
-        // ── Flash message auto-hide ───────────────────────────────────────
-        document.querySelectorAll('.flash-message').forEach(msg => {
-            setTimeout(() => {
-                msg.classList.add('opacity-0');
-                setTimeout(() => msg.remove(), 500);
-            }, 4000);
-        });
-    </script>
+    /* Flash auto-hide */
+    document.querySelectorAll('.flash').forEach(el => {
+        setTimeout(() => { el.style.opacity = '0'; setTimeout(() => el.remove(), 400); }, 4000);
+    });
+</script>
 </body>
 </html>
-        
