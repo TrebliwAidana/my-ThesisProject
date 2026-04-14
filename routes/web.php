@@ -21,7 +21,9 @@ use Illuminate\Support\Facades\Log;
 
 
 // ── Root redirect ─────────────────────────────────────────────────────────────
-Route::get('/', fn() => redirect()->route('login'));
+Route::get('/', function () {
+    return view('landing');
+})->name('landing');
 
 // ── Guest ─────────────────────────────────────────────────────────────────────
 Route::middleware('guest')->group(function () {
