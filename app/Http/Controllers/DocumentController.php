@@ -25,12 +25,18 @@ class DocumentController extends Controller
 
         $query = Document::with('uploader', 'organization');
 
-        // Organisation scoping for non-level-1 users
+        // Only level 1 (System Administrator) can see all documents.
         if ($user->role->level !== 1) {
-            $query->where(function ($q) use ($user) {
-                $q->where('organization_id', $user->organization_id)
-                  ->orWhere('is_public', true);
-            });
+            // If the user has no organization (e.g., Guest), only show public documents.
+            if (is_null($user->organization_id)) {
+                $query->where('is_public', true);
+            } else {
+                // Otherwise, show documents from their own organization OR public documents.
+                $query->where(function ($q) use ($user) {
+                    $q->where('organization_id', $user->organization_id)
+                      ->orWhere('is_public', true);
+                });
+            }
         }
 
         if ($request->filled('search')) {
@@ -117,8 +123,15 @@ class DocumentController extends Controller
             abort(403);
         }
 
-        if (!$document->is_public && $document->organization_id != $user->organization_id && $user->role->level !== 1) {
-            abort(403, 'You are not authorized to view this document.');
+        // Restrict access for non-admin users
+        if ($user->role->level !== 1) {
+            // Public documents are accessible to all
+            if (!$document->is_public) {
+                // Private document: must belong to the user's organization, and the organization must not be null
+                if (is_null($document->organization_id) || $document->organization_id != $user->organization_id) {
+                    abort(403, 'You are not authorized to view this document.');
+                }
+            }
         }
 
         return view('documents.show', compact('document'));
@@ -132,12 +145,13 @@ class DocumentController extends Controller
             abort(403);
         }
 
-        if ($document->organization_id !== $user->organization_id && $user->role->level !== 1) {
-            abort(403, 'You cannot edit documents from another organisation.');
-        }
-
-        if ($document->uploaded_by !== $user->id && $user->role->level !== 1) {
-            abort(403, 'You can only edit your own documents.');
+        // Only allow editing if:
+        // - User is System Admin, OR
+        // - User uploaded the document AND the document belongs to the user's organization
+        if ($user->role->level !== 1) {
+            if ($document->organization_id !== $user->organization_id || $document->uploaded_by !== $user->id) {
+                abort(403, 'You can only edit your own documents within your organization.');
+            }
         }
 
         return view('documents.edit', compact('document'));
@@ -149,6 +163,13 @@ class DocumentController extends Controller
 
         if ($user->role->level !== 1 && !$user->hasPermission('documents.edit')) {
             abort(403);
+        }
+
+        // Same edit permission check
+        if ($user->role->level !== 1) {
+            if ($document->organization_id !== $user->organization_id || $document->uploaded_by !== $user->id) {
+                abort(403);
+            }
         }
 
         $validated = $request->validate([
@@ -172,12 +193,11 @@ class DocumentController extends Controller
             abort(403);
         }
 
-        if ($document->organization_id !== $user->organization_id && $user->role->level !== 1) {
-            abort(403);
-        }
-
-        if ($document->uploaded_by !== $user->id && $user->role->level !== 1) {
-            abort(403);
+        // Same edit permission check for deletion
+        if ($user->role->level !== 1) {
+            if ($document->organization_id !== $user->organization_id || $document->uploaded_by !== $user->id) {
+                abort(403);
+            }
         }
 
         Storage::disk('public')->delete($document->file_path);
@@ -195,8 +215,13 @@ class DocumentController extends Controller
             abort(403);
         }
 
-        if (!$document->is_public && $document->organization_id != $user->organization_id && $user->role->level !== 1) {
-            abort(403);
+        // Same access check as show()
+        if ($user->role->level !== 1) {
+            if (!$document->is_public) {
+                if (is_null($document->organization_id) || $document->organization_id != $user->organization_id) {
+                    abort(403);
+                }
+            }
         }
 
         return Storage::disk('public')->download($document->file_path, $document->file_name);
