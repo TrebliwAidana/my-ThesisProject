@@ -10,7 +10,6 @@ use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PermissionController;
-use App\Http\Controllers\OrganizationController;
 use App\Http\Controllers\EmailVerificationController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Password;
@@ -95,10 +94,6 @@ Route::middleware(['auth.custom', 'verified'])->group(function () {
             Route::get('/{budget}/copy',      [BudgetController::class, 'copy'])->name('copy');
             Route::post('/{budget}/disburse', [BudgetController::class, 'disburse'])->name('disburse');
         });
-    // ── My Organization (dashboard for user's own organization) ─────────────────
-       Route::get('/my-organization', [OrganizationController::class, 'myOrganization'])
-        ->name('my.organization')
-        ->middleware('auth.custom');
 
     // ── Administration ────────────────────────────────────────────────────────
     Route::prefix('admin')->name('admin.')->group(function () {
@@ -121,21 +116,6 @@ Route::middleware(['auth.custom', 'verified'])->group(function () {
 
             });
 
-        // ── Organizations ─────────────────────────────────────────────────────
-        // {organization} matches the type-hinted parameter in OrganizationController
-        // for Eloquent route model binding to work correctly.
-        Route::middleware('role:System Administrator,Supreme Admin,Club Adviser,Org Admin')
-            ->prefix('organizations')->name('organizations.')
-            ->group(function () {
-                Route::get('/',                       [OrganizationController::class, 'index'])->name('index');
-                Route::get('/create',                 [OrganizationController::class, 'create'])->name('create');
-                Route::post('/',                      [OrganizationController::class, 'store'])->name('store');
-                Route::get('/{organization}',         [OrganizationController::class, 'show'])->name('show');
-                Route::get('/{organization}/edit',    [OrganizationController::class, 'edit'])->name('edit');
-                Route::put('/{organization}',         [OrganizationController::class, 'update'])->name('update');
-                Route::delete('/{organization}',      [OrganizationController::class, 'destroy'])->name('destroy');
-                Route::post('/{organization}/toggle', [OrganizationController::class, 'toggleActive'])->name('toggle');
-            });
 
             // ── Roles ─────────────────────────────────────────────────────────────
             Route::middleware('role:System Administrator')
@@ -162,19 +142,7 @@ Route::middleware(['auth.custom', 'verified'])->group(function () {
             Route::get('/',       [PermissionController::class, 'index'])->name('index');
             Route::put('/{role}', [PermissionController::class, 'update'])->name('update');
         });
-
-
-        // ── Settings theme (POST under admin prefix) ──────────────────────────
-        Route::post('/settings/theme', [SettingsController::class, 'updateTheme'])
-            ->name('settings.theme.update')
-            ->middleware('role:System Administrator,Supreme Admin,Club Adviser');
     });
-
-    // ── Settings (GET — outside admin prefix to keep URL as /settings) ────────
-    Route::get('/settings', [SettingsController::class, 'index'])
-        ->name('settings.index')
-        ->middleware('role:System Administrator,Supreme Admin,Club Adviser');
-
     // ── Audit Logs ────────────────────────────────────────────────────────────
     Route::get('/audit-logs', [AuditLogController::class, 'index'])
         ->name('audit.logs')
@@ -231,9 +199,3 @@ Route::post('/password/reset', function (Request $request) {
         : back()->withErrors(['email' => [__($status)]]);
 })->name('password.update');
 
-Route::middleware(['auth.custom', 'can:organization.manage'])
-    ->prefix('admin/organizations')
-    ->name('admin.organizations.')
-    ->group(function () {
-        // your routes
-    });

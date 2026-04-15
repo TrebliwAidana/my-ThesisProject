@@ -189,7 +189,6 @@
     :class="mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'"
     class="sidebar fixed top-0 left-0 h-full z-40 transform transition-transform duration-300 lg:translate-x-0 flex flex-col shadow-xl"
     :style="sidebarCollapsed ? 'width: 4.5rem' : 'width: 16rem'"
-    {{-- FIX: aria-label for screen readers --}}
     aria-label="Main navigation"
 >
     {{-- Brand --}}
@@ -229,17 +228,16 @@
                 ['label' => 'Members',         'route' => 'members.index',     'icon' => 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z', 'visible' => $canSee(['System Administrator','Supreme Admin','Supreme Officer','Org Admin','Org Officer','Club Adviser'], 'members.view')],
                 ['label' => 'Documents',       'route' => 'documents.index',   'icon' => 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z', 'visible' => $canSee(['System Administrator','Supreme Admin','Supreme Officer','Org Admin','Org Officer','Club Adviser'], 'documents.view')],
                 ['label' => 'Budgets',         'route' => 'budgets.index',     'icon' => 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z', 'visible' => $canSee(['System Administrator','Supreme Admin','Supreme Officer','Org Admin','Org Officer','Club Adviser'], 'budgets.view')],
-                ['label' => 'My Organization','route' => 'my.organization',   'icon' => 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4', 'visible' => $canSee(['System Administrator','Supreme Admin','Supreme Officer','Org Admin','Org Officer','Club Adviser'], 'organization.view')],
+                // "My Organization" removed
             ];
             $adminMenu = [
                 'label' => 'Administration',
                 'icon'  => 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z',
                 'submenu' => [
                     ['label' => 'User Management',  'route' => 'admin.users.index',         'icon' => 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z', 'visible' => $canSee(['System Administrator','Supreme Admin','Club Adviser'], 'admin.users')],
-                    ['label' => 'Organizations',    'route' => 'admin.organizations.index', 'icon' => 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4', 'visible' => $canSee(['System Administrator'], 'organization.manage')],
+                    // "Organizations" removed
                     ['label' => 'Roles',            'route' => 'admin.roles.index',         'icon' => 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z', 'visible' => $canSee(['System Administrator'], 'admin.roles')],
                     ['label' => 'Permissions',      'route' => 'admin.permissions.index',   'icon' => 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z', 'visible' => $canSee(['System Administrator'], 'admin.permissions')],
-                    ['label' => 'System Settings',  'route' => 'settings.index',            'icon' => 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z', 'visible' => $canSee(['System Administrator','Supreme Admin','Club Adviser'])],
                     ['label' => 'Audit Logs',       'route' => 'audit.logs',                'icon' => 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z', 'visible' => $canSee(['System Administrator','Supreme Admin'], 'admin.audit')],
                 ],
             ];
@@ -260,7 +258,6 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="{{ $item['icon'] }}"/>
                         </svg>
                         <span x-show="!sidebarCollapsed" class="whitespace-nowrap">{{ $item['label'] }}</span>
-                        {{-- FIX: custom tooltip replaces native title="" --}}
                         <span x-show="sidebarCollapsed" class="sidebar-tooltip" aria-hidden="true">{{ $item['label'] }}</span>
                     </a>
                 @endif
@@ -280,7 +277,6 @@
 
             @if($adminMenu['visible'])
                 <div class="mt-2">
-                    {{-- FIX: aria-expanded on accordion button --}}
                     <button @click="adminOpen = !adminOpen"
                             :aria-expanded="adminOpen.toString()"
                             aria-controls="admin-submenu"
@@ -298,7 +294,6 @@
                         <span x-show="sidebarCollapsed" class="sidebar-tooltip" aria-hidden="true">{{ $adminMenu['label'] }}</span>
                     </button>
 
-                    {{-- FIX: x-collapse now works because the plugin is loaded --}}
                     <div x-show="adminOpen" x-collapse id="admin-submenu">
                         @foreach($adminMenu['submenu'] as $sub)
                             @if($sub['visible'])
@@ -342,7 +337,6 @@
 <div x-show="mobileMenuOpen" x-transition.opacity.duration.200 @click="mobileMenuOpen = false" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-30 lg:hidden"></div>
 
 {{-- ══════════════════════ MAIN CONTENT AREA ══════════════════════ --}}
-{{-- FIX: lg:ml-18 is not a Tailwind default — replaced with lg:ml-[4.5rem] --}}
 <div class="flex-1 flex flex-col min-h-screen transition-all duration-300"
      :class="sidebarCollapsed ? 'lg:ml-[4.5rem]' : 'lg:ml-64'">
 
@@ -354,7 +348,6 @@
          aria-label="Top navigation">
 
         <div class="flex items-center gap-3 flex-nowrap">
-            {{-- FIX: aria-expanded on sidebar toggle --}}
             <button @click="window.innerWidth < 1024 ? mobileMenuOpen = !mobileMenuOpen : sidebarCollapsed = !sidebarCollapsed"
                     :aria-expanded="(window.innerWidth < 1024 ? mobileMenuOpen : !sidebarCollapsed).toString()"
                     aria-controls="main-nav"
@@ -363,13 +356,11 @@
                 <svg class="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
                 </svg>
-                {{-- <span class="sr-only" x-text="sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'"></span> --}}
             </button>
             <span class="font-serif font-semibold text-base md:text-lg text-emerald-700 dark:text-emerald-300 whitespace-nowrap">@yield('page-title', 'Dashboard')</span>
         </div>
 
         <div class="flex items-center gap-2 md:gap-3 flex-nowrap">
-            {{-- Dark mode toggle --}}
             <button @click="$store.theme.toggle()"
                     class="w-8 h-8 md:w-9 md:h-9 rounded-full flex items-center justify-center text-gold-600 hover:bg-gold/10 transition-colors flex-shrink-0"
                     :aria-label="$store.theme.dark ? 'Switch to light mode' : 'Switch to dark mode'">
@@ -381,10 +372,8 @@
                 </svg>
             </button>
 
-            {{-- User dropdown --}}
             @auth
             <div class="relative" x-data="{ open: false }">
-                {{-- FIX: aria-expanded on user dropdown --}}
                 <button @click="open = !open"
                         :aria-expanded="open.toString()"
                         aria-controls="user-dropdown-menu"
@@ -433,44 +422,28 @@
         </div>
     </nav>
 
-    {{-- Main content --}}
     <main id="main-content" class="flex-1 px-4 md:px-6 pb-8 page-transition">
         @yield('content')
     </main>
 </div>
 
-{{-- Notification container --}}
 <div id="notification-container"
      class="fixed top-20 right-6 z-50 space-y-2 w-80 pointer-events-none"
      aria-live="polite"
      aria-atomic="true"></div>
 
-{{-- ══════════════════════ FLASH MESSAGES ══════════════════════ --}}
-{{--
-    FIX: Emit flash data as a proper JS object so showNotification() actually fires.
-    Covers success / error / warning / info session keys from Laravel.
---}}
 @if(session()->hasAny(['success','error','warning','info']))
 <script>
     document.addEventListener('DOMContentLoaded', () => {
-        @if(session('success'))
-            showNotification(@json(session('success')), 'success');
-        @endif
-        @if(session('error'))
-            showNotification(@json(session('error')), 'error');
-        @endif
-        @if(session('warning'))
-            showNotification(@json(session('warning')), 'warning');
-        @endif
-        @if(session('info'))
-            showNotification(@json(session('info')), 'info');
-        @endif
+        @if(session('success')) showNotification(@json(session('success')), 'success'); @endif
+        @if(session('error'))   showNotification(@json(session('error')), 'error'); @endif
+        @if(session('warning')) showNotification(@json(session('warning')), 'warning'); @endif
+        @if(session('info'))    showNotification(@json(session('info')), 'info'); @endif
     });
 </script>
 @endif
 
 <script>
-    /* ── Alpine theme store ── */
     document.addEventListener('alpine:init', () => {
         Alpine.store('theme', {
             dark: localStorage.getItem('dark') === 'true',
@@ -484,11 +457,6 @@
         Alpine.store('theme').init();
     });
 
-    /* ── Topbar height compensation ── */
-    /*
-        FIX: use requestAnimationFrame to avoid a race with Alpine's async render.
-        Also observe attribute changes on the topbar itself for sidebar-collapse reflows.
-    */
     function adjustMainPadding() {
         requestAnimationFrame(() => {
             const topbar = document.getElementById('topbar');
@@ -499,9 +467,8 @@
         });
     }
 
-    window.addEventListener('load',   adjustMainPadding);
+    window.addEventListener('load', adjustMainPadding);
     window.addEventListener('resize', adjustMainPadding);
-
     document.addEventListener('DOMContentLoaded', () => {
         adjustMainPadding();
         const topbar = document.getElementById('topbar');
@@ -511,33 +478,19 @@
         }
     });
 
-    /* ── Notifications ── */
-    /*
-        FIX: replaced innerHTML assignment with safe DOM construction
-        to eliminate XSS risk from user-controlled flash message content.
-    */
     function showNotification(message, type = 'success') {
         const container = document.getElementById('notification-container');
         if (!container) return;
-
-        const colors = {
-            success: 'bg-emerald-600',
-            error:   'bg-red-600',
-            warning: 'bg-amber-600',
-            info:    'bg-blue-600',
-        };
-
+        const colors = { success: 'bg-emerald-600', error: 'bg-red-600', warning: 'bg-amber-600', info: 'bg-blue-600' };
         const iconPaths = {
             success: 'M5 13l4 4L19 7',
             error:   'M6 18L18 6M6 6l12 12',
             warning: 'M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z',
             info:    'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
         };
-
         const el = document.createElement('div');
         el.className = `notification pointer-events-auto ${colors[type] ?? colors.success} text-white text-sm font-medium px-4 py-3 rounded-xl shadow-lg flex items-center gap-2`;
         el.setAttribute('role', 'alert');
-
         const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
         icon.setAttribute('class', 'w-4 h-4 flex-shrink-0');
         icon.setAttribute('fill', 'none');
@@ -550,14 +503,11 @@
         path.setAttribute('stroke-width', '2');
         path.setAttribute('d', iconPaths[type] ?? iconPaths.success);
         icon.appendChild(path);
-
         const span = document.createElement('span');
-        span.textContent = message; // FIX: textContent — never innerHTML
-
+        span.textContent = message;
         el.appendChild(icon);
         el.appendChild(span);
         container.appendChild(el);
-
         setTimeout(() => {
             el.style.transition = 'opacity 0.3s ease';
             el.style.opacity = '0';

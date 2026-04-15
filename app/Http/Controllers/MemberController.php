@@ -116,18 +116,24 @@ class MemberController extends Controller
     {
         $current = Auth::user();
 
+        // SysAdmin and SA can manage anyone
         if (in_array($current->role->abbreviation, ['SysAdmin', 'SA'])) return true;
+
+        // Users can view their own profile
         if ($action === 'view' && $current->id === $target->id) return true;
 
+        // Club Adviser: no organisation restriction (single org)
         if ($current->role->abbreviation === 'CA') {
-            return $target->organization_id === $current->organization_id;
+            return true;
         }
 
+        // Org Admin / Org Officer: cannot manage higher roles
         if (in_array($current->role->abbreviation, ['OA', 'OO'])) {
-            if (in_array($target->role->abbreviation ?? '', ['OA', 'OO', 'CA', 'SA', 'SysAdmin'])) {
+            $forbidden = ['OA', 'OO', 'CA', 'SA', 'SysAdmin'];
+            if (in_array($target->role->abbreviation ?? '', $forbidden)) {
                 return false;
             }
-            return $target->organization_id === $current->organization_id;
+            return true;
         }
 
         return false;
@@ -329,7 +335,6 @@ class MemberController extends Controller
                 'phone'           => $validated['phone'] ?? null,
                 'birthday'        => $validated['birthday'] ?? null,
                 'is_active'       => $validated['is_active'] ?? true,
-                'organization_id' => $currentUser->organization_id ?? null,
                 'email_verified_at' => now(),
             ]);
 
@@ -400,9 +405,7 @@ class MemberController extends Controller
             $oldRole = Role::find($oldRoleId);
             if ($oldRole) {
                 $usersWithOldRole = User::where('role_id', $oldRoleId)->count();
-                // If only 1 user has this role and that user is the one being edited
                 if ($usersWithOldRole <= 1) {
-                    // Only System Administrator (level 1) can change the last user of a role
                     if ($currentUser->role->level !== 1) {
                         return back()->with('error', "Only a System Administrator can change the role of the last user with the role '{$oldRole->name}'.");
                     }
@@ -581,10 +584,6 @@ class MemberController extends Controller
 
         if ($targetUser->role->level >= $currentUser->role->level && $currentUser->role->level !== 1) {
             return back()->with('error', 'You cannot delete a user with a role level equal or higher than yours.');
-        }
-
-        if ($currentUser->organization_id && $targetUser->organization_id !== $currentUser->organization_id) {
-            return back()->with('error', 'You cannot delete members from another organisation.');
         }
 
         if ($targetUser->id === $currentUser->id) {

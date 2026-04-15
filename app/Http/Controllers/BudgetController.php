@@ -24,18 +24,13 @@ class BudgetController extends Controller
     {
         $user = Auth::user();
 
-        // FIX: was Gate::allows('budgets.view') — Gates were never registered
-        // so this always returned false, blocking every non-admin user.
-        // Now consistently uses hasPermission() like DocumentController does.
         if ($user->role->level !== 1 && !$user->hasPermission('budgets.view')) {
             abort(403, 'You are not authorized to view budgets.');
         }
 
         $query = Budget::with('requester');
 
-        if ($user->role->level !== 1 && \Illuminate\Support\Facades\Schema::hasColumn('budgets', 'organization_id')) {
-            $query->where('organization_id', $user->organization_id);
-        }
+        // No organization_id filtering – single organisation.
 
         if ($request->filled('search')) {
             $search = $request->search;
@@ -86,7 +81,6 @@ class BudgetController extends Controller
     {
         $user = auth()->user();
 
-        // FIX: was Gate::allows('budgets.submit')
         if ($user->role->level !== 1 && !$user->hasPermission('budgets.submit')) {
             abort(403, 'You are not authorized to submit budgets.');
         }
@@ -122,7 +116,6 @@ class BudgetController extends Controller
     {
         $user = auth()->user();
 
-        // FIX: was Gate::allows('budgets.submit')
         if ($user->role->level !== 1 && !$user->hasPermission('budgets.submit')) {
             abort(403);
         }
@@ -159,7 +152,7 @@ class BudgetController extends Controller
 
         DB::beginTransaction();
         try {
-            $budgetData = [
+            $budget = Budget::create([
                 'title'           => $validated['title'],
                 'description'     => $validated['description'],
                 'start_date'      => $validated['start_date'] ?? null,
@@ -169,13 +162,7 @@ class BudgetController extends Controller
                 'status'          => $status,
                 'requested_by'    => $user->id,
                 'attachment_path' => $attachmentPath,
-            ];
-
-            if (\Illuminate\Support\Facades\Schema::hasColumn('budgets', 'organization_id')) {
-                $budgetData['organization_id'] = $user->organization_id;
-            }
-
-            $budget = Budget::create($budgetData);
+            ]);
 
             foreach ($validated['items'] as $item) {
                 $budget->items()->create([
@@ -198,19 +185,11 @@ class BudgetController extends Controller
     {
         $user = auth()->user();
 
-        // FIX: was Gate::allows('budgets.view')
         if ($user->role->level !== 1 && !$user->hasPermission('budgets.view')) {
             abort(403);
         }
 
-        if (
-            \Illuminate\Support\Facades\Schema::hasColumn('budgets', 'organization_id') &&
-            $budget->organization_id !== $user->organization_id &&
-            $user->role->level !== 1
-        ) {
-            abort(403, 'You are not authorized to view this budget.');
-        }
-
+        // No organisation check – all users can view any budget.
         return view('budgets.show', compact('budget'));
     }
 
@@ -218,7 +197,6 @@ class BudgetController extends Controller
     {
         $user = auth()->user();
 
-        // FIX: was Gate::allows('budgets.submit')
         if ($user->role->level !== 1 && !$user->hasPermission('budgets.submit')) {
             abort(403);
         }
@@ -239,7 +217,6 @@ class BudgetController extends Controller
     {
         $user = auth()->user();
 
-        // FIX: was Gate::allows('budgets.submit')
         if ($user->role->level !== 1 && !$user->hasPermission('budgets.submit')) {
             abort(403);
         }
@@ -281,7 +258,6 @@ class BudgetController extends Controller
     {
         $user = auth()->user();
 
-        // FIX: was Gate::allows('budgets.approve')
         if ($user->role->level !== 1 && !$user->hasPermission('budgets.approve')) {
             abort(403);
         }
@@ -301,17 +277,8 @@ class BudgetController extends Controller
             abort(403, 'SSLG President is not allowed to approve budgets.');
         }
 
-        // FIX: was Gate::allows('budgets.approve')
         if ($user->role->level !== 1 && !$user->hasPermission('budgets.approve')) {
             abort(403);
-        }
-
-        if (
-            \Illuminate\Support\Facades\Schema::hasColumn('budgets', 'organization_id') &&
-            $budget->organization_id !== $user->organization_id &&
-            $user->role->level !== 1
-        ) {
-            abort(403, 'You cannot approve budgets from another organisation.');
         }
 
         $validated = $request->validate([
@@ -335,17 +302,8 @@ class BudgetController extends Controller
     {
         $user = auth()->user();
 
-        // FIX: was Gate::allows('budgets.approve')
         if ($user->role->level !== 1 && !$user->hasPermission('budgets.approve')) {
             abort(403);
-        }
-
-        if (
-            \Illuminate\Support\Facades\Schema::hasColumn('budgets', 'organization_id') &&
-            $budget->organization_id !== $user->organization_id &&
-            $user->role->level !== 1
-        ) {
-            abort(403, 'You cannot reject budgets from another organisation.');
         }
 
         $validated = $request->validate([
@@ -369,7 +327,6 @@ class BudgetController extends Controller
     {
         $user = auth()->user();
 
-        // FIX: was Gate::allows('budgets.disburse')
         if ($user->role->level !== 1 && !$user->hasPermission('budgets.disburse')) {
             abort(403);
         }
@@ -393,7 +350,6 @@ class BudgetController extends Controller
     {
         $user = auth()->user();
 
-        // FIX: was Gate::allows('budgets.submit')
         if ($user->role->level !== 1 && !$user->hasPermission('budgets.submit')) {
             abort(403);
         }
@@ -415,10 +371,6 @@ class BudgetController extends Controller
         $newBudget->review_remarks   = null;
         $newBudget->copied_from_id   = $budget->id;
 
-        if (\Illuminate\Support\Facades\Schema::hasColumn('budgets', 'organization_id')) {
-            $newBudget->organization_id = $user->organization_id;
-        }
-
         $newBudget->save();
 
         foreach ($budget->items as $item) {
@@ -436,7 +388,6 @@ class BudgetController extends Controller
     {
         $user = auth()->user();
 
-        // FIX: was Gate::allows('budgets.submit')
         if ($budget->requested_by !== $user->id && $user->role->level !== 1 && !$user->hasPermission('budgets.submit')) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
@@ -461,17 +412,13 @@ class BudgetController extends Controller
     {
         $user = auth()->user();
 
-        // FIX: was Gate::allows('budgets.view')
         if ($user->role->level !== 1 && !$user->hasPermission('budgets.view')) {
             abort(403);
         }
 
         $query = Budget::with('requester');
 
-        if ($user->role->level !== 1 && \Illuminate\Support\Facades\Schema::hasColumn('budgets', 'organization_id')) {
-            $query->where('organization_id', $user->organization_id);
-        }
-
+        // No organisation filtering.
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
@@ -524,7 +471,6 @@ class BudgetController extends Controller
     {
         $user = auth()->user();
 
-        // FIX: was Gate::allows('budgets.submit')
         if ($user->role->level !== 1 && !$user->hasPermission('budgets.submit')) {
             abort(403);
         }

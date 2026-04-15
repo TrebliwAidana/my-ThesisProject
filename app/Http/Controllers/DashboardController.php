@@ -5,10 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use App\Models\Document;
 use App\Models\Budget;
-use App\Models\Income;
-use App\Models\Expense;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
@@ -25,7 +22,7 @@ class DashboardController extends Controller
             ? asset('storage/' . $user->avatar)
             : asset('images/default-avatar.png');
 
-        // Statistics (unfiltered, global counts – you may keep as is)
+        // Statistics (global, single organisation)
         $totalMembers = User::count();
         $activeMembers = User::where('is_active', true)->count();
         $officersCount = User::whereHas('role', function ($q) {
@@ -42,47 +39,45 @@ class DashboardController extends Controller
             ->whereYear('created_at', now()->year)
             ->count();
 
-        // Recent documents (organisation scoped)
+        // Recent documents (no organisation filter)
         $recentDocuments = null;
         if ($user->hasPermission('documents.view')) {
-            $docQuery = Document::with('uploader')->latest('created_at');
-            if (!in_array($user->role->level, [1,2])) {
-                $docQuery->where('organization_id', $user->organization_id);
-            }
-            $recentDocuments = $docQuery->take(5)->get();
+            $recentDocuments = Document::with('uploader')
+                ->latest('created_at')
+                ->take(5)
+                ->get();
         }
 
-        // Recent budgets & total approved (organisation scoped)
+        // Recent budgets & total approved (global)
         $recentBudgets = null;
         $totalBudget = null;
         if ($user->hasPermission('budgets.view')) {
-            $budgetQuery = Budget::with('requester');
-            if (!in_array($user->role->level, [1,2])) {
-                $budgetQuery->where('organization_id', $user->organization_id);
-            }
-            $recentBudgets = (clone $budgetQuery)->latest()->take(5)->get();
-            $totalBudget = (clone $budgetQuery)->where('status', 'approved')->sum('amount');
+            $recentBudgets = Budget::with('requester')
+                ->latest()
+                ->take(5)
+                ->get();
+            $totalBudget = Budget::where('status', 'approved')->sum('amount');
         }
 
-        // Pending approvals (organisation scoped)
+        // Pending approvals (global)
         $pendingApprovals = [];
         if ($user->hasPermission('budgets.approve')) {
-            $pendingQuery = Budget::where('status', 'pending')->with('requester');
-            if (!in_array($user->role->level, [1,2])) {
-                $pendingQuery->where('organization_id', $user->organization_id);
-            }
-            $pendingBudgets = $pendingQuery->take(3)->get()->map(function ($b) {
-                return [
-                    'title' => $b->description ?? $b->title ?? 'Budget Request',
-                    'type' => 'Budget Request',
-                    'submitter' => $b->requester->full_name ?? 'Unknown',
-                    'link' => route('budgets.review', $b->id)
-                ];
-            });
+            $pendingBudgets = Budget::where('status', 'pending')
+                ->with('requester')
+                ->take(3)
+                ->get()
+                ->map(function ($b) {
+                    return [
+                        'title' => $b->description ?? $b->title ?? 'Budget Request',
+                        'type' => 'Budget Request',
+                        'submitter' => $b->requester->full_name ?? 'Unknown',
+                        'link' => route('budgets.review', $b->id)
+                    ];
+                });
             $pendingApprovals = $pendingBudgets->toArray();
         }
 
-        $pendingTasksCount = Budget::where('status', 'pending')->count(); // global, but you can scope if needed
+        $pendingTasksCount = Budget::where('status', 'pending')->count();
 
         // Role description (unchanged)
         $roleDescriptions = [
@@ -111,27 +106,19 @@ class DashboardController extends Controller
             $userBadges[] = ['color' => 'emerald', 'text' => 'Org Leader'];
         }
 
-        // ── CHART DATA (organisation scoped) ──────────────────────────────
+        // ── CHART DATA (global, single organisation) ──────────────────────────────
         $currentYear = now()->year;
         $months = collect(range(1,12))->map(fn($m) => date('M', mktime(0,0,0,$m,1)))->toArray();
 
-        // Base query for budgets (organisation scoped for non‑level‑1/2)
-        $budgetQuery = Budget::query();
-        if (!in_array($user->role->level, [1,2])) {
-            $budgetQuery->where('organization_id', $user->organization_id);
-        }
-
         // Monthly totals (all budgets)
-        $monthlyTotals = (clone $budgetQuery)
-            ->selectRaw('MONTH(created_at) as month, SUM(amount) as total')
+        $monthlyTotals = Budget::selectRaw('MONTH(created_at) as month, SUM(amount) as total')
             ->whereYear('created_at', $currentYear)
             ->groupBy('month')
             ->pluck('total', 'month')
             ->toArray();
 
         // Monthly approved amounts
-        $monthlyApproved = (clone $budgetQuery)
-            ->where('status', 'approved')
+        $monthlyApproved = Budget::where('status', 'approved')
             ->selectRaw('MONTH(created_at) as month, SUM(amount) as approved_total')
             ->whereYear('created_at', $currentYear)
             ->groupBy('month')

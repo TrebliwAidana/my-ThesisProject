@@ -25,10 +25,6 @@ class Document extends Model
         return $this->belongsTo(User::class, 'uploaded_by');
     }
 
-    public function organization()
-    {
-        return $this->belongsTo(Organization::class);
-    }
 
     // Helper: formatted size
     public function getFormattedSizeAttribute()
