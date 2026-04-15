@@ -288,7 +288,6 @@ class MemberController extends Controller
 
         $allowedPositions = $this->getAllowedPositions($selectedRole);
         
-        // Position handling: empty string for custom roles without restrictions
         if (!empty($allowedPositions)) {
             $request->validate([
                 'position' => ['required', Rule::in($allowedPositions)],
@@ -390,10 +389,8 @@ class MemberController extends Controller
         $currentUser  = Auth::user();
         if (!$currentUser || !$currentUser->role) abort(403);
 
-        if ($currentUser->role->level !== 1) {
-            if (!$currentUser->hasPermission('members.edit') || !$this->canManageMember($user, 'edit')) {
-                abort(403, 'Unauthorized to edit this member.');
-            }
+        if ($currentUser->role->level !== 1 && (!$currentUser->hasPermission('members.edit') || !$this->canManageMember($user, 'edit'))) {
+            abort(403, 'Unauthorized to edit this member.');
         }
 
         $oldRoleId = $user->role_id;
@@ -401,10 +398,17 @@ class MemberController extends Controller
 
         if ($oldRoleId != $newRoleId) {
             $oldRole = Role::find($oldRoleId);
-            if ($oldRole && $oldRole->is_predefined) {
-                $count = User::where('role_id', $oldRoleId)->count();
-                if ($count <= 1) {
-                    return back()->with('error', "Cannot change role of the last user with the role '{$oldRole->name}'. This role is required for system functionality.");
+            if ($oldRole) {
+                $usersWithOldRole = User::where('role_id', $oldRoleId)->count();
+                // If only 1 user has this role and that user is the one being edited
+                if ($usersWithOldRole <= 1) {
+                    // Only System Administrator (level 1) can change the last user of a role
+                    if ($currentUser->role->level !== 1) {
+                        return back()->with('error', "Only a System Administrator can change the role of the last user with the role '{$oldRole->name}'.");
+                    }
+                    if ($oldRole->id == 1) {
+                        session()->flash('warning', '⚠️ You are changing the role of the last System Administrator. Make sure another user has this role to avoid lockout.');
+                    }
                 }
             }
         }
@@ -445,7 +449,6 @@ class MemberController extends Controller
 
         $allowedPositions = $this->getAllowedPositions($selectedRole);
         
-        // Position handling
         $position = '';
         if (!empty($allowedPositions)) {
             $request->validate([
@@ -471,7 +474,6 @@ class MemberController extends Controller
             $position = '';
         }
 
-        // Validate position change reason only if allowed positions exist and position changed
         if (!empty($allowedPositions) && trim($position) !== trim($user->position ?? '')) {
             $request->validate([
                 'position_change_reason' => ['required', 'string', 'max:1000'],
@@ -531,18 +533,19 @@ class MemberController extends Controller
     }
 
     // -------------------------------------------------------------------------
-    // Show, Destroy, Activate, Deactivate, History methods (unchanged)
+    // Show
     // -------------------------------------------------------------------------
 
     public function show(int $id)
     {
-        // ... keep as in your original ...
         $user        = User::with('role', 'member')->findOrFail($id);
         $currentUser = Auth::user();
         if (!$currentUser || !$currentUser->role) abort(403);
+
         if ($currentUser->role->level !== 1 && !$this->canManageMember($user, 'view')) {
             abort(403, 'Unauthorized to view this member.');
         }
+
         $member          = $user;
         $memberSince     = $member->created_at->format('F d, Y');
         $documentsCount  = $member->documents()->count();
@@ -550,94 +553,131 @@ class MemberController extends Controller
         $recentActivity  = collect();
         $recentDocuments = $member->documents()->latest()->take(5)->get();
         $recentBudgets   = $member->budgets()->latest()->take(5)->get();
+
         foreach ($recentDocuments as $doc) {
             $recentActivity->push(['type' => 'document', 'description' => "Uploaded document: {$doc->title}", 'time' => $doc->created_at->diffForHumans()]);
         }
         foreach ($recentBudgets as $budget) {
             $recentActivity->push(['type' => 'budget', 'description' => "Submitted budget request for ₱" . number_format($budget->amount, 2), 'time' => $budget->created_at->diffForHumans()]);
         }
+
         $recentActivity = $recentActivity->sortByDesc(fn($a) => $a['time'])->take(5);
+
         return view('members.show', compact('member', 'memberSince', 'documentsCount', 'budgetsCount', 'recentActivity'));
     }
 
+    // -------------------------------------------------------------------------
+    // Destroy
+    // -------------------------------------------------------------------------
+
     public function destroy(int $id)
     {
-        // ... keep as in your original ...
         $targetUser  = User::findOrFail($id);
         $currentUser = Auth::user();
-        if ($currentUser->role->level !== 1 && !$currentUser->hasPermission('members.delete')) abort(403);
+
+        if ($currentUser->role->level !== 1 && !$currentUser->hasPermission('members.delete')) {
+            abort(403);
+        }
+
         if ($targetUser->role->level >= $currentUser->role->level && $currentUser->role->level !== 1) {
             return back()->with('error', 'You cannot delete a user with a role level equal or higher than yours.');
         }
+
         if ($currentUser->organization_id && $targetUser->organization_id !== $currentUser->organization_id) {
             return back()->with('error', 'You cannot delete members from another organisation.');
         }
+
         if ($targetUser->id === $currentUser->id) {
             return back()->with('error', 'You cannot delete your own account.');
         }
+
         if ($targetUser->role && $targetUser->role->is_predefined) {
             $count = User::where('role_id', $targetUser->role_id)->count();
             if ($count <= 1) {
                 return back()->with('error', "Cannot delete the last user with the role '{$targetUser->role->name}'. This role is required for system functionality.");
             }
         }
+
         try {
             $userName = $targetUser->full_name;
             $userRole = $targetUser->role->name ?? 'Unknown';
             $targetUser->member?->delete();
             $targetUser->delete();
-            return redirect()->route('members.index')->with('success', "{$userName} ({$userRole}) has been removed from the system.");
+            return redirect()->route('members.index')
+                ->with('success', "{$userName} ({$userRole}) has been removed from the system.");
         } catch (\Exception $e) {
             return back()->with('error', 'Failed to delete member: ' . $e->getMessage());
         }
     }
 
+    // -------------------------------------------------------------------------
+    // Activate / Deactivate
+    // -------------------------------------------------------------------------
+
     public function deactivate(int $id)
     {
-        // ... keep as in your original ...
         $user = User::findOrFail($id);
-        if ($user->id === auth()->id()) return response()->json(['error' => 'You cannot deactivate your own account.'], 403);
+        if ($user->id === auth()->id()) {
+            return response()->json(['error' => 'You cannot deactivate your own account.'], 403);
+        }
+
         $currentUser = Auth::user();
         if ($currentUser->role->level !== 1 && !$this->canManageMember($user, 'edit')) {
             return response()->json(['error' => 'Unauthorized.'], 403);
         }
+
         $user->update(['is_active' => false]);
         return response()->json(['success' => true, 'message' => 'Account deactivated successfully.']);
     }
 
     public function activate(int $id)
     {
-        $user = User::findOrFail($id);
+        $user        = User::findOrFail($id);
         $currentUser = Auth::user();
+
         if ($currentUser->role->level !== 1 && !$this->canManageMember($user, 'edit')) {
             return response()->json(['error' => 'Unauthorized.'], 403);
         }
+
         $user->update(['is_active' => true]);
         return response()->json(['success' => true, 'message' => 'Account activated successfully.']);
     }
 
+    // -------------------------------------------------------------------------
+    // Position Change Log (AJAX)
+    // -------------------------------------------------------------------------
+
     public function getPositionHistoryData(int $id)
     {
-        // ... keep as in your original ...
         try {
-            $user = User::findOrFail($id);
+            $user         = User::findOrFail($id);
             $memberRecord = $user->member;
-            $currentUser = Auth::user();
-            if (!$currentUser || !$currentUser->role) return response()->json(['error' => 'Unauthorized'], 403);
+            $currentUser  = Auth::user();
+
+            if (!$currentUser || !$currentUser->role) {
+                return response()->json(['error' => 'Unauthorized'], 403);
+            }
+
             if ($currentUser->role->level !== 1 && !$this->canManageMember($user, 'view')) {
                 return response()->json(['error' => 'Unauthorized'], 403);
             }
+
             if (!$memberRecord) return response()->json([]);
-            $logs = PositionChangeLog::forMember($memberRecord->id)->with('changer')->orderBy('created_at', 'desc')->get()
+
+            $logs = PositionChangeLog::forMember($memberRecord->id)
+                ->with('changer')
+                ->orderBy('created_at', 'desc')
+                ->get()
                 ->map(fn($log) => [
-                    'id' => $log->id,
+                    'id'           => $log->id,
                     'old_position' => $log->old_position,
                     'new_position' => $log->new_position,
-                    'reason' => $log->reason,
-                    'created_at' => $log->created_at,
-                    'ip_address' => $log->ip_address,
-                    'changer' => $log->changer ? ['id' => $log->changer->id, 'name' => $log->changer->full_name] : null,
+                    'reason'       => $log->reason,
+                    'created_at'   => $log->created_at,
+                    'ip_address'   => $log->ip_address,
+                    'changer'      => $log->changer ? ['id' => $log->changer->id, 'name' => $log->changer->full_name] : null,
                 ]);
+
             return response()->json($logs);
         } catch (\Exception $e) {
             \Log::error('MemberController@getPositionHistoryData: ' . $e->getMessage());
@@ -645,18 +685,28 @@ class MemberController extends Controller
         }
     }
 
+    // -------------------------------------------------------------------------
+    // Edit History Page
+    // -------------------------------------------------------------------------
+
     public function editHistory(int $id)
     {
-        // ... keep as in your original ...
-        $user = User::with('role', 'member')->findOrFail($id);
+        $user         = User::with('role', 'member')->findOrFail($id);
         $memberRecord = $user->member;
         if (!$memberRecord) abort(404, 'Member record not found.');
+
         $currentUser = Auth::user();
         if (!$currentUser || !$currentUser->role) abort(403);
+
         if ($currentUser->role->level !== 1 && !$this->canManageMember($user, 'view')) {
             abort(403, 'Unauthorized to view this member\'s history.');
         }
-        $positionLogs = PositionChangeLog::forMember($memberRecord->id)->with('changer')->orderBy('created_at', 'desc')->paginate(20);
+
+        $positionLogs = PositionChangeLog::forMember($memberRecord->id)
+            ->with('changer')
+            ->orderBy('created_at', 'desc')
+            ->paginate(20);
+
         return view('members.edit-history', compact('user', 'memberRecord', 'positionLogs'));
     }
 
