@@ -36,11 +36,6 @@ class Member extends Model
         6 => ['Club Adviser'],
         7 => ['Regular Member'],
         8 => ['Guest'],
-        // 1=> ['Adviser'],
-        // 2=>['Treasurer'],
-        // 3=>['Audito'],
-        // 4=>['Member'],
-        // 5=>['Guest'],
 
     ];
 

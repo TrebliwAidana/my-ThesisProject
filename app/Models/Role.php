@@ -12,7 +12,7 @@ use App\Models\Position;
 
 class Role extends Model
 {
-    protected $fillable = ['name', 'abbreviation', 'level', 'is_predefined'];
+    protected $fillable = ['name', 'abbreviation', 'level', 'is_predefined', 'is_visible', 'allowed_positions'];
 
     // ── Relationships ─────────────────────────────────────────────────────────
 

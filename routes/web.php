@@ -118,6 +118,7 @@ Route::middleware(['auth.custom', 'verified'])->group(function () {
                 Route::post('/{id}/verify-manual',     [AdminController::class, 'verifyEmailManually'])->name('verify-manual');
                 Route::post('/{id}/restore',           [AdminController::class, 'restoreUser'])->name('restore');
                 Route::delete('/{id}/force-delete',    [AdminController::class, 'forceDeleteUser'])->name('force-delete');
+
             });
 
         // ── Organizations ─────────────────────────────────────────────────────
@@ -136,17 +137,21 @@ Route::middleware(['auth.custom', 'verified'])->group(function () {
                 Route::post('/{organization}/toggle', [OrganizationController::class, 'toggleActive'])->name('toggle');
             });
 
-        // ── Roles ─────────────────────────────────────────────────────────────
-        Route::middleware('role:System Administrator')
-            ->prefix('roles')->name('roles.')
-            ->group(function () {
-                Route::get('/',          [AdminController::class, 'roles'])->name('index');
-                Route::get('/create',    [AdminController::class, 'createRole'])->name('create');
-                Route::post('/',         [AdminController::class, 'storeRole'])->name('store');
-                Route::get('/{id}/edit', [AdminController::class, 'editRole'])->name('edit');
-                Route::put('/{id}',      [AdminController::class, 'updateRole'])->name('update');
-                Route::delete('/{id}',   [AdminController::class, 'destroyRole'])->name('destroy');
-            });
+            // ── Roles ─────────────────────────────────────────────────────────────
+            Route::middleware('role:System Administrator')
+                ->prefix('roles')->name('roles.')
+                ->group(function () {
+                    Route::get('/',          [AdminController::class, 'roles'])->name('index');
+                    Route::get('/create',    [AdminController::class, 'createRole'])->name('create');
+                    Route::post('/',         [AdminController::class, 'storeRole'])->name('store');
+                    Route::get('/{id}/edit', [AdminController::class, 'editRole'])->name('edit');
+                    Route::put('/{id}',      [AdminController::class, 'updateRole'])->name('update');
+                    Route::delete('/{id}',   [AdminController::class, 'destroyRole'])->name('destroy');
+                    
+                    // ✅ CORRECT toggle route – uses {role} not /roles/{role}
+                    Route::patch('/{role}/toggle-visibility', [AdminController::class, 'toggleRoleVisibility'])
+                        ->name('toggle-visibility');
+                });
 
         // ── Permissions ───────────────────────────────────────────────────────
 

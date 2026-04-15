@@ -17,22 +17,32 @@ class AdminController extends Controller
     // ROLES
     // =========================================================================
 
-    public function roles()
+    public function roles(Request $request)
     {
-        $roles = Role::with('permissions', 'users')->get();
+        $query = Role::withCount('users')->with('permissions', 'users');
+        if (!$request->boolean('show_hidden')) {
+            $query->where('is_visible', true);
+        }
+        $roles = $query->orderBy('level')->get();
+        $showHidden = $request->boolean('show_hidden');
         $permissions = Permission::all();
-        return view('admin.roles.index', compact('roles', 'permissions'));
+
+        return view('admin.roles.index', compact('roles', 'permissions', 'showHidden'));
     }
 
     public function createRole()
     {
-        $roles = Role::orderBy('level')->get();
+        $roles = Role::where('is_visible', true)->orderBy('level')->get();
         return view('admin.roles.create', compact('roles'));
     }
 
     public function editRole(int $id)
     {
         $role = Role::with('permissions')->findOrFail($id);
+        if (!$role->is_visible) {
+            return redirect()->route('admin.roles.index')
+                ->with('error', 'Cannot edit a hidden role.');
+        }
         $permissions = Permission::all();
         return view('admin.roles.edit', compact('role', 'permissions'));
     }
@@ -61,6 +71,7 @@ class AdminController extends Controller
                 'level'        => $validated['level'],
                 'is_system'    => $validated['is_system'] ?? false,
                 'parent_id'    => $validated['parent_id'] ?? null,
+                'is_visible'   => true,
             ]);
 
             if ($request->has('permissions')) {
@@ -78,19 +89,21 @@ class AdminController extends Controller
     {
         $role = Role::findOrFail($id);
 
+        if (!$role->is_visible) {
+            return redirect()->route('admin.roles.index')
+                ->with('error', 'Cannot update a hidden role.');
+        }
+
         if ($role->is_predefined) {
             $validated = $request->validate([
                 'abbreviation' => ['nullable', 'string', 'max:10'],
                 'description'  => ['nullable', 'string', 'max:500'],
                 'level'        => ['required', 'integer', 'min:1', 'max:10'],
             ]);
-
             $role->update($validated);
-
             if ($request->has('permissions')) {
                 $role->permissions()->sync($request->permissions);
             }
-
             return redirect()->route('admin.roles.index')
                 ->with('success', "✅ Predefined role '{$role->name}' updated successfully.");
         }
@@ -116,7 +129,6 @@ class AdminController extends Controller
                 'level'        => $validated['level'],
                 'is_system'    => $validated['is_system'] ?? $role->is_system,
             ]);
-
             $role->permissions()->sync($request->permissions ?? []);
 
             return redirect()->route('admin.roles.index')
@@ -130,10 +142,12 @@ class AdminController extends Controller
     {
         $role = Role::findOrFail($id);
 
+        if (!$role->is_visible) {
+            return back()->with('error', 'Cannot delete a hidden role.');
+        }
         if ($role->is_predefined) {
             return back()->with('error', '⚠️ Cannot delete a predefined system role.');
         }
-
         if ($role->users()->count() > 0) {
             return back()->with('error', '⚠️ Cannot delete a role that has users assigned to it.');
         }
@@ -141,12 +155,37 @@ class AdminController extends Controller
         try {
             $roleName = $role->name;
             $role->delete();
-
             return redirect()->route('admin.roles.index')
                 ->with('success', "✅ Role '{$roleName}' deleted successfully.");
         } catch (\Exception $e) {
             return back()->with('error', '❌ Failed to delete role: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Toggle the visibility of a role (hide/unhide).
+     * Hidden roles are excluded from all user-facing role selectors.
+     * Predefined roles can be hidden/unhidden but never deleted.
+     */
+    public function toggleRoleVisibility(Role $role)
+    {
+        // Prevent hiding the currently logged-in user's own role
+        if (auth()->user()->role_id == $role->id && $role->is_visible) {
+            return redirect()->route('admin.roles.index', ['show_hidden' => request()->boolean('show_hidden')])
+                ->with('error', '⚠️ You cannot hide your own role.');
+        }
+
+        // Prevent hiding a role that still has active users assigned
+        if ($role->is_visible && $role->users()->count() > 0) {
+            return redirect()->route('admin.roles.index', ['show_hidden' => request()->boolean('show_hidden')])
+                ->with('error', "⚠️ Cannot hide role '{$role->name}' because it still has {$role->users()->count()} user(s) assigned to it. Reassign or remove those users first.");
+        }
+
+        $role->update(['is_visible' => !$role->is_visible]);
+
+        $status = $role->is_visible ? 'visible' : 'hidden';
+        return redirect()->route('admin.roles.index', ['show_hidden' => request()->boolean('show_hidden')])
+            ->with('success', "✅ Role '{$role->name}' is now {$status}.");
     }
 
     // =========================================================================
@@ -157,12 +196,10 @@ class AdminController extends Controller
     {
         $query = User::with('role');
 
-        // 🔁 Include soft-deleted users if the checkbox is checked
         if ($request->boolean('trashed')) {
             $query->withTrashed();
         }
 
-        // Search
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
@@ -171,18 +208,15 @@ class AdminController extends Controller
             });
         }
 
-        // Role filter
         if ($request->filled('role')) {
             $query->whereHas('role', fn($q) => $q->where('name', $request->role));
         }
 
-        // Status filter (active/inactive)
         if ($request->filled('status')) {
             $isActive = $request->status === 'active';
             $query->where('is_active', $isActive);
         }
 
-        // Verification filter
         if ($request->filled('verification')) {
             if ($request->verification === 'verified') {
                 $query->whereNotNull('email_verified_at');
@@ -191,15 +225,15 @@ class AdminController extends Controller
             }
         }
 
-        // Paginate
         $users = $query->paginate(20)->appends($request->except('page'));
 
-        // Statistics (unfiltered counts for the whole system)
-        $totalUsers = User::count();
-        $activeUsers = User::where('is_active', true)->count();
+        $totalUsers     = User::count();
+        $activeUsers    = User::where('is_active', true)->count();
         $verifiedEmails = User::whereNotNull('email_verified_at')->count();
-        $recentLogins = User::where('last_login_at', '>=', now()->subDays(7))->count();
-        $roles = Role::all();
+        $recentLogins   = User::where('last_login_at', '>=', now()->subDays(7))->count();
+
+        // Only visible roles appear in filter dropdowns
+        $roles = Role::where('is_visible', true)->get();
 
         return view('admin.users.index', compact(
             'totalUsers', 'activeUsers', 'verifiedEmails',
@@ -209,7 +243,8 @@ class AdminController extends Controller
 
     public function createUser()
     {
-        $roles = Role::orderBy('level')->get();
+        // Only visible roles are offered when creating a user
+        $roles = Role::where('is_visible', true)->orderBy('level')->get();
         return view('admin.users.create', compact('roles'));
     }
 
@@ -230,22 +265,26 @@ class AdminController extends Controller
             'password'    => ['nullable', 'string', 'min:8', 'confirmed'],
             'is_active'   => ['boolean'],
         ], [
-            'email.unique' => 'This email is already registered.',
+            'email.unique'      => 'This email is already registered.',
             'student_id.unique' => 'This student ID is already assigned.',
-            'phone.unique' => 'This phone number is already in use.',
+            'phone.unique'      => 'This phone number is already in use.',
         ]);
 
-        // Format phone
+        // Ensure the selected role is visible (guards against tampered form submissions)
+        $selectedRole = Role::where('id', $validated['role_id'])
+            ->where('is_visible', true)
+            ->first();
+        if (!$selectedRole) {
+            return back()->withErrors(['role_id' => 'The selected role is not available.'])->withInput();
+        }
+
         if (!empty($validated['phone'])) {
             $phone = preg_replace('/[^0-9]/', '', $validated['phone']);
             if (substr($phone, 0, 2) == '63') $phone = substr($phone, 2);
-            if (substr($phone, 0, 1) == '0') $phone = substr($phone, 1);
+            if (substr($phone, 0, 1) == '0')  $phone = substr($phone, 1);
             $validated['phone'] = '+63' . substr($phone, 0, 10);
         }
 
-        $selectedRole = Role::findOrFail($validated['role_id']);
-
-        // Year level clearing based on role and position
         if ($this->shouldClearYearLevel($selectedRole->id, $validated['position'] ?? '')) {
             $validated['year_level'] = null;
         }
@@ -274,29 +313,25 @@ class AdminController extends Controller
 
         $password = $validated['password'] ?? Str::random(10);
 
-        // === MODIFIED SECTION START ===
         $user = User::create([
-            'first_name'  => $validated['first_name'],
-            'middle_name' => $validated['middle_name'] ?? null,
-            'last_name'   => $validated['last_name'],
-            'full_name'   => $fullName,
-            'email'       => $validated['email'],
-            'password'    => Hash::make($password),
-            'role_id'     => $validated['role_id'],
-            'position'    => $validated['position'],
-            'student_id'  => $validated['student_id'] ?? null,
-            'year_level'  => $validated['year_level'] ?? null,
-            'gender'      => $validated['gender'],
-            'phone'       => $validated['phone'] ?? null,
-            'birthday'    => $validated['birthday'] ?? null,
-            'is_active'   => $validated['is_active'] ?? true,
-            'email_verified_at' => now(), // Auto-verify admin-created users
+            'first_name'        => $validated['first_name'],
+            'middle_name'       => $validated['middle_name'] ?? null,
+            'last_name'         => $validated['last_name'],
+            'full_name'         => $fullName,
+            'email'             => $validated['email'],
+            'password'          => Hash::make($password),
+            'role_id'           => $validated['role_id'],
+            'position'          => $validated['position'],
+            'student_id'        => $validated['student_id'] ?? null,
+            'year_level'        => $validated['year_level'] ?? null,
+            'gender'            => $validated['gender'],
+            'phone'             => $validated['phone'] ?? null,
+            'birthday'          => $validated['birthday'] ?? null,
+            'is_active'         => $validated['is_active'] ?? true,
+            'email_verified_at' => now(),
         ]);
 
-        // Removed: $user->sendEmailVerificationNotification();
-        // Only send the welcome email
         $user->notify(new NewUserWelcomeNotification($password));
-        // === MODIFIED SECTION END ===
 
         return redirect()->route('admin.users.index')
             ->with('success', "User '{$user->full_name}' created successfully. A welcome email has been sent.");
@@ -304,8 +339,9 @@ class AdminController extends Controller
 
     public function editUser(int $id)
     {
-        $user = User::findOrFail($id);
-        $roles = Role::orderBy('level')->get();
+        $user  = User::findOrFail($id);
+        // Only visible roles offered when editing a user
+        $roles = Role::where('is_visible', true)->orderBy('level')->get();
         return view('admin.users.edit', compact('user', 'roles'));
     }
 
@@ -328,22 +364,26 @@ class AdminController extends Controller
             'password'    => ['nullable', 'string', 'min:8', 'confirmed'],
             'is_active'   => ['boolean'],
         ], [
-            'email.unique' => 'This email is already registered.',
+            'email.unique'      => 'This email is already registered.',
             'student_id.unique' => 'This student ID is already assigned.',
-            'phone.unique' => 'This phone number is already in use.',
+            'phone.unique'      => 'This phone number is already in use.',
         ]);
 
-        // Format phone
+        // Ensure the new role is visible (guards against tampered form submissions)
+        $selectedRole = Role::where('id', $validated['role_id'])
+            ->where('is_visible', true)
+            ->first();
+        if (!$selectedRole) {
+            return back()->withErrors(['role_id' => 'The selected role is not available.'])->withInput();
+        }
+
         if (!empty($validated['phone'])) {
             $phone = preg_replace('/[^0-9]/', '', $validated['phone']);
             if (substr($phone, 0, 2) == '63') $phone = substr($phone, 2);
-            if (substr($phone, 0, 1) == '0') $phone = substr($phone, 1);
+            if (substr($phone, 0, 1) == '0')  $phone = substr($phone, 1);
             $validated['phone'] = '+63' . substr($phone, 0, 10);
         }
 
-        $selectedRole = Role::findOrFail($validated['role_id']);
-
-        // Year level clearing
         if ($this->shouldClearYearLevel($selectedRole->id, $validated['position'] ?? '')) {
             $validated['year_level'] = null;
         }
@@ -360,7 +400,7 @@ class AdminController extends Controller
             $validated['position'] = null;
         }
 
-        // Protect predefined roles when changing role
+        // Protect predefined roles: don't allow removing the last user from one
         if ($user->role_id != $validated['role_id']) {
             $oldRole = Role::find($user->role_id);
             if ($oldRole && $oldRole->is_predefined) {
@@ -390,13 +430,8 @@ class AdminController extends Controller
             'phone'       => $validated['phone'] ?? null,
             'birthday'    => $validated['birthday'] ?? null,
             'is_active'   => $validated['is_active'] ?? $user->is_active,
+            'position'    => $selectedRole->id == 1 ? null : $validated['position'],
         ];
-
-        if ($selectedRole->id == 1) {
-            $data['position'] = null;
-        } else {
-            $data['position'] = $validated['position'];
-        }
 
         if (!empty($validated['password'])) {
             $data['password'] = Hash::make($validated['password']);
@@ -432,7 +467,7 @@ class AdminController extends Controller
 
     public function resetPassword(int $id)
     {
-        $user = User::findOrFail($id);
+        $user        = User::findOrFail($id);
         $newPassword = Str::random(10);
         $user->password = Hash::make($newPassword);
         $user->save();
@@ -466,18 +501,17 @@ class AdminController extends Controller
     public function verifyEmailManually($id)
     {
         $user = User::findOrFail($id);
-        
-        // Only allow System Admin (level 1) or Supreme Admin (level 2)
+
         if (!in_array(auth()->user()->role->level, [1, 2])) {
             return back()->with('error', 'Unauthorized.');
         }
-        
+
         if ($user->hasVerifiedEmail()) {
             return back()->with('info', 'User already verified.');
         }
-        
+
         $user->markEmailAsVerified();
-        
+
         return back()->with('success', "Email for {$user->full_name} has been verified.");
     }
 
@@ -491,7 +525,7 @@ class AdminController extends Controller
 
     public function forceDeleteUser(int $id)
     {
-        $user = User::withTrashed()->findOrFail($id);
+        $user     = User::withTrashed()->findOrFail($id);
         $userName = $user->full_name;
         $user->forceDelete();
         return redirect()->route('admin.users.index')
@@ -502,14 +536,15 @@ class AdminController extends Controller
     // Helpers
     // =========================================================================
 
-    private function shouldClearYearLevel($roleId, $position)
+    private function shouldClearYearLevel($roleId, $position): bool
     {
         $alwaysNonStudent = [1, 6, 8]; // System Admin, Club Adviser, Guest
         if (in_array($roleId, $alwaysNonStudent)) {
             return true;
         }
+        // Supreme Admin without SSLG President position also clears year level
         if ($roleId == 2 && $position !== 'SSLG President') {
-            return true; // Supreme Admin but not SSLG President
+            return true;
         }
         return false;
     }
