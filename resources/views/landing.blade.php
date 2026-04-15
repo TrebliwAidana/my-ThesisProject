@@ -102,15 +102,26 @@
 
         .nav-brand { display: flex; align-items: center; gap: 12px; text-decoration: none; }
 
+        /* Logo container – replaced SVG with image */
         .nav-crest {
-            width: 34px; height: 34px; border-radius: 8px;
-            background: var(--emerald);
-            display: flex; align-items: center; justify-content: center;
+            width: 34px;
+            height: 34px;
+            border-radius: 8px;
+            background: transparent;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             flex-shrink: 0;
-            transition: background .3s;
+            overflow: hidden;
         }
-        .dark .nav-crest { background: var(--emerald); }
-        .nav-crest svg { width: 16px; height: 16px; stroke: #fff; fill: none; stroke-width: 1.8; }
+        .nav-crest img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+        .dark .nav-crest img {
+            filter: brightness(0.9);
+        }
 
         .nav-wordmark {
             font-family: var(--serif);
@@ -212,7 +223,7 @@
 
 
         /* ════════════════════════════════════
-           HERO
+           HERO (with background image)
         ════════════════════════════════════ */
         .hero {
             position: relative;
@@ -221,20 +232,35 @@
             padding: 80px 48px 64px;
             text-align: center;
             overflow: hidden;
-            background: #061009;
+            background-image: url('/images/VSU_Malakas@Maganda.png');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
         }
-
-        /* Dot grid */
+        /* Dark overlay for better text contrast */
+        .hero::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.65);
+            z-index: 0;
+        }
+        /* Dot grid (keep it optional – you can remove if it distracts) */
         .hero::before {
             content: '';
-            position: absolute; inset: 0;
+            position: absolute;
+            inset: 0;
             background-image: radial-gradient(rgba(29,179,132,.18) 1px, transparent 1px);
             background-size: 32px 32px;
             mask-image: radial-gradient(ellipse 75% 75% at 50% 40%, black 30%, transparent 100%);
             -webkit-mask-image: radial-gradient(ellipse 75% 75% at 50% 40%, black 30%, transparent 100%);
+            z-index: 0;
+            pointer-events: none;
         }
-
-        /* Radial glow */
+        /* Radial glow (keep it if you like) */
         .hero-glow {
             position: absolute;
             top: -10%; left: 50%; transform: translateX(-50%);
@@ -242,6 +268,7 @@
             background: radial-gradient(ellipse at center, rgba(18,116,90,.35) 0%, transparent 65%);
             pointer-events: none;
             animation: breathe 8s ease-in-out infinite;
+            z-index: 0;
         }
         @keyframes breathe {
             0%, 100% { opacity: .6; transform: translateX(-50%) scale(1); }
@@ -742,14 +769,23 @@
             border-bottom: 1px solid var(--cloud);
         }
         .dark .modal-head { border-bottom-color: rgba(255,255,255,.07); }
+        /* Logo container in modal – replaced SVG with image */
         .modal-crest {
-            width: 48px; height: 48px;
+            width: 48px;
+            height: 48px;
             border-radius: 12px;
-            background: var(--emerald);
-            display: flex; align-items: center; justify-content: center;
+            background: transparent;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             margin: 0 auto 12px;
+            overflow: hidden;
         }
-        .modal-crest svg { width: 20px; height: 20px; stroke: #fff; fill: none; stroke-width: 1.8; }
+        .modal-crest img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
         .modal-head h2 {
             font-family: var(--serif);
             font-size: 20px; color: var(--ink);
@@ -938,7 +974,8 @@
 <nav class="nav">
     <a href="#" class="nav-brand">
         <div class="nav-crest">
-            <svg viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 21l9-18 9 18M6.5 15h11"/></svg>
+            <!-- Replaced mountain icon with VSULHS logo -->
+            <img src="{{ asset('images/vsulhs_logo.png') }}" alt="VSULHS Logo">
         </div>
         <span class="nav-wordmark">VSULHS SSLG</span>
     </a>
@@ -1281,7 +1318,7 @@
 </footer>
 
 
-{{-- ═══ LOGIN MODAL (smaller, emerald sign in, red cancel) ═══ --}}
+{{-- ═══ LOGIN MODAL (logo replaced) ═══ --}}
 <div x-show="loginModalOpen"
      x-cloak
      class="modal-overlay"
@@ -1292,7 +1329,8 @@
 
         <div class="modal-head">
             <div class="modal-crest">
-                <svg viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                <!-- Replaced lock icon with VSULHS logo -->
+                <img src="{{ asset('images/vsulhs_logo.png') }}" alt="VSULHS Logo">
             </div>
             <h2>Welcome back</h2>
             <p>Sign in to the VSULHS SSLG portal</p>
