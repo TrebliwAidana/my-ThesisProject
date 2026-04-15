@@ -137,16 +137,17 @@
             const data = await res.json();
 
             if (res.ok && data.success) {
-                this.rolePermMap[this.selectedRoleId] = granted;
-                this.saved   = true;
-                this.changed = false;
                 showNotification(data.message, 'success');
+                // Reload the page after a short delay so the user sees the notification
+                setTimeout(() => {
+                    window.location.reload();
+                }, 800);
             } else {
                 showNotification(data.message ?? 'Failed to save.', 'error');
+                this.saving = false;
             }
         } catch (e) {
             showNotification('Network error. Try again.', 'error');
-        } finally {
             this.saving = false;
         }
     }

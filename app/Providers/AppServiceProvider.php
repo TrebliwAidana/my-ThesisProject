@@ -6,6 +6,8 @@ use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\View;
 use App\Services\ThemeService;
+use Illuminate\Support\Facades\Cache;
+use App\Models\Role;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -17,5 +19,7 @@ class AppServiceProvider extends ServiceProvider
         View::composer('*', function ($view) {
             $view->with('themeColor', ThemeService::current());
         });
+        Cache::remember('roles_with_perms', 3600, fn() => Role::with('permissions')->get());
+
     }
 }

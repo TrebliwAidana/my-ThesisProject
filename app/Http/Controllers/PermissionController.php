@@ -16,13 +16,25 @@ class PermissionController extends Controller
 
     public function index(Request $request)
     {
-        $roles = Role::with('permissions')->orderBy('level')->get();
+        // Only fetch visible roles for the permission matrix
+        $roles = Role::where('is_visible', true)
+            ->with('permissions')
+            ->orderBy('level')
+            ->get();
 
-        // FIX: Cast to int and use firstWhere instead of find() —
-        // Laravel 13 Collection::find() throws BadMethodCallException
-        // when passed a string from $request->input().
+        // If no visible roles, abort or show empty state
+        if ($roles->isEmpty()) {
+            abort(403, 'No visible roles found. Please unhide a role first.');
+        }
+
         $selectedRoleId = (int) $request->input('role_id', $roles->first()?->id);
         $selectedRole   = $roles->firstWhere('id', $selectedRoleId);
+
+        // If the requested role_id is not among visible roles, fallback to the first visible role
+        if (!$selectedRole && $roles->isNotEmpty()) {
+            $selectedRole = $roles->first();
+            $selectedRoleId = $selectedRole->id;
+        }
 
         // Define logical display order — core features first, system last.
         $moduleOrder = [
@@ -37,31 +49,21 @@ class PermissionController extends Controller
             'admin',
         ];
 
-        // FIX: Avoid chaining merge() between a plain Collection and an
-        // Eloquent Collection — Laravel 13 is strict about collection types
-        // and throws BadMethodCallException on the merge.
-        // Instead, build a plain array sorted by $moduleOrder, then wrap once.
         $allPerms = Permission::all();
-        $grouped  = $allPerms->groupBy('module')->toArray(); // plain array keyed by module
+        $grouped  = $allPerms->groupBy('module')->toArray();
 
-        // This is now just plain PHP array manipulation — no Collection conflicts.
         $sorted = [];
-
-        // 1. Add modules in the defined order first
         foreach ($moduleOrder as $module) {
             if (isset($grouped[$module])) {
                 $sorted[$module] = $grouped[$module];
                 unset($grouped[$module]);
             }
         }
-
-        // 2. Append any remaining modules alphabetically
         ksort($grouped);
         foreach ($grouped as $module => $perms) {
             $sorted[$module] = $perms;
         }
 
-        // 3. Re-wrap as a Collection of Collections so the view works as before
         $permissions = collect($sorted)->map(fn($perms) => collect($perms)->map(
             fn($perm) => (object) $perm
         ));
@@ -75,6 +77,12 @@ class PermissionController extends Controller
 
     public function update(Request $request, Role $role)
     {
+        // Ensure the role being updated is visible (prevent tampering)
+        if (!$role->is_visible) {
+            return redirect()->route('admin.permissions.index')
+                ->with('error', 'Cannot update permissions for a hidden role.');
+        }
+
         $validated = $request->validate([
             'permissions'   => 'nullable|array',
             'permissions.*' => 'integer|exists:permissions,id',
