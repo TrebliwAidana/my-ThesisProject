@@ -980,7 +980,7 @@
         </div>
 
         <h1>The official portal of<br><em>VSULHS SSLG</em></h1>
-        <p class="hero-sub">Financial records, documents, and member management — purpose-built for the Supreme Student Learner Government of VSU Leyte High School.</p>
+        <p class="hero-sub">Financial records, documents, and member management — purpose-built for the Supreme Student Learner Government of VSU Laboratory High School.</p>
 
         <div class="hero-btns">
             <button @click="loginModalOpen = true" class="btn-primary">
@@ -1260,9 +1260,9 @@
         <div>
             <h4>Resources</h4>
             <ul>
-                <li><a href="#">Help centre</a></li>
-                <li><a href="#">Privacy policy</a></li>
-                <li><a href="#">Terms of service</a></li>
+                <li><a href="{{ route('help') }}">Help Centre</a></li>
+                <li><a href="{{ route('data-privacy-act') }}">Data Privacy Act of 2012 (Philippines)</a></li>
+                <li><a href="{{ route('terms-of-service') }}">Terms of Service</a></li>
             </ul>
         </div>
         <div>

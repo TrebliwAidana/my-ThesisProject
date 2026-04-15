@@ -200,3 +200,8 @@ Route::post('/password/reset', function (Request $request) {
         ? redirect()->route('login')->with('status', __($status))
         : back()->withErrors(['email' => [__($status)]]);
 })->name('password.update');
+
+    // ____LandingPage_Resources _______________//
+    Route::view('/data-privacy-act', 'pages.data-privacy-act')->name('data-privacy-act');
+    Route::view('/help', 'pages.help')->name('help');
+    Route::view('/terms-of-service', 'pages.terms')->name('terms-of-service');
