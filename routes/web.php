@@ -26,7 +26,11 @@ Route::get('/', function () {
 
 // ── Guest ─────────────────────────────────────────────────────────────────────
 Route::middleware('guest')->group(function () {
-    Route::get('/login',  [AuthController::class, 'showLogin'])->name('login');
+    // Redirect the dedicated login page to the landing page (which contains the login modal)
+    Route::get('/login', function () {
+        return redirect()->route('landing');
+    })->name('login');
+    // Keep the POST route for login form submissions from the landing modal
     Route::post('/login', [AuthController::class, 'login'])->name('login.post');
 });
 
@@ -116,33 +120,31 @@ Route::middleware(['auth.custom', 'verified'])->group(function () {
 
             });
 
-
-            // ── Roles ─────────────────────────────────────────────────────────────
-            Route::middleware('role:System Administrator')
-                ->prefix('roles')->name('roles.')
-                ->group(function () {
-                    Route::get('/',          [AdminController::class, 'roles'])->name('index');
-                    Route::get('/create',    [AdminController::class, 'createRole'])->name('create');
-                    Route::post('/',         [AdminController::class, 'storeRole'])->name('store');
-                    Route::get('/{id}/edit', [AdminController::class, 'editRole'])->name('edit');
-                    Route::put('/{id}',      [AdminController::class, 'updateRole'])->name('update');
-                    Route::delete('/{id}',   [AdminController::class, 'destroyRole'])->name('destroy');
-                    
-                    // ✅ CORRECT toggle route – uses {role} not /roles/{role}
-                    Route::patch('/{role}/toggle-visibility', [AdminController::class, 'toggleRoleVisibility'])
-                        ->name('toggle-visibility');
-                });
+        // ── Roles ─────────────────────────────────────────────────────────────
+        Route::middleware('role:System Administrator')
+            ->prefix('roles')->name('roles.')
+            ->group(function () {
+                Route::get('/',          [AdminController::class, 'roles'])->name('index');
+                Route::get('/create',    [AdminController::class, 'createRole'])->name('create');
+                Route::post('/',         [AdminController::class, 'storeRole'])->name('store');
+                Route::get('/{id}/edit', [AdminController::class, 'editRole'])->name('edit');
+                Route::put('/{id}',      [AdminController::class, 'updateRole'])->name('update');
+                Route::delete('/{id}',   [AdminController::class, 'destroyRole'])->name('destroy');
+                
+                Route::patch('/{role}/toggle-visibility', [AdminController::class, 'toggleRoleVisibility'])
+                    ->name('toggle-visibility');
+            });
 
         // ── Permissions ───────────────────────────────────────────────────────
-
         Route::middleware('role:System Administrator,Supreme Admin,Club Adviser')
             ->prefix('permissions')
             ->name('permissions.')
-        ->group(function () {
-            Route::get('/',       [PermissionController::class, 'index'])->name('index');
-            Route::put('/{role}', [PermissionController::class, 'update'])->name('update');
-        });
+            ->group(function () {
+                Route::get('/',       [PermissionController::class, 'index'])->name('index');
+                Route::put('/{role}', [PermissionController::class, 'update'])->name('update');
+            });
     });
+
     // ── Audit Logs ────────────────────────────────────────────────────────────
     Route::get('/audit-logs', [AuditLogController::class, 'index'])
         ->name('audit.logs')
@@ -198,4 +200,3 @@ Route::post('/password/reset', function (Request $request) {
         ? redirect()->route('login')->with('status', __($status))
         : back()->withErrors(['email' => [__($status)]]);
 })->name('password.update');
-
