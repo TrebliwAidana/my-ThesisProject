@@ -11,7 +11,7 @@ class Document extends Model
 
     protected $fillable = [
         'title', 'description', 'file_path', 'file_name', 'mime_type',
-        'size', 'category', 'uploaded_by', 'organization_id', 'is_public', 'status'
+        'size', 'category', 'uploaded_by', 'is_public', 'status'
     ];
 
     protected $casts = [
@@ -38,13 +38,10 @@ class Document extends Model
         }
         return round($bytes, 2) . ' ' . $units[$i];
     }
-
-    // Scope for user's organization or public
     public function scopeAccessible($query, User $user)
     {
         return $query->where(function ($q) use ($user) {
-            $q->where('is_public', true)
-              ->orWhere('organization_id', $user->organization_id);
+            $q->where('is_public', true);
         });
     }
 }

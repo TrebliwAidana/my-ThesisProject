@@ -66,13 +66,12 @@
         <div class="absolute top-0 right-0 -mt-8 -mr-8 w-64 h-64 bg-white/5 rounded-full blur-3xl"></div>
     </div>
 
-    {{-- Stats Grid --}}
+    {{-- Stats Grid (unchanged financial stats) --}}
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        <!-- same stats cards as in your original -->
         <div class="group bg-white dark:bg-gray-800 rounded-2xl border border-gold-200 dark:border-gold-800 p-6 hover:shadow-lg transition-all duration-300 hover:scale-[1.02]">
             <div class="flex items-center justify-between mb-4">
                 <div class="w-12 h-12 bg-primary-50 dark:bg-primary-900/50 rounded-xl flex items-center justify-center">
-                    <svg class="w-6 h-6 text-primary-600 dark:text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <svg class="w-6 h-6 text-primary-600 dark:text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"></path>
                     </svg>
                 </div>
@@ -85,7 +84,7 @@
         <div class="group bg-white dark:bg-gray-800 rounded-2xl border border-gold-200 dark:border-gold-800 p-6 hover:shadow-lg transition-all duration-300 hover:scale-[1.02]">
             <div class="flex items-center justify-between mb-4">
                 <div class="w-12 h-12 bg-green-50 dark:bg-green-900/50 rounded-xl flex items-center justify-center">
-                    <svg class="w-6 h-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <svg class="w-6 h-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                     </svg>
                 </div>
@@ -98,7 +97,7 @@
         <div class="group bg-white dark:bg-gray-800 rounded-2xl border border-gold-200 dark:border-gold-800 p-6 hover:shadow-lg transition-all duration-300 hover:scale-[1.02]">
             <div class="flex items-center justify-between mb-4">
                 <div class="w-12 h-12 bg-sky-50 dark:bg-sky-900/50 rounded-xl flex items-center justify-center">
-                    <svg class="w-6 h-6 text-sky-600 dark:text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <svg class="w-6 h-6 text-sky-600 dark:text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
                     </svg>
                 </div>
@@ -111,7 +110,7 @@
         <div class="group bg-white dark:bg-gray-800 rounded-2xl border border-gold-200 dark:border-gold-800 p-6 hover:shadow-lg transition-all duration-300 hover:scale-[1.02]">
             <div class="flex items-center justify-between mb-4">
                 <div class="w-12 h-12 bg-gold-50 dark:bg-gold-900/50 rounded-xl flex items-center justify-center">
-                    <svg class="w-6 h-6 text-gold-600 dark:text-gold-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <svg class="w-6 h-6 text-gold-600 dark:text-gold-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path>
                     </svg>
                 </div>
@@ -122,11 +121,11 @@
         </div>
     </div>
 
-    {{-- Quick Actions --}}
+    {{-- Quick Actions (Updated: Add Income / Add Expense) --}}
     <div class="flex flex-wrap gap-3">
         @if($user->hasPermission('members.create'))
         <a href="{{ route('members.create') }}" class="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-gold-500 text-white text-sm font-medium rounded-xl transition shadow-sm">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
             </svg>
             Add Member
@@ -134,18 +133,25 @@
         @endif
         @if($user->hasPermission('documents.create'))
         <a href="{{ route('documents.create') }}" class="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-gold-500 text-white text-sm font-medium rounded-xl transition shadow-sm">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
             </svg>
             Upload Document
         </a>
         @endif
-        @if($user->hasPermission('budgets.create'))
-        <a href="{{ route('budgets.create') }}" class="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-gold-500 text-white text-sm font-medium rounded-xl transition shadow-sm">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+        {{-- Financial Record quick actions --}}
+        @if($user->hasPermission('financial.create')) {{-- Use your financial permission --}}
+        <a href="{{ route('financial.income.create') }}" class="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-gold-500 text-white text-sm font-medium rounded-xl transition shadow-sm">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
             </svg>
-            Submit Budget
+            Add Income
+        </a>
+        <a href="{{ route('financial.expense.create') }}" class="inline-flex items-center gap-2 px-4 py-2 bg-rose-600 hover:bg-gold-500 text-white text-sm font-medium rounded-xl transition shadow-sm">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"></path>
+            </svg>
+            Add Expense
         </a>
         @endif
     </div>
@@ -154,7 +160,6 @@
         {{-- Profile Card (unchanged) --}}
         <div class="lg:col-span-1">
             <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gold-200 dark:border-gold-800 overflow-hidden lg:sticky lg:top-6">
-                <!-- profile card content same as your original -->
                 <div class="bg-gradient-to-r from-primary-600 to-primary-700 px-6 py-5">
                     <div class="flex items-center gap-3">
                         <div class="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
@@ -195,7 +200,7 @@
                             @endif
                         </div>
                         <a href="{{ route('profile.index') }}" class="mt-4 inline-flex items-center gap-1 text-sm text-primary-600 hover:text-primary-700 dark:text-primary-400" aria-label="Edit Profile">
-                            Edit Profile <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                            Edit Profile <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
                         </a>
                     </div>
                     <div class="space-y-4">
@@ -213,7 +218,7 @@
         {{-- Right column --}}
         <div class="lg:col-span-2 space-y-6">
 
-            {{-- Budget Statistics Chart (new) --}}
+            {{-- Financial Chart: Monthly Income vs Expenses (replaces budget chart) --}}
             <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gold-200 dark:border-gold-800 p-6">
                 <div class="flex items-center gap-3 mb-4">
                     <div class="w-8 h-8 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg flex items-center justify-center">
@@ -221,24 +226,23 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
                         </svg>
                     </div>
-                    <h3 class="font-semibold text-gray-900 dark:text-white">Monthly Budget Trends (₱)</h3>
+                    <h3 class="font-semibold text-gray-900 dark:text-white">Monthly Income vs Expenses (₱)</h3>
                     <p class="text-xs text-gray-500 dark:text-gray-400 ml-auto">{{ now()->year }}</p>
                 </div>
-                <canvas id="budgetChart" height="300"></canvas>
+                <canvas id="financialChart" height="300"></canvas>
             </div>
 
-            {{-- Recent Documents --}}
+            {{-- Recent Documents (unchanged) --}}
             @if($user->hasPermission('documents.view') && isset($recentDocuments) && count($recentDocuments) > 0)
             <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gold-200 dark:border-gold-800 overflow-hidden">
-                <!-- same as your original -->
                 <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gold-800">
-                    <div class="flex items-center gap-3"><div class="w-8 h-8 bg-amber-100 dark:bg-amber-900/30 rounded-lg flex items-center justify-center"><svg class="w-4 h-4 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg></div><h3 class="font-semibold text-gray-900 dark:text-white">Recent Documents</h3></div>
-                    <a href="{{ route('documents.index') }}" class="text-sm text-primary-600 hover:text-primary-700 dark:text-primary-400 font-medium flex items-center gap-1">View all <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg></a>
+                    <div class="flex items-center gap-3"><div class="w-8 h-8 bg-amber-100 dark:bg-amber-900/30 rounded-lg flex items-center justify-center"><svg class="w-4 h-4 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg></div><h3 class="font-semibold text-gray-900 dark:text-white">Recent Documents</h3></div>
+                    <a href="{{ route('documents.index') }}" class="text-sm text-primary-600 hover:text-primary-700 dark:text-primary-400 font-medium flex items-center gap-1">View all <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg></a>
                 </div>
                 <ul class="divide-y divide-gray-100 dark:divide-gray-700">
                     @forelse($recentDocuments as $doc)
                     <li class="flex items-center gap-4 px-6 py-4 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition">
-                        <div class="w-10 h-10 bg-amber-50 dark:bg-amber-900/30 rounded-xl flex items-center justify-center flex-shrink-0"><svg class="w-5 h-5 text-amber-500 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg></div>
+                        <div class="w-10 h-10 bg-amber-50 dark:bg-amber-900/30 rounded-xl flex items-center justify-center flex-shrink-0"><svg class="w-5 h-5 text-amber-500 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg></div>
                         <div class="flex-1 min-w-0"><p class="text-sm font-medium text-gray-900 dark:text-white truncate">{{ $doc->title }}</p><p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{{ $doc->uploader->full_name ?? 'Unknown' }} · {{ optional($doc->created_at)->diffForHumans() }}</p></div>
                     </li>
                     @empty
@@ -251,40 +255,50 @@
             </div>
             @endif
 
-            {{-- Recent Budgets --}}
-            @if($user->hasPermission('budgets.view') && isset($recentBudgets) && count($recentBudgets) > 0)
+            {{-- Recent Transactions (replaces Recent Budgets) --}}
+            @if($user->hasPermission('financial.view') && isset($recentTransactions) && count($recentTransactions) > 0)
             <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gold-200 dark:border-gold-800 overflow-hidden">
-                <!-- same as your original -->
                 <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gold-800">
-                    <div class="flex items-center gap-3"><div class="w-8 h-8 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg flex items-center justify-center"><svg class="w-4 h-4 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div><h3 class="font-semibold text-gray-900 dark:text-white">Recent Budgets</h3></div>
-                    <a href="{{ route('budgets.index') }}" class="text-sm text-primary-600 hover:text-primary-700 dark:text-primary-400 font-medium flex items-center gap-1">View all <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg></a>
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg flex items-center justify-center">
+                            <svg class="w-4 h-4 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                        </div>
+                        <h3 class="font-semibold text-gray-900 dark:text-white">Recent Transactions</h3>
+                    </div>
+                    <a href="{{ route('financial.index') }}" class="text-sm text-primary-600 hover:text-primary-700 dark:text-primary-400 font-medium flex items-center gap-1">View all <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg></a>
                 </div>
                 <ul class="divide-y divide-gray-100 dark:divide-gray-700">
-                    @forelse($recentBudgets as $budget)
-                    @php 
-                        $statusColors = ['approved' => 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400','rejected' => 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400','pending' => 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400','reviewed' => 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400','disbursed' => 'bg-gold-100 dark:bg-gold-900/30 text-gold-700 dark:text-gold-400'];
-                    @endphp
+                    @forelse($recentTransactions as $tx)
                     <li class="flex items-center justify-between px-6 py-4 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition">
-                        <div class="flex-1 min-w-0"><p class="text-sm font-medium text-gray-900 dark:text-white truncate">{{ Str::limit($budget->description ?? $budget->title ?? '—', 50) }}</p><p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5 font-mono">₱{{ number_format($budget->amount, 2) }}</p></div>
-                        <span class="text-xs font-medium px-2.5 py-1 rounded-full ml-4 {{ $statusColors[$budget->status] ?? 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400' }}">{{ ucfirst($budget->status) }}</span>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-sm font-medium text-gray-900 dark:text-white truncate">{{ $tx->description }}</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{{ $tx->type === 'income' ? 'Income' : 'Expense' }} · {{ optional($tx->date)->format('M d, Y') ?? optional($tx->created_at)->format('M d, Y') }}</p>
+                        </div>
+                        <span class="text-xs font-medium px-2.5 py-1 rounded-full {{ $tx->type === 'income' ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' : 'bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400' }}">
+                            {{ $tx->type === 'income' ? '+' : '-' }} ₱{{ number_format($tx->amount, 2) }}
+                        </span>
                     </li>
                     @empty
                     <li class="px-6 py-8 text-center text-sm text-gray-400 dark:text-gray-500">
-                        <svg class="w-12 h-12 mx-auto mb-3 text-gray-300 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                        No budget entries yet. <a href="{{ route('budgets.create') }}" class="text-primary-600 hover:underline">Create your first budget request</a>
+                        <svg class="w-12 h-12 mx-auto mb-3 text-gray-300 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        No transactions yet. <a href="{{ route('financial.income.create') }}" class="text-primary-600 hover:underline">Add your first income or expense</a>
                     </li>
                     @endforelse
                 </ul>
             </div>
             @endif
 
-            {{-- Pending Approvals --}}
-            @if(($user->hasPermission('budgets.approve')) && isset($pendingApprovals) && count($pendingApprovals) > 0)
+            {{-- Pending Approvals (if any, maybe for financial transactions? For now keep but adjust) --}}
+            @if($user->hasPermission('financial.approve') && isset($pendingApprovals) && count($pendingApprovals) > 0)
             <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gold-200 dark:border-gold-800 overflow-hidden">
-                <!-- same as your original -->
                 <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gold-800">
-                    <div class="flex items-center gap-3"><div class="w-8 h-8 bg-orange-100 dark:bg-orange-900/30 rounded-lg flex items-center justify-center"><svg class="w-4 h-4 text-orange-600 dark:text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div><h3 class="font-semibold text-gray-900 dark:text-white">Pending Approvals</h3></div>
-                    <a href="{{ route('budgets.index') }}" class="text-sm text-primary-600 hover:text-primary-700 dark:text-primary-400 font-medium flex items-center gap-1">Review all <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg></a>
+                    <div class="flex items-center gap-3"><div class="w-8 h-8 bg-orange-100 dark:bg-orange-900/30 rounded-lg flex items-center justify-center"><svg class="w-4 h-4 text-orange-600 dark:text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div><h3 class="font-semibold text-gray-900 dark:text-white">Pending Approvals</h3></div>
+                        {{-- Update link to financial approvals if needed --}}
+                        <a href="{{ route('financial.index') }}" class="text-sm text-primary-600 hover:text-primary-700 dark:text-primary-400 font-medium flex items-center gap-1">Review all <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg></a>
                 </div>
                 <ul class="divide-y divide-gray-100 dark:divide-gray-700">
                     @foreach($pendingApprovals as $item)
@@ -297,12 +311,20 @@
             </div>
             @endif
 
-            {{-- Budget Summary Card --}}
-            @if($user->hasPermission('budgets.view') && isset($totalBudget))
+            {{-- Financial Summary Card (replaces Budget Summary) --}}
+            @if($user->hasPermission('financial.view') && isset($totalIncome))
             <div class="bg-gradient-to-r from-emerald-600 to-teal-600 dark:from-emerald-800 dark:to-teal-800 rounded-2xl p-6">
                 <div class="flex items-center justify-between">
-                    <div><p class="text-emerald-100 text-sm font-medium">Total Approved Budget</p><p class="text-3xl font-bold text-white mt-1 break-words">₱{{ number_format($totalBudget, 2) }}</p><p class="text-emerald-100 text-xs mt-2">All approved budget requests</p></div>
-                    <div class="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center"><svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div>
+                    <div>
+                        <p class="text-emerald-100 text-sm font-medium">Total Income (All Time)</p>
+                        <p class="text-3xl font-bold text-white mt-1 break-words">₱{{ number_format($totalIncome, 2) }}</p>
+                        <p class="text-emerald-100 text-xs mt-2">Total Expenses: ₱{{ number_format($totalExpense, 2) }} | Net: ₱{{ number_format($netBalance, 2) }}</p>
+                    </div>
+                    <div class="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center">
+                        <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
                 </div>
             </div>
             @endif
@@ -312,25 +334,25 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        const ctx = document.getElementById('budgetChart').getContext('2d');
+        const ctx = document.getElementById('financialChart').getContext('2d');
         new Chart(ctx, {
             type: 'bar',
             data: {
                 labels: @json($months),
                 datasets: [
                     {
-                        label: 'Total Requested',
-                        data: @json($chartTotals),
-                        backgroundColor: 'rgba(59, 130, 246, 0.6)',
-                        borderColor: 'rgb(59, 130, 246)',
+                        label: 'Income',
+                        data: @json($monthlyIncome),
+                        backgroundColor: 'rgba(16, 185, 129, 0.6)',
+                        borderColor: 'rgb(16, 185, 129)',
                         borderWidth: 1,
                         borderRadius: 4,
                     },
                     {
-                        label: 'Approved',
-                        data: @json($chartApproved),
-                        backgroundColor: 'rgba(16, 185, 129, 0.6)',
-                        borderColor: 'rgb(16, 185, 129)',
+                        label: 'Expenses',
+                        data: @json($monthlyExpense),
+                        backgroundColor: 'rgba(239, 68, 68, 0.6)',
+                        borderColor: 'rgb(239, 68, 68)',
                         borderWidth: 1,
                         borderRadius: 4,
                     }

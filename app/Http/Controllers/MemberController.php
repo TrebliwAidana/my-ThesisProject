@@ -552,21 +552,15 @@ class MemberController extends Controller
         $member          = $user;
         $memberSince     = $member->created_at->format('F d, Y');
         $documentsCount  = $member->documents()->count();
-        $budgetsCount    = $member->budgets()->count();
         $recentActivity  = collect();
         $recentDocuments = $member->documents()->latest()->take(5)->get();
-        $recentBudgets   = $member->budgets()->latest()->take(5)->get();
-
         foreach ($recentDocuments as $doc) {
             $recentActivity->push(['type' => 'document', 'description' => "Uploaded document: {$doc->title}", 'time' => $doc->created_at->diffForHumans()]);
-        }
-        foreach ($recentBudgets as $budget) {
-            $recentActivity->push(['type' => 'budget', 'description' => "Submitted budget request for ₱" . number_format($budget->amount, 2), 'time' => $budget->created_at->diffForHumans()]);
         }
 
         $recentActivity = $recentActivity->sortByDesc(fn($a) => $a['time'])->take(5);
 
-        return view('members.show', compact('member', 'memberSince', 'documentsCount', 'budgetsCount', 'recentActivity'));
+        return view('members.show', compact('member', 'memberSince', 'documentsCount', 'recentActivity'));
     }
 
     // -------------------------------------------------------------------------

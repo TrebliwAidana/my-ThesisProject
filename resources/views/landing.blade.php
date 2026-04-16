@@ -223,21 +223,24 @@
         .dark .mobile-menu a, .dark .mobile-menu button { border-bottom-color: rgba(255,255,255,.06); }
         .mobile-menu a:hover, .mobile-menu button:hover { color: var(--brilliant-gold); }
 
-        /* Dark mode row inside mobile menu — added gap to prevent touching */
+        /* Dark mode row inside mobile menu — ensures no cutoff on small screens */
         .mobile-dark-row {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: 12px;          /* ensures text and button never touch */
+            gap: 12px;
             padding: 12px 4px;
             border-bottom: 1px solid var(--cloud);
             font-size: 15px;
             color: var(--slate);
+            width: 100%;
+            overflow: visible;
         }
         .dark .mobile-dark-row { border-bottom-color: rgba(255,255,255,.06); }
         .mobile-dark-row span {
             font-size: 15px;
-            flex-shrink: 1;     /* allows text to wrap if needed */
+            white-space: nowrap;      /* prevents wrapping and keeps button on same line */
+            flex-shrink: 1;
         }
         .mobile-dark-toggle {
             width: 36px;
@@ -251,7 +254,8 @@
             justify-content: center;
             color: var(--slate);
             transition: background .15s, color .15s;
-            flex-shrink: 0;     /* prevents button from shrinking */
+            flex-shrink: 0;
+            margin-right: 0;          /* ensure no extra margin pushes it out */
         }
         .dark .mobile-dark-toggle { background: rgba(255,255,255,.08); }
         .mobile-dark-toggle svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.8; }
@@ -872,8 +876,7 @@
             .nav { padding: 0 20px; }
             .nav-links { display: none; }
             .hamburger { display: flex; }
-            /* Hide the dark mode icon in top bar on mobile */
-            .btn-toggle { display: none; }
+            .btn-toggle { display: none; }  /* hide dark mode icon in top bar on mobile */
             .hero { padding: 60px 24px 48px; min-height: auto; }
             .hero h1 { font-size: 36px; }
             .hero-sub { font-size: 15px; }
@@ -890,6 +893,20 @@
             .cta-section { padding: 64px 24px; }
             footer { padding: 48px 24px 24px; }
             .footer-grid { grid-template-columns: 1fr 1fr; gap: 32px; }
+        }
+
+        /* Extra small screens (<= 400px): reduce padding to avoid button cutoff */
+        @media (max-width: 400px) {
+            .mobile-menu {
+                padding-left: 16px;
+                padding-right: 16px;
+            }
+            .mobile-dark-row {
+                gap: 8px;
+            }
+            .mobile-dark-row span {
+                white-space: nowrap;
+            }
         }
     </style>
 </head>

@@ -13,7 +13,6 @@ class DatabaseSeeder extends Seeder
      *  3. UserSeeder        — users table (needs roles)
      *  4. MemberSeeder      — members table (needs users)
      *  5. DocumentSeeder    — documents table
-     *  6. BudgetSeeder      — budgets table
      */
     public function run(): void
     {
@@ -23,7 +22,6 @@ class DatabaseSeeder extends Seeder
             UserSeeder::class,
             MemberSeeder::class,
             DocumentSeeder::class,
-            BudgetSeeder::class,
         ]);
     }
 }

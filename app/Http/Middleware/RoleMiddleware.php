@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\FinancialTransaction;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -17,7 +18,7 @@ class RoleMiddleware
     protected array $routePermissionMap = [
         'members.'   => 'members.view',
         'documents.' => 'documents.view',
-        'budgets.'   => 'budgets.view',
+        'FinancialTransaction.' => 'financial_transactions.view',
         'reports.'   => 'reports.view',
         'admin.users.'   => 'admin.users',
         'admin.roles.'   => 'admin.roles',

@@ -136,13 +136,13 @@ class Member extends Model
         $rolePermissions = [
             'System Administrator' => [
                 'manage_all', 'edit_members', 'delete_members', 'change_positions',
-                'view_budgets', 'approve_budgets', 'manage_settings',
+                'view_financial_transactions', 'approve_financial_transactions', 'manage_settings',
             ],
-            'Supreme Admin'   => ['manage_all', 'edit_members', 'change_positions', 'view_budgets', 'approve_budgets'],
-            'Club Adviser'    => ['edit_members', 'change_positions', 'view_budgets', 'approve_budgets'],
-            'Org Admin'       => ['edit_members', 'view_budgets'],
-            'Supreme Officer' => ['view_budgets', 'submit_budgets'],
-            'Org Officer'     => ['view_budgets', 'submit_budgets'],
+            'Supreme Admin'   => ['manage_all', 'edit_members', 'change_positions', 'view_financial_transactions', 'approve_financial_transactions'],
+            'Club Adviser'    => ['edit_members', 'change_positions', 'view_financial_transactions', 'approve_financial_transactions'],
+            'Org Admin'       => ['edit_members', 'view_financial_transactions'],
+            'Supreme Officer' => ['view_financial_transactions', 'submit_financial_transactions'],
+            'Org Officer'     => ['view_financial_transactions', 'submit_financial_transactions'],
             'Org Member'      => ['view_own_profile'],
         ];
 

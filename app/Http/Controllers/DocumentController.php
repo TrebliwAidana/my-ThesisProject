@@ -24,9 +24,6 @@ class DocumentController extends Controller
 
         $query = Document::with('uploader');
 
-        // System administrator sees everything; other users also see all documents (single organization)
-        // No need to filter by organization_id or is_public.
-
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
@@ -110,7 +107,6 @@ class DocumentController extends Controller
             abort(403);
         }
 
-        // All authenticated users can view any document (single organization)
         return view('documents.show', compact('document'));
     }
 

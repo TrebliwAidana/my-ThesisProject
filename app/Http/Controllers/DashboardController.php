@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Models\Document;
-use App\Models\Budget;
+use App\Models\FinancialTransaction;
 use Illuminate\Support\Facades\Auth;
 
 class DashboardController extends Controller
@@ -22,7 +22,7 @@ class DashboardController extends Controller
             ? asset('storage/' . $user->avatar)
             : asset('images/default-avatar.png');
 
-        // Statistics (global, single organisation)
+        // ── Statistics ──────────────────────────────────────────────────────────
         $totalMembers = User::count();
         $activeMembers = User::where('is_active', true)->count();
         $officersCount = User::whereHas('role', function ($q) {
@@ -39,7 +39,7 @@ class DashboardController extends Controller
             ->whereYear('created_at', now()->year)
             ->count();
 
-        // Recent documents (no organisation filter)
+        // ── Recent documents ────────────────────────────────────────────────────
         $recentDocuments = null;
         if ($user->hasPermission('documents.view')) {
             $recentDocuments = Document::with('uploader')
@@ -48,50 +48,43 @@ class DashboardController extends Controller
                 ->get();
         }
 
-        // Recent budgets & total approved (global)
-        $recentBudgets = null;
-        $totalBudget = null;
-        if ($user->hasPermission('budgets.view')) {
-            $recentBudgets = Budget::with('requester')
-                ->latest()
+        // ── FINANCIAL DATA ─────────────────────────────────────────────────────
+        $totalIncome   = FinancialTransaction::income()->approved()->sum('amount');
+        $totalExpense  = FinancialTransaction::expense()->approved()->sum('amount');
+        $netBalance    = $totalIncome - $totalExpense;
+
+        $recentTransactions = null;
+        if ($user->hasPermission('financial.view')) {
+            $recentTransactions = FinancialTransaction::with('user')
+                ->latest('transaction_date')
                 ->take(5)
                 ->get();
-            $totalBudget = Budget::where('status', 'approved')->sum('amount');
         }
 
-        // Pending approvals (global)
+        // ── Pending approvals (for financial transactions) ──────────────────────
         $pendingApprovals = [];
-        if ($user->hasPermission('budgets.approve')) {
-            $pendingBudgets = Budget::where('status', 'pending')
-                ->with('requester')
+        $pendingTasksCount = 0;
+        if ($user->hasPermission('financial.approve')) {
+            $pendingTransactions = FinancialTransaction::pending()
+                ->with('user')
                 ->take(3)
-                ->get()
-                ->map(function ($b) {
-                    return [
-                        'title' => $b->description ?? $b->title ?? 'Budget Request',
-                        'type' => 'Budget Request',
-                        'submitter' => $b->requester->full_name ?? 'Unknown',
-                        'link' => route('budgets.review', $b->id)
-                    ];
-                });
-            $pendingApprovals = $pendingBudgets->toArray();
+                ->get();
+            foreach ($pendingTransactions as $tx) {
+                $pendingApprovals[] = [
+                    'title' => $tx->description,
+                    'type' => ucfirst($tx->type) . ' Transaction',
+                    'submitter' => $tx->user->full_name ?? $tx->user->email,
+                    'link' => route('financial.index', ['filter' => 'pending']),
+                ];
+            }
+            $pendingTasksCount = FinancialTransaction::pending()->count();
         }
 
-        $pendingTasksCount = Budget::where('status', 'pending')->count();
+        // ── ROLE DESCRIPTION – NOW FULLY DYNAMIC (with fallback in Role model) ──
+        // The Role model's getDescriptionAttribute() provides a default if empty.
+        $roleDescription = $user->role->description;
 
-        // Role description (unchanged)
-        $roleDescriptions = [
-            'System Administrator' => 'Full system control – manage users, roles, budgets, documents, and settings.',
-            'Supreme Admin' => 'Oversee all organization activities, approve budgets, and manage key members.',
-            'Supreme Officer' => 'Review budgets, upload documents, and manage member records.',
-            'Org Admin' => 'Manage your organization’s members, budgets, and documents.',
-            'Org Officer' => 'Submit budgets, upload documents, and view member lists.',
-            'Club Adviser' => 'Guide the organization, approve budgets, and oversee activities.',
-            'Org Member' => 'View your profile, documents, and budget status.',
-        ];
-        $roleDescription = $roleDescriptions[$user->role->name] ?? 'Manage your account and participate in organization activities.';
-
-        // User badges (unchanged)
+        // ── User badges (unchanged) ────────────────────────────────────────────
         $userBadges = [];
         if ($user->role->name === 'System Administrator') {
             $userBadges[] = ['color' => 'purple', 'text' => 'System Admin'];
@@ -106,32 +99,32 @@ class DashboardController extends Controller
             $userBadges[] = ['color' => 'emerald', 'text' => 'Org Leader'];
         }
 
-        // ── CHART DATA (global, single organisation) ──────────────────────────────
+        // ── CHART DATA (monthly income vs expenses) ────────────────────────────
         $currentYear = now()->year;
-        $months = collect(range(1,12))->map(fn($m) => date('M', mktime(0,0,0,$m,1)))->toArray();
+        $months = [];
+        $monthlyIncome = [];
+        $monthlyExpense = [];
 
-        // Monthly totals (all budgets)
-        $monthlyTotals = Budget::selectRaw('MONTH(created_at) as month, SUM(amount) as total')
-            ->whereYear('created_at', $currentYear)
-            ->groupBy('month')
-            ->pluck('total', 'month')
-            ->toArray();
+        for ($i = 1; $i <= 12; $i++) {
+            $months[] = date('M', mktime(0, 0, 0, $i, 1));
 
-        // Monthly approved amounts
-        $monthlyApproved = Budget::where('status', 'approved')
-            ->selectRaw('MONTH(created_at) as month, SUM(amount) as approved_total')
-            ->whereYear('created_at', $currentYear)
-            ->groupBy('month')
-            ->pluck('approved_total', 'month')
-            ->toArray();
+            $income = FinancialTransaction::income()
+                ->approved()
+                ->whereYear('transaction_date', $currentYear)
+                ->whereMonth('transaction_date', $i)
+                ->sum('amount');
 
-        $chartTotals = [];
-        $chartApproved = [];
-        for ($i=1; $i<=12; $i++) {
-            $chartTotals[] = $monthlyTotals[$i] ?? 0;
-            $chartApproved[] = $monthlyApproved[$i] ?? 0;
+            $expense = FinancialTransaction::expense()
+                ->approved()
+                ->whereYear('transaction_date', $currentYear)
+                ->whereMonth('transaction_date', $i)
+                ->sum('amount');
+
+            $monthlyIncome[] = $income;
+            $monthlyExpense[] = $expense;
         }
 
+        // ── Return view ────────────────────────────────────────────────────────
         return view('dashboard.index', compact(
             'user',
             'totalMembers',
@@ -139,15 +132,17 @@ class DashboardController extends Controller
             'officersCount',
             'newMembersThisMonth',
             'recentDocuments',
-            'recentBudgets',
-            'totalBudget',
+            'recentTransactions',
+            'totalIncome',
+            'totalExpense',
+            'netBalance',
             'pendingApprovals',
             'pendingTasksCount',
             'roleDescription',
             'userBadges',
             'months',
-            'chartTotals',
-            'chartApproved'
+            'monthlyIncome',
+            'monthlyExpense'
         ));
     }
 }

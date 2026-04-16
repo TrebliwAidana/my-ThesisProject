@@ -40,7 +40,7 @@ class PermissionController extends Controller
         $moduleOrder = [
             'members',
             'documents',
-            'budgets',
+            'financial',    
             'reports',
             'organization',
             'users',

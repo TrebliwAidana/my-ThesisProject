@@ -33,7 +33,6 @@ class AuthServiceProvider extends ServiceProvider
         }
 
         // Register a Gate for every permission slug in the database.
-        // This makes Gate::allows('budgets.approve') work in controllers
         // without changing any existing controller logic.
         Permission::all()->each(function (Permission $permission) {
             Gate::define($permission->slug, function ($user) use ($permission) {

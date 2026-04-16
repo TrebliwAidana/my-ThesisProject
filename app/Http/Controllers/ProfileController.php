@@ -131,7 +131,6 @@ class ProfileController extends Controller
             'member_since'       => $user->created_at?->format('F d, Y'),
             'last_login'         => $user->last_login_at?->format('F d, Y H:i'),
             'documents_uploaded' => $user->documents()->count(),
-            'budgets_created'    => $user->budgets()->count(),
             'role_name'          => $user->role->name ?? 'N/A',
             'role_abbreviation'  => $user->role->abbreviation ?? 'N/A',
             'is_verified'        => $user->hasVerifiedEmail(),

@@ -4,20 +4,17 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\MemberController;
 use App\Http\Controllers\DocumentController;
-use App\Http\Controllers\BudgetController;
 use App\Http\Controllers\AdminController;
-use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\EmailVerificationController;
+use App\Http\Controllers\FinancialController; 
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
-
-
 
 // ── Root redirect ─────────────────────────────────────────────────────────────
 Route::get('/', function () {
@@ -78,26 +75,17 @@ Route::middleware(['auth.custom', 'verified'])->group(function () {
             Route::delete('documents-trash/{id}/force',  [DocumentController::class, 'forceDelete'])->name('documents.force-delete');
         });
 
-    // ── Budgets ───────────────────────────────────────────────────────────────
-    Route::middleware('role:System Administrator,Supreme Admin,Supreme Officer,Club Adviser,Org Admin,Org Officer')
-        ->prefix('budgets')
-        ->name('budgets.')
-        ->group(function () {
-            Route::get('/',                   [BudgetController::class, 'index'])->name('index');
-            Route::get('/create',             [BudgetController::class, 'create'])->name('create');
-            Route::post('/',                  [BudgetController::class, 'store'])->name('store');
-            Route::get('/export',             [BudgetController::class, 'export'])->name('export');
-            Route::get('/copy-data/{budget}', [BudgetController::class, 'copyData'])->name('copy-data');
-            Route::get('/{budget}',           [BudgetController::class, 'show'])->name('show');
-            Route::get('/{budget}/edit',      [BudgetController::class, 'edit'])->name('edit');
-            Route::put('/{budget}',           [BudgetController::class, 'update'])->name('update');
-            Route::get('/{budget}/review',    [BudgetController::class, 'review'])->name('review');
-            Route::post('/{budget}/approve',  [BudgetController::class, 'approve'])->name('approve');
-            Route::post('/{budget}/reject',   [BudgetController::class, 'reject'])->name('reject');
-            Route::delete('/{budget}',        [BudgetController::class, 'destroy'])->name('destroy');
-            Route::get('/{budget}/copy',      [BudgetController::class, 'copy'])->name('copy');
-            Route::post('/{budget}/disburse', [BudgetController::class, 'disburse'])->name('disburse');
-        });
+    // ── Financial Records ────────────────────────────────────────────────────
+    // Place this BEFORE the admin group, inside the main verified group
+    Route::prefix('financial')->name('financial.')->group(function () {
+        Route::get('/',                 [FinancialController::class, 'index'])->name('index');
+        Route::get('/income/create',    [FinancialController::class, 'createIncome'])->name('income.create');
+        Route::get('/expense/create',   [FinancialController::class, 'createExpense'])->name('expense.create');
+        Route::post('/income',          [FinancialController::class, 'storeIncome'])->name('income.store');
+        Route::post('/expense',         [FinancialController::class, 'storeExpense'])->name('expense.store');
+        Route::post('/{transaction}/approve', [FinancialController::class, 'approve'])->name('approve');
+        Route::post('/{transaction}/reject',  [FinancialController::class, 'reject'])->name('reject');
+    });
 
     // ── Administration ────────────────────────────────────────────────────────
     Route::prefix('admin')->name('admin.')->group(function () {
@@ -117,7 +105,6 @@ Route::middleware(['auth.custom', 'verified'])->group(function () {
                 Route::post('/{id}/verify-manual',     [AdminController::class, 'verifyEmailManually'])->name('verify-manual');
                 Route::post('/{id}/restore',           [AdminController::class, 'restoreUser'])->name('restore');
                 Route::delete('/{id}/force-delete',    [AdminController::class, 'forceDeleteUser'])->name('force-delete');
-
             });
 
         // ── Roles ─────────────────────────────────────────────────────────────
@@ -201,7 +188,7 @@ Route::post('/password/reset', function (Request $request) {
         : back()->withErrors(['email' => [__($status)]]);
 })->name('password.update');
 
-    // ____LandingPage_Resources _______________//
-    Route::view('/data-privacy-act', 'pages.data-privacy-act')->name('data-privacy-act');
-    Route::view('/help', 'pages.help')->name('help');
-    Route::view('/terms-of-service', 'pages.terms')->name('terms-of-service');
+// ── Landing Page Resources ───────────────────────────────────────────────────
+Route::view('/data-privacy-act', 'pages.data-privacy-act')->name('data-privacy-act');
+Route::view('/help', 'pages.help')->name('help');
+Route::view('/terms-of-service', 'pages.terms')->name('terms-of-service');

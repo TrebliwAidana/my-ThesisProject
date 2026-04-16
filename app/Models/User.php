@@ -14,7 +14,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Models\Role;
 use App\Models\Member;
 use App\Models\Document;
-use App\Models\Budget;
+use App\Models\FinancialTransaction;
 use App\Notifications\VerifyEmail;
 
 class User extends Authenticatable implements MustVerifyEmail
@@ -137,11 +137,6 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasMany(Document::class, 'uploaded_by');
     }
 
-    public function budgets(): HasMany
-    {
-        return $this->hasMany(Budget::class, 'reviewed_by');
-    }
-
     public function hasPermission(string $moduleOrSlug, string $action = ''): bool
     {
         $slug = $action
@@ -183,18 +178,11 @@ class User extends Authenticatable implements MustVerifyEmail
 
         return false;
     }
-    /**
-     * Readable alias: $user->canDo('budgets', 'approve')
-     */
     public function canDo(string $module, string $action): bool
     {
         return $this->hasPermission($module, $action);
     }
 
-    /**
-     * Module-level access check (requires at least view permission).
-     * $user->hasModuleAccess('budgets')
-     */
     public function hasModuleAccess(string $module): bool
     {
         return $this->hasPermission("{$module}.view");
