@@ -6,16 +6,9 @@
 <div class="relative overflow-hidden">
     {{-- Hero Section with Back button --}}
     <div class="relative bg-gradient-to-r from-emerald-700 to-emerald-900 dark:from-emerald-900 dark:to-emerald-950 py-20 px-6 md:px-12 text-center overflow-hidden">
-        {{-- Back button – now a button, not a link --}}
-        <div class="absolute top-6 left-6 z-20">
-            <button onclick="if (document.referrer && document.referrer !== window.location.href) { window.history.back(); } else { window.location.href = '{{ route('landing') }}'; }" 
-                    class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-sm text-white text-sm font-medium hover:bg-white/20 transition-all duration-200 border border-white/20">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
-                </svg>
-                Back
-            </button>
-        </div>
+
+        {{-- Back Button Component --}}
+        <x-back-button />
 
         <div class="absolute inset-0 opacity-20">
             <div class="absolute inset-0 bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:32px_32px]"></div>
@@ -36,10 +29,10 @@
 
     {{-- Content Card --}}
     <div class="max-w-4xl mx-auto px-4 sm:px-6 py-12 md:py-16">
-        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gold-200 dark:border-gold-800 overflow-hidden">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-emerald-200 dark:border-emerald-800 overflow-hidden">
             <div class="p-6 md:p-8 space-y-6 text-gray-700 dark:text-gray-300">
                 <div class="prose dark:prose-invert max-w-none">
-                    <p class="text-sm text-gray-500 dark:text-gray-400 border-b border-gold-200 dark:border-gold-800 pb-3">
+                    <p class="text-sm text-gray-500 dark:text-gray-400 border-b border-emerald-200 dark:border-emerald-800 pb-3">
                         Last updated: {{ now()->format('F d, Y') }}
                     </p>
 
@@ -103,7 +96,7 @@
                     </div>
 
                     <p class="text-xs text-gray-400 mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
-                        For the full text of RA 10173, please visit the 
+                        For the full text of RA 10173, please visit the
                         <a href="https://www.privacy.gov.ph" target="_blank" rel="noopener noreferrer" class="text-emerald-600 hover:underline">National Privacy Commission website</a>.
                     </p>
                 </div>

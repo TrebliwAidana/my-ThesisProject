@@ -6,16 +6,9 @@
 <div class="relative overflow-hidden">
     {{-- Hero Section with Back button --}}
     <div class="relative bg-gradient-to-r from-emerald-700 to-emerald-900 dark:from-emerald-900 dark:to-emerald-950 py-16 px-6 md:px-12 text-center overflow-hidden">
-        {{-- Back button – now a button, not a link --}}
-        <div class="absolute top-6 left-6 z-20">
-            <button onclick="if (document.referrer && document.referrer !== window.location.href) { window.history.back(); } else { window.location.href = '{{ route('landing') }}'; }" 
-                    class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-sm text-white text-sm font-medium hover:bg-white/20 transition-all duration-200 border border-white/20">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
-                </svg>
-                Back
-            </button>
-        </div>
+
+        {{-- Back Button Component --}}
+        <x-back-button />
 
         <div class="absolute inset-0 opacity-20">
             <div class="absolute inset-0 bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:32px_32px]"></div>
@@ -37,10 +30,10 @@
 
     {{-- Content Card --}}
     <div class="max-w-4xl mx-auto px-4 sm:px-6 py-12 md:py-16">
-        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gold-200 dark:border-gold-800 overflow-hidden">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-emerald-200 dark:border-emerald-800 overflow-hidden">
             <div class="p-6 md:p-8 space-y-6 text-gray-700 dark:text-gray-300">
                 <div class="prose dark:prose-invert max-w-none">
-                    <p class="text-sm text-gray-500 dark:text-gray-400 border-b border-gold-200 dark:border-gold-800 pb-3">
+                    <p class="text-sm text-gray-500 dark:text-gray-400 border-b border-emerald-200 dark:border-emerald-800 pb-3">
                         Last updated: {{ now()->format('F d, Y') }}
                     </p>
 
@@ -70,7 +63,7 @@
                     <ul class="list-disc pl-6 space-y-2">
                         <li><strong>Accuracy:</strong> All financial entries and documents uploaded must be truthful and authorised.</li>
                         <li><strong>Confidentiality:</strong> Private documents and financial data must not be shared outside the organisation.</li>
-                        <li><strong>Retention:</strong> Records will be kept in accordance with the organisation’s data retention policy.</li>
+                        <li><strong>Retention:</strong> Records will be kept in accordance with the organisation's data retention policy.</li>
                     </ul>
 
                     <h2 class="text-2xl font-serif font-semibold text-emerald-700 dark:text-emerald-400 mt-8">5. Intellectual Property</h2>
@@ -80,16 +73,16 @@
                     <p>Your use of the portal is also governed by our <a href="{{ route('data-privacy-act') }}" class="text-emerald-600 dark:text-emerald-400 hover:underline">Data Privacy Policy</a>, which complies with the Data Privacy Act of 2012 (Republic Act No. 10173).</p>
 
                     <h2 class="text-2xl font-serif font-semibold text-emerald-700 dark:text-emerald-400 mt-8">7. Termination</h2>
-                    <p>The SSLG reserves the right to suspend or terminate your account if you violate these Terms. Upon termination, your access to the portal will be revoked, and any pending data may be archived or deleted.</p>
+                    <p>The SSLG reserves the right to suspend or terminate your account if you violate these Terms. Upon termination, your access to the portal will be revoked, and any pending data may be archived or deleted in accordance with applicable data retention policies.</p>
 
                     <h2 class="text-2xl font-serif font-semibold text-emerald-700 dark:text-emerald-400 mt-8">8. Limitation of Liability</h2>
-                    <p>The portal is provided “as is”. VSULHS SSLG shall not be liable for any indirect, incidental, or consequential damages arising from your use of the portal. We do not guarantee uninterrupted or error‑free service.</p>
+                    <p>The portal is provided on an "as is" and "as available" basis without warranties of any kind, whether express or implied. VSULHS SSLG, its officers, and its advisers shall not be liable for any indirect, incidental, special, or consequential damages — including but not limited to loss of data or service interruption — arising from your use of or inability to use the portal. We do not guarantee uninterrupted, timely, or error‑free operation of the system.</p>
 
                     <h2 class="text-2xl font-serif font-semibold text-emerald-700 dark:text-emerald-400 mt-8">9. Modifications to Terms</h2>
-                    <p>We may update these Terms from time to time. Continued use of the portal after changes constitutes acceptance of the new Terms. Significant changes will be notified via the portal.</p>
+                    <p>We may update these Terms from time to time. Continued use of the portal after changes constitutes acceptance of the revised Terms. Significant changes will be communicated via an in-portal announcement or email notification.</p>
 
                     <h2 class="text-2xl font-serif font-semibold text-emerald-700 dark:text-emerald-400 mt-8">10. Governing Law</h2>
-                    <p>These Terms shall be governed by and construed in accordance with the laws of the Republic of the Philippines. Any disputes shall be brought exclusively in the courts of Baybay City, Leyte.</p>
+                    <p>These Terms shall be governed by and construed in accordance with the laws of the Republic of the Philippines. Any disputes arising from these Terms or your use of the portal shall be brought exclusively before the appropriate courts of Baybay City, Leyte.</p>
 
                     <h2 class="text-2xl font-serif font-semibold text-emerald-700 dark:text-emerald-400 mt-8">11. Contact Information</h2>
                     <p>If you have any questions about these Terms, please contact the SSLG adviser or email <a href="mailto:sslg@vsulhs.edu.ph" class="text-emerald-600 dark:text-emerald-400 hover:underline">sslg@vsulhs.edu.ph</a>.</p>
