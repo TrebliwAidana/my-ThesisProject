@@ -16,7 +16,7 @@ class PermissionMatrixSeeder extends Seeder
         // Core modules
         'users'        => ['view', 'manage'],
         'members'      => ['view', 'manage'],
-        'documents'    => ['view', 'manage'],
+        'documents'    => ['view', 'manage', 'trash', 'restore', 'force-delete'],
         
         // Financial module
         'financial'    => ['view', 'create', 'edit', 'delete', 'approve', 'review'],
@@ -31,7 +31,6 @@ class PermissionMatrixSeeder extends Seeder
         // Admin
         'roles'        => ['manage'],
         'permissions'  => ['manage'],
-        // 'organization' => ['view'],   // ❌ REMOVED
     ];
 
     /**
@@ -45,8 +44,11 @@ class PermissionMatrixSeeder extends Seeder
         'members.manage'      => 'Manage Members',
         
         // Documents
-        'documents.view'      => 'View Documents',
-        'documents.manage'    => 'Manage Documents',
+        'documents.view'       => 'View Documents',
+        'documents.manage'     => 'Manage Documents',
+        'documents.trash'      => 'View Trash / Deleted Documents',
+        'documents.restore'    => 'Restore Documents',
+        'documents.force-delete' => 'Permanently Delete Documents',
         
         // Financial
         'financial.view'      => 'View Financial Records',
@@ -71,7 +73,6 @@ class PermissionMatrixSeeder extends Seeder
         // Admin
         'roles.manage'        => 'Manage Roles',
         'permissions.manage'  => 'Manage Permissions',
-        // 'organization.view' => 'View Organization Info',   // ❌ REMOVED
     ];
 
     public function run(): void
@@ -95,13 +96,13 @@ class PermissionMatrixSeeder extends Seeder
 
         $this->command->info('Permissions seeded: ' . Permission::count() . ' total.');
 
-        // ── 2. Assign permissions to roles (financial management hierarchy) ────
+        // ── 2. Assign permissions to roles ────────────────────────────────────
         $this->assignRolePermissions();
     }
 
     private function assignRolePermissions(): void
     {
-        $all = Permission::pluck('id', 'slug'); // ['financial.view' => 1, ...]
+        $all = Permission::pluck('id', 'slug'); // ['documents.view' => 1, ...]
 
         // Define permission sets per role (using slugs)
         $matrix = [
@@ -115,50 +116,45 @@ class PermissionMatrixSeeder extends Seeder
             'Supreme Officer' => [
                 'users.view',
                 'members.view', 'members.manage',
-                'documents.view', 'documents.manage',
+                'documents.view', 'documents.manage', 'documents.trash', 'documents.restore', 'documents.force-delete',
                 'financial.view', 'financial.create', 'financial.edit', 'financial.delete', 'financial.approve', 'financial.review',
                 'reports.view', 'reports.generate',
                 'audit.view', 'audit.remarks',
                 'activities.monitor',
-                // 'organization.view',   // ❌ REMOVED
             ],
 
             // Org Admin – full organisation management
             'Org Admin' => [
                 'members.view', 'members.manage',
-                'documents.view', 'documents.manage',
+                'documents.view', 'documents.manage', 'documents.trash', 'documents.restore', 'documents.force-delete',
                 'financial.view', 'financial.create', 'financial.edit', 'financial.delete', 'financial.approve', 'financial.review',
                 'reports.view', 'reports.generate',
                 'audit.view',
                 'activities.monitor',
-                // 'organization.view',   // ❌ REMOVED
             ],
 
             // Org Officer – operational
             'Org Officer' => [
                 'members.view',
-                'documents.view', 'documents.manage',
+                'documents.view', 'documents.manage', 'documents.trash', 'documents.restore',
                 'financial.view', 'financial.create', 'financial.edit', 'financial.delete',
                 'reports.view', 'reports.generate',
-                // 'organization.view',   // ❌ REMOVED
             ],
 
             // Club Adviser – approval and oversight
             'Club Adviser' => [
                 'members.view',
-                'documents.view',
+                'documents.view', 'documents.trash', 'documents.restore',
                 'financial.view', 'financial.approve', 'financial.review',
                 'reports.view',
                 'audit.view',
                 'activities.monitor',
-                // 'organization.view',   // ❌ REMOVED
             ],
 
             // Treasurer – full transaction management + reports
             'Treasurer' => [
                 'financial.view', 'financial.create', 'financial.edit', 'financial.delete',
                 'reports.view', 'reports.generate',
-                // 'organization.view',   // ❌ REMOVED
             ],
 
             // Auditor – review and audit
@@ -166,14 +162,12 @@ class PermissionMatrixSeeder extends Seeder
                 'financial.view', 'financial.review',
                 'reports.view',
                 'audit.view', 'audit.remarks',
-                // 'organization.view',   // ❌ REMOVED
             ],
 
             // Member – read‑only
             'Member' => [
                 'financial.view',
                 'reports.view',
-                // 'organization.view',   // ❌ REMOVED
             ],
 
             // Guest – only public reports
@@ -186,7 +180,6 @@ class PermissionMatrixSeeder extends Seeder
                 'financial.approve', 'financial.review',
                 'reports.view',
                 'activities.monitor',
-                // 'organization.view',   // ❌ REMOVED
             ],
         ];
 

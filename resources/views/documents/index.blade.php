@@ -11,7 +11,7 @@
     <div class="absolute top-0 right-0 -mt-8 -mr-8 w-64 h-64 bg-white/5 rounded-full blur-3xl"></div>
 </div>
 
-{{-- Filter Card (gold borders) --}}
+{{-- Filter Card --}}
 <div class="bg-white dark:bg-gray-800 rounded-xl border border-gold-200 dark:border-gold-800 p-4 mb-6 shadow-sm">
     <form method="GET" class="flex flex-wrap gap-3 items-end">
         <div class="flex-1 min-w-[200px]">
@@ -30,12 +30,12 @@
             </select>
         </div>
         <div>
-            <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Status</label>
-            <select name="status"
+            <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Visibility</label>
+            <select name="visibility"
                     class="px-3 py-1.5 border border-gold-300 dark:border-gold-600 rounded-lg text-sm dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-gold-500">
                 <option value="">All</option>
-                <option value="approved" {{ request('status') == 'approved' ? 'selected' : '' }}>Approved</option>
-                <option value="pending"  {{ request('status') == 'pending'  ? 'selected' : '' }}>Pending</option>
+                <option value="public"  {{ request('visibility') == 'public'  ? 'selected' : '' }}>Public</option>
+                <option value="private" {{ request('visibility') == 'private' ? 'selected' : '' }}>Private</option>
             </select>
         </div>
         <div>
@@ -43,7 +43,7 @@
                     class="bg-emerald-600 hover:bg-gold-500 text-white px-4 py-1.5 rounded-lg text-sm transition">
                 Filter
             </button>
-            @if(request()->anyFilled(['search', 'category', 'status']))
+            @if(request()->anyFilled(['search', 'category', 'visibility']))
                 <a href="{{ route('documents.index') }}"
                    class="bg-gray-500 hover:bg-gold-500 text-white px-4 py-1.5 rounded-lg text-sm ml-2 transition">
                     Clear
@@ -51,21 +51,26 @@
             @endif
         </div>
 
-        @if(auth()->user()->hasPermission('documents.upload'))
-        <div class="ml-auto">
-            <a href="{{ route('documents.create') }}"
-               class="inline-flex items-center gap-1 bg-emerald-600 hover:bg-gold-500 text-white text-sm font-semibold px-3 py-1.5 rounded-lg transition">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-                </svg>
-                Upload Document
+        {{-- Action Buttons (Trash + Upload) --}}
+        <div class="ml-auto flex gap-2">
+            <a href="{{ route('documents.trash') }}"
+               class="inline-flex items-center gap-1 bg-gray-600 hover:bg-gray-700 text-white text-sm font-semibold px-3 py-1.5 rounded-lg transition">
+                🗑️ Trash
             </a>
+            @if(auth()->user()->hasPermission('documents.upload'))
+                <a href="{{ route('documents.create') }}"
+                   class="inline-flex items-center gap-1 bg-emerald-600 hover:bg-gold-500 text-white text-sm font-semibold px-3 py-1.5 rounded-lg transition">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                    </svg>
+                    Upload Document
+                </a>
+            @endif
         </div>
-        @endif
     </form>
 </div>
 
-{{-- Stats row (gold borders) --}}
+{{-- Stats row --}}
 <div class="grid grid-cols-3 gap-3 mb-6">
     <div class="bg-white dark:bg-gray-800 rounded-xl border border-gold-200 dark:border-gold-800 p-3 shadow-sm text-center">
         <p class="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{{ $documents->total() }}</p>
@@ -81,7 +86,7 @@
     </div>
 </div>
 
-{{-- Documents Table (gold border, emerald header) --}}
+{{-- Documents Table --}}
 <div class="bg-white dark:bg-gray-800 rounded-xl border border-gold-200 dark:border-gold-800 overflow-hidden shadow-sm">
     <div class="overflow-x-auto">
         <table class="w-full text-sm">
@@ -102,7 +107,9 @@
                     <td class="px-5 py-3 font-medium max-w-xs">
                         <div class="flex items-center gap-2">
                             @php
-                                $ext = strtolower(pathinfo($doc->file_name ?? '', PATHINFO_EXTENSION));
+                                $version = $doc->currentVersion;
+                                $fileName = $version?->file_name ?? '';
+                                $ext = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
                                 $iconColor = match(true) {
                                     in_array($ext, ['pdf'])              => 'text-red-500',
                                     in_array($ext, ['doc','docx'])       => 'text-blue-500',
@@ -142,7 +149,7 @@
                         <span class="text-gray-400">—</span>
                         @endif
                     </td>
-                    <td class="px-5 py-3 text-gray-600 dark:text-gray-400">{{ $doc->uploader->full_name ?? 'Unknown' }}</td>
+                    <td class="px-5 py-3 text-gray-600 dark:text-gray-400">{{ $doc->owner->full_name ?? 'Unknown' }}</td>
                     <td class="px-5 py-3 text-gray-500 dark:text-gray-400 text-xs font-mono">{{ $doc->formatted_size }}</td>
                     <td class="px-5 py-3">
                         @if($doc->is_public)
@@ -158,13 +165,22 @@
                     <td class="px-5 py-3 text-gray-500 dark:text-gray-400 text-xs">{{ $doc->created_at->format('M d, Y') }}</td>
                     <td class="px-5 py-3 text-right">
                         <div class="flex items-center justify-end gap-1">
-                            @if(in_array($ext, ['pdf','jpg','jpeg','png','gif']))
-                            <button onclick="openPreview('{{ Storage::url($doc->file_path) }}', '{{ $doc->title }}', '{{ $ext }}')"
-                                    class="p-1.5 text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition" title="Preview">
-                                👁️
-                            </button>
+                            @if($version)
+                                @php
+                                    $ext = strtolower(pathinfo($version->file_name, PATHINFO_EXTENSION));
+                                @endphp
+                                {{-- Preview (only for images and PDFs via secure route) --}}
+                                @if(in_array($ext, ['pdf','jpg','jpeg','png','gif']))
+                                <button onclick="openPreview('{{ route('documents.preview', $doc) }}', '{{ $doc->title }}', '{{ $ext }}')"
+                                        class="p-1.5 text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition" title="Preview">
+                                    👁️
+                                </button>
+                                @endif
+                                <a href="{{ route('documents.download', $doc) }}" class="p-1.5 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition" title="Download">⬇️</a>
+                            @else
+                                <span class="text-xs text-gray-400 px-2" title="No file attached">—</span>
                             @endif
-                            <a href="{{ route('documents.download', $doc) }}" class="p-1.5 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition" title="Download">⬇️</a>
+
                             @if(auth()->user()->hasPermission('documents.manage'))
                             <a href="{{ route('documents.edit', $doc) }}" class="p-1.5 text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition" title="Edit">✏️</a>
                             <form method="POST" action="{{ route('documents.destroy', $doc) }}" onsubmit="return confirm('Delete this document?')" class="inline">
@@ -201,7 +217,7 @@
     @endif
 </div>
 
-{{-- Preview Modal (unchanged) --}}
+{{-- Preview Modal --}}
 <div id="preview-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4" style="background:rgba(0,0,0,0.7)">
     <div class="relative bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
         <div class="flex items-center justify-between px-5 py-3 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
@@ -222,7 +238,7 @@
 <script>
 function openPreview(url, title, ext) {
     document.getElementById('preview-title').textContent = title;
-    document.getElementById('preview-download-link').href = url;
+    document.getElementById('preview-download-link').href = url.replace('/preview', '/download');
 
     const iframe = document.getElementById('preview-iframe');
     const img    = document.getElementById('preview-img');

@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use App\Models\Document;
+use App\Models\FinancialTransaction;
 use Illuminate\Support\Facades\Storage;
 
 class ProfileController extends Controller
@@ -16,8 +18,16 @@ class ProfileController extends Controller
 
     public function index()
     {
+        
+            if (auth()->user()->email === 'guest@vsulhs.edu.ph') {
+        abort(403, 'Guest accounts cannot access profile settings.');
+    }
         $user = Auth::user()->load('role');
-        return view('profile.index', compact('user'));
+
+        $documentsCount = Document::where('owner_id', $user->id)->count();
+        $transactionsCount = FinancialTransaction::where('user_id', $user->id)->count();
+
+        return view('profile.index', compact('user', 'documentsCount', 'transactionsCount'));
     }
 
     public function updateProfile(Request $request)

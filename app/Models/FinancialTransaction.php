@@ -5,34 +5,36 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\MorphToMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class FinancialTransaction extends Model
 {
-    use HasFactory;
-
-    protected $table = 'financial_transactions';
+    use HasFactory, SoftDeletes;
 
     protected $fillable = [
-        'description',
-        'amount',
         'type',
-        'category',
-        'transaction_date',
         'user_id',
         'status',
+        'description',
+        'amount',
+        'category',
+        'transaction_date',
+        'notes',
         'approved_by',
         'approved_at',
-        'notes',
-        'receipt_path',
     ];
 
     protected $casts = [
-        'amount' => 'decimal:2',
         'transaction_date' => 'date',
-        'approved_at' => 'datetime',
+        'approved_at'      => 'datetime',
+        'amount'           => 'decimal:2',
     ];
 
+    // -------------------------------------------------------------------------
     // Relationships
+    // -------------------------------------------------------------------------
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id');
@@ -43,7 +45,19 @@ class FinancialTransaction extends Model
         return $this->belongsTo(User::class, 'approved_by');
     }
 
+    /**
+     * Polymorphic relationship to documents via attachments table.
+     */
+    public function documents(): MorphToMany
+    {
+        return $this->morphToMany(Document::class, 'attachable', 'attachments')
+                    ->withTimestamps();
+    }
+
+    // -------------------------------------------------------------------------
     // Scopes
+    // -------------------------------------------------------------------------
+
     public function scopeIncome($query)
     {
         return $query->where('type', 'income');
@@ -54,29 +68,63 @@ class FinancialTransaction extends Model
         return $query->where('type', 'expense');
     }
 
-    public function scopeApproved($query)
-    {
-        return $query->where('status', 'approved');
-    }
-
     public function scopePending($query)
     {
         return $query->where('status', 'pending');
     }
 
-    // Accessors
+    public function scopeApproved($query)
+    {
+        return $query->where('status', 'approved');
+    }
+
+    public function scopeRejected($query)
+    {
+        return $query->where('status', 'rejected');
+    }
+
+    // -------------------------------------------------------------------------
+    // Accessors & Helpers
+    // -------------------------------------------------------------------------
+
+    /**
+     * Format amount with currency symbol.
+     */
     public function getFormattedAmountAttribute(): string
     {
         return '₱' . number_format($this->amount, 2);
     }
 
-    public function getIsIncomeAttribute(): bool
+    /**
+     * Get the primary receipt document (first attached).
+     */
+    public function getReceiptAttribute(): ?Document
     {
-        return $this->type === 'income';
+        return $this->documents->first();
     }
 
-    public function getIsExpenseAttribute(): bool
+    /**
+     * Check if transaction has a receipt attached.
+     */
+    public function hasReceipt(): bool
     {
-        return $this->type === 'expense';
+        return $this->documents()->exists();
+    }
+
+    // -------------------------------------------------------------------------
+    // Boot
+    // -------------------------------------------------------------------------
+
+    protected static function booted()
+    {
+        static::deleting(function ($transaction) {
+            // When transaction is force‑deleted, detach documents but don't delete them
+            // (documents may be linked to other records)
+            if (! $transaction->isForceDeleting()) {
+                return;
+            }
+
+            $transaction->documents()->detach();
+        });
     }
 }

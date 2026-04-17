@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use App\Models\FinancialTransaction;
 
 class MemberController extends Controller
 {
@@ -60,10 +61,21 @@ class MemberController extends Controller
 
     /**
      * Get allowed positions for a role.
-     * Uses the role's allowed_positions column if set, otherwise falls back to hardcoded mappings.
+     * Accepts Role model, stdClass, or array with 'id' field.
      */
-    private function getAllowedPositions(Role $role): array
+    private function getAllowedPositions($role): array
     {
+        // Normalize input to a Role model instance
+        if (is_array($role) && isset($role['id'])) {
+            $role = Role::find($role['id']);
+        } elseif (is_object($role) && !($role instanceof Role) && isset($role->id)) {
+            $role = Role::find($role->id);
+        }
+        
+        if (!($role instanceof Role)) {
+            return [];
+        }
+
         // 1. Use custom allowed_positions if stored
         if (!empty($role->allowed_positions) && is_array($role->allowed_positions)) {
             return $role->allowed_positions;
@@ -93,6 +105,7 @@ class MemberController extends Controller
             'Org Admin'            => ['Organization President', 'Organization Vice President'],
             'Org Officer'          => ['Organization Secretary', 'Organization Treasurer', 'Organization Auditor', 'Organization PIO'],
             'Org Member'           => ['Regular Member'],
+            'Guest'                => ['Guest'],
         ];
 
         return $byName[$role->name] ?? [];
@@ -112,25 +125,21 @@ class MemberController extends Controller
         ];
     }
 
-    private function canManageMember(User $target, string $action = 'view'): bool
+    private function canManageMember(User $targetUser, string $action = 'view'): bool
     {
-        $current = Auth::user();
+        $currentUser = Auth::user();
 
-        // SysAdmin and SA can manage anyone
-        if (in_array($current->role->abbreviation, ['SysAdmin', 'SA'])) return true;
+        if (in_array($currentUser->role->abbreviation, ['SysAdmin', 'SA'])) return true;
 
-        // Users can view their own profile
-        if ($action === 'view' && $current->id === $target->id) return true;
+        if ($action === 'view' && $currentUser->id === $targetUser->id) return true;
 
-        // Club Adviser: no organisation restriction (single org)
-        if ($current->role->abbreviation === 'CA') {
+        if ($currentUser->role->abbreviation === 'CA') {
             return true;
         }
 
-        // Org Admin / Org Officer: cannot manage higher roles
-        if (in_array($current->role->abbreviation, ['OA', 'OO'])) {
+        if (in_array($currentUser->role->abbreviation, ['OA', 'OO'])) {
             $forbidden = ['OA', 'OO', 'CA', 'SA', 'SysAdmin'];
-            if (in_array($target->role->abbreviation ?? '', $forbidden)) {
+            if (in_array($targetUser->role->abbreviation ?? '', $forbidden)) {
                 return false;
             }
             return true;
@@ -145,9 +154,9 @@ class MemberController extends Controller
 
     public function index(Request $request)
     {
-        $user = auth()->user();
+        $currentUser = auth()->user();
 
-        if ($user->role->level !== 1 && !$user->hasPermission('members.view')) {
+        if ($currentUser->role->level !== 1 && !$currentUser->hasPermission('members.view')) {
             abort(403, 'You are not authorized to view members.');
         }
 
@@ -161,7 +170,7 @@ class MemberController extends Controller
             });
         }
 
-        $roleFilter = $request->get('role', 'all');
+        $roleFilter = $request->input('role', 'all');
         if ($roleFilter !== 'all') {
             switch ($roleFilter) {
                 case 'admin':
@@ -225,10 +234,10 @@ class MemberController extends Controller
 
     public function create()
     {
-        $user = Auth::user();
-        if (!$user || !$user->role) abort(403);
+        $currentUser = Auth::user();
+        if (!$currentUser || !$currentUser->role) abort(403);
 
-        if ($user->role->level !== 1 && !$user->hasPermission('members.create')) {
+        if ($currentUser->role->level !== 1 && !$currentUser->hasPermission('members.create')) {
             abort(403, 'You do not have permission to create members.');
         }
 
@@ -358,17 +367,17 @@ class MemberController extends Controller
     }
 
     // -------------------------------------------------------------------------
-    // Edit / Update
+    // Edit / Update (with auto-position on role change)
     // -------------------------------------------------------------------------
 
     public function edit(int $id)
     {
-        $member      = User::findOrFail($id);
+        $user = User::findOrFail($id);
         $currentUser = Auth::user();
         if (!$currentUser || !$currentUser->role) abort(403);
 
         if ($currentUser->role->level !== 1) {
-            if (!$currentUser->hasPermission('members.edit') || !$this->canManageMember($member, 'edit')) {
+            if (!$currentUser->hasPermission('members.edit') || !$this->canManageMember($user, 'edit')) {
                 abort(403, 'Unauthorized to edit this member.');
             }
         }
@@ -379,19 +388,20 @@ class MemberController extends Controller
             $positionMapping[$role->id] = $this->getAllowedPositions($role);
         }
 
-        $memberRecord = $member->member;
+        $memberRecord = $user->member;
         $positionLogs = $memberRecord
             ? PositionChangeLog::forMember($memberRecord->id)->with('changer')->orderBy('created_at', 'desc')->get()
             : collect();
 
-        return view('members.edit', compact('member', 'roles', 'positionMapping', 'positionLogs'));
+        return view('members.edit', compact('user', 'roles', 'positionMapping', 'positionLogs'))
+            ->with('member', $user);
     }
 
     public function update(Request $request, int $id)
     {
-        $user         = User::findOrFail($id);
+        $user = User::findOrFail($id);
         $memberRecord = $user->member;
-        $currentUser  = Auth::user();
+        $currentUser = Auth::user();
         if (!$currentUser || !$currentUser->role) abort(403);
 
         if ($currentUser->role->level !== 1 && (!$currentUser->hasPermission('members.edit') || !$this->canManageMember($user, 'edit'))) {
@@ -450,20 +460,40 @@ class MemberController extends Controller
             $validated['phone'] = '+63' . substr($phone, 0, 10);
         }
 
+        // ---------------------------------------------------------------------
+        // Auto-assign position when role changes
+        // ---------------------------------------------------------------------
         $allowedPositions = $this->getAllowedPositions($selectedRole);
-        
-        $position = '';
+        $oldPosition = $user->position;
+        $newPosition = $oldPosition;
+
+        $autoChanged = false;
         if (!empty($allowedPositions)) {
-            $request->validate([
-                'position' => ['required', Rule::in($allowedPositions)],
-            ], [
-                'position.required' => 'Position is required for this role.',
-                'position.in'       => 'Invalid position for this role.',
-            ]);
-            $position = $request->position;
+            if ($oldRoleId != $newRoleId || !in_array($oldPosition, $allowedPositions)) {
+                $newPosition = $allowedPositions[0];
+                $autoChanged = true;
+            } else {
+                $submittedPosition = $request->input('position');
+                if ($submittedPosition && in_array($submittedPosition, $allowedPositions)) {
+                    $newPosition = $submittedPosition;
+                }
+            }
+        } else {
+            $newPosition = null;
         }
 
-        if ($this->shouldClearYearLevel($selectedRole->id, $position)) {
+        $positionChanged = ($oldPosition != $newPosition);
+        $manuallyChanged = $request->boolean('position_manually_changed');
+
+        if ($positionChanged && $manuallyChanged) {
+            $request->validate([
+                'position_change_reason' => ['required', 'string', 'max:1000'],
+            ], [
+                'position_change_reason.required' => 'A reason is required when changing position.',
+            ]);
+        }
+
+        if ($this->shouldClearYearLevel($selectedRole->id, $newPosition)) {
             $validated['year_level'] = null;
         }
 
@@ -474,21 +504,11 @@ class MemberController extends Controller
         }
 
         if ($selectedRole->id == 1) {
-            $position = '';
-        }
-
-        if (!empty($allowedPositions) && trim($position) !== trim($user->position ?? '')) {
-            $request->validate([
-                'position_change_reason' => ['required', 'string', 'max:1000'],
-            ], [
-                'position_change_reason.required' => 'A reason is required when changing position.',
-            ]);
+            $newPosition = null;
         }
 
         DB::beginTransaction();
         try {
-            $oldPosition = $user->position;
-            $newPosition = $position;
             $fullName = $this->buildFullName($validated);
 
             $user->fill([
@@ -515,8 +535,10 @@ class MemberController extends Controller
             if ($memberRecord) {
                 $memberRecord->position = $newPosition;
                 $memberRecord->save();
-                if (trim($oldPosition) !== trim($newPosition)) {
-                    $reason = $request->position_change_reason ?? null;
+                if ($positionChanged) {
+                    $reason = $autoChanged 
+                        ? "Auto-updated due to role change from role ID {$oldRoleId} to {$newRoleId}" 
+                        : ($request->position_change_reason ?? null);
                     $this->logPositionChange($memberRecord, $oldPosition, $newPosition, $reason);
                 }
             }
@@ -524,8 +546,9 @@ class MemberController extends Controller
             DB::commit();
 
             $message = "Member {$fullName} updated successfully.";
-            if (trim($oldPosition) !== trim($newPosition)) {
+            if ($positionChanged) {
                 $message .= " Position changed from '{$oldPosition}' to '{$newPosition}'.";
+                if ($autoChanged) $message .= " (auto-assigned for new role)";
             }
             return redirect()->route('members.index')->with('success', $message);
         } catch (\Exception $e) {
@@ -541,26 +564,37 @@ class MemberController extends Controller
 
     public function show(int $id)
     {
-        $user        = User::with('role', 'member')->findOrFail($id);
+        $user = User::with('role', 'member')->findOrFail($id);
         $currentUser = Auth::user();
-        if (!$currentUser || !$currentUser->role) abort(403);
 
-        if ($currentUser->role->level !== 1 && !$this->canManageMember($user, 'view')) {
-            abort(403, 'Unauthorized to view this member.');
+        // Authorization check (optional, but keep your existing logic)
+        if ($currentUser->role->level !== 1 && !$currentUser->hasPermission('members.view')) {
+            abort(403);
         }
 
-        $member          = $user;
-        $memberSince     = $member->created_at->format('F d, Y');
-        $documentsCount  = $member->documents()->count();
-        $recentActivity  = collect();
-        $recentDocuments = $member->documents()->latest()->take(5)->get();
-        foreach ($recentDocuments as $doc) {
-            $recentActivity->push(['type' => 'document', 'description' => "Uploaded document: {$doc->title}", 'time' => $doc->created_at->diffForHumans()]);
-        }
+        // Define $memberSince from the member record or fallback to user creation
+        $memberSince = optional($user->member)->joined_at ?? $user->created_at;
 
-        $recentActivity = $recentActivity->sortByDesc(fn($a) => $a['time'])->take(5);
+        $documentsCount = $user->documents()->count();
+        $financialTransactionsCount = FinancialTransaction::where('user_id', $user->id)->count();
 
-        return view('members.show', compact('member', 'memberSince', 'documentsCount', 'recentActivity'));
+        $recentFinancialTransactions = FinancialTransaction::where('user_id', $user->id)
+            ->latest('transaction_date')
+            ->take(5)
+            ->get()
+            ->map(fn($tx) => [
+                'type' => 'financial',
+                'description' => ucfirst($tx->type) . ": {$tx->description} (₱" . number_format($tx->amount, 2) . ")",
+                'time' => $tx->transaction_date->diffForHumans(),
+            ]);
+
+        return view('members.show', compact(
+            'user', 
+            'memberSince', 
+            'documentsCount', 
+            'financialTransactionsCount', 
+            'recentFinancialTransactions'
+        ));
     }
 
     // -------------------------------------------------------------------------
@@ -643,9 +677,9 @@ class MemberController extends Controller
     public function getPositionHistoryData(int $id)
     {
         try {
-            $user         = User::findOrFail($id);
+            $user = User::findOrFail($id);
             $memberRecord = $user->member;
-            $currentUser  = Auth::user();
+            $currentUser = Auth::user();
 
             if (!$currentUser || !$currentUser->role) {
                 return response()->json(['error' => 'Unauthorized'], 403);
@@ -684,7 +718,8 @@ class MemberController extends Controller
 
     public function editHistory(int $id)
     {
-        $user         = User::with('role', 'member')->findOrFail($id);
+        //  dd('editHistory method reached', $id);
+        $user = User::with('role', 'member')->findOrFail($id);
         $memberRecord = $user->member;
         if (!$memberRecord) abort(404, 'Member record not found.');
 

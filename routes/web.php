@@ -4,6 +4,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\MemberController;
 use App\Http\Controllers\DocumentController;
+use App\Http\Controllers\DocumentVersionController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\ProfileController;
@@ -16,8 +17,12 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
+
 // ── Root redirect ─────────────────────────────────────────────────────────────
 Route::get('/', function () {
+    if (Auth::check()) {
+        return redirect()->route('dashboard');
+    }
     return view('landing');
 })->name('landing');
 
@@ -63,28 +68,73 @@ Route::middleware(['auth.custom', 'verified'])->group(function () {
             Route::get('/{id}/position-history-data', [MemberController::class, 'getPositionHistoryData'])->name('position-history-data');
             Route::post('/{id}/deactivate',           [MemberController::class, 'deactivate'])->name('deactivate');
             Route::post('/{id}/activate',             [MemberController::class, 'activate'])->name('activate');
+
         });
 
     // ── Documents ─────────────────────────────────────────────────────────────
     Route::middleware('role:System Administrator,Supreme Admin,Supreme Officer,Club Adviser,Org Admin,Org Officer')
         ->group(function () {
             Route::resource('documents', DocumentController::class);
-            Route::get('documents/{document}/download',  [DocumentController::class, 'download'])->name('documents.download');
-            Route::get('documents-trash',                [DocumentController::class, 'trash'])->name('documents.trash');
+            Route::get('documents/{document}/download', [DocumentController::class, 'download'])->name('documents.download');
+            Route::get('documents/{document}/preview', [DocumentController::class, 'preview'])->name('documents.preview');
+
+                    
+        // // Temporary closure for version download (bypasses controller autoloading)
+        // Route::get('documents/{document}/versions/{version}/download', function ($documentId, $versionId) {
+        //     $document = \App\Models\Document::findOrFail($documentId);
+        //     $version = \App\Models\DocumentVersion::findOrFail($versionId);
+            
+        //     if ($version->document_id !== $document->id) {
+        //         abort(404);
+        //     }
+            
+        //     // Authorize using policy
+        //     if (!auth()->user() && !$document->is_public) {
+        //         abort(403);
+        //     }
+        //     if (auth()->user() && !auth()->user()->can('view', $document)) {
+        //         abort(403);
+        //     }
+            
+        //     return \Illuminate\Support\Facades\Storage::disk('private')->download($version->file_path, $version->file_name);
+        // })->name('documents.version.download');
+        Route::get('documents/{document}/versions/{version}/download', 'App\Http\Controllers\DocumentVersionController@download')
+            ->name('documents.version.download');
+
+     
+            
+            // Trash routes
+            Route::get('documents-trash', [DocumentController::class, 'trash'])->name('documents.trash');
             Route::patch('documents-trash/{id}/restore', [DocumentController::class, 'restore'])->name('documents.restore');
-            Route::delete('documents-trash/{id}/force',  [DocumentController::class, 'forceDelete'])->name('documents.force-delete');
+            Route::delete('documents-trash/{id}/force', [DocumentController::class, 'forceDelete'])->name('documents.force-delete');
         });
 
     // ── Financial Records ────────────────────────────────────────────────────
     // Place this BEFORE the admin group, inside the main verified group
     Route::prefix('financial')->name('financial.')->group(function () {
-        Route::get('/',                 [FinancialController::class, 'index'])->name('index');
-        Route::get('/income/create',    [FinancialController::class, 'createIncome'])->name('income.create');
-        Route::get('/expense/create',   [FinancialController::class, 'createExpense'])->name('expense.create');
-        Route::post('/income',          [FinancialController::class, 'storeIncome'])->name('income.store');
-        Route::post('/expense',         [FinancialController::class, 'storeExpense'])->name('expense.store');
-        Route::post('/{transaction}/approve', [FinancialController::class, 'approve'])->name('approve');
-        Route::post('/{transaction}/reject',  [FinancialController::class, 'reject'])->name('reject');
+    
+        // Index & Show
+        Route::get('/',           [FinancialController::class, 'index'])->name('index');
+        Route::get('/{id}',       [FinancialController::class, 'show'])->name('show');
+    
+        // Income
+        Route::get('/income/create',  [FinancialController::class, 'createIncome'])->name('income.create');
+        Route::post('/income',        [FinancialController::class, 'storeIncome'])->name('income.store');
+    
+        // Expense
+        Route::get('/expense/create', [FinancialController::class, 'createExpense'])->name('expense.create');
+        Route::post('/expense',       [FinancialController::class, 'storeExpense'])->name('expense.store');
+    
+        // Edit / Update
+        Route::get('/{id}/edit',      [FinancialController::class, 'edit'])->name('edit');
+        Route::put('/{id}',           [FinancialController::class, 'update'])->name('update');
+    
+        // Approve / Reject
+        Route::patch('/{id}/approve', [FinancialController::class, 'approve'])->name('approve');
+        Route::patch('/{id}/reject',  [FinancialController::class, 'reject'])->name('reject');
+    
+        // Delete
+        Route::delete('/{id}',        [FinancialController::class, 'destroy'])->name('destroy');
     });
 
     // ── Administration ────────────────────────────────────────────────────────
@@ -192,3 +242,7 @@ Route::post('/password/reset', function (Request $request) {
 Route::view('/data-privacy-act', 'pages.data-privacy-act')->name('data-privacy-act');
 Route::view('/help', 'pages.help')->name('help');
 Route::view('/terms-of-service', 'pages.terms')->name('terms-of-service');
+
+// ── Login for Guest ───────────────────────────────────────────────────
+Route::post('/guest-login', [AuthController::class, 'guestLogin'])->name('guest.login');
+

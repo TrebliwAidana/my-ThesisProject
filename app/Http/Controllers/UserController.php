@@ -142,6 +142,9 @@ class UserController extends Controller
                 abort(403, 'Unauthorized to update this user.');
             }
         }
+        if (auth()->user()->email === 'guest@vsulhs.edu.ph') {
+            abort(403, 'Guest account cannot be modified.');
+}
         
         $validated = $request->validate([
             'full_name' => ['required', 'string', 'max:255'],

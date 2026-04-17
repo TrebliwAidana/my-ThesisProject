@@ -139,4 +139,14 @@ class AuthController extends Controller
         
         return back()->with('success', '📧 A new verification link has been sent to your email address.');
     }
+    public function guestLogin(Request $request)
+    {
+        $guestUser = User::where('email', 'guest@vsulhs.edu.ph')->firstOrFail();
+        
+        Auth::login($guestUser);
+        $request->session()->regenerate();
+        
+        return redirect()->route('dashboard')
+            ->with('success', 'You are now browsing as a guest. Limited access.');
+    }
 }

@@ -235,7 +235,14 @@
                 ],
             ];
             $adminMenu['visible'] = collect($adminMenu['submenu'])->contains('visible', true);
-            $profileItem = ['label' => 'My Profile', 'route' => 'profile.index', 'icon' => 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z', 'visible' => (bool) $user];
+            
+            // Hide profile for guest user
+            $profileItem = [
+                'label'   => 'My Profile',
+                'route'   => 'profile.index',
+                'icon'    => 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z',
+                'visible' => (bool) $user && $user->email !== 'guest@vsulhs.edu.ph'
+            ];
 
             $isActive = fn(string $routeName) =>
                 Route::is($routeName) || Route::is($routeName . '.*');
@@ -389,15 +396,20 @@
                      id="user-dropdown-menu"
                      role="menu"
                      class="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 z-50 overflow-hidden">
-                    <a href="{{ route('profile.index') }}"
-                       role="menuitem"
-                       class="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-emerald-100 dark:hover:bg-gold/20 hover:text-emerald-700 dark:hover:text-white transition">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
-                        </svg>
-                        Profile
-                    </a>
-                    <hr class="border-gray-200 dark:border-gray-700">
+                    
+                    {{-- Profile link – hidden for guest --}}
+                    @if(auth()->user()->email !== 'guest@vsulhs.edu.ph')
+                        <a href="{{ route('profile.index') }}"
+                           role="menuitem"
+                           class="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-emerald-100 dark:hover:bg-gold/20 hover:text-emerald-700 dark:hover:text-white transition">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                            </svg>
+                            Profile
+                        </a>
+                        <hr class="border-gray-200 dark:border-gray-700">
+                    @endif
+                    
                     <form method="POST" action="{{ route('logout') }}">
                         @csrf
                         <button type="submit"

@@ -48,9 +48,10 @@ class DashboardController extends Controller
                 ->get();
         }
 
-        // ── FINANCIAL DATA ─────────────────────────────────────────────────────
-        $totalIncome   = FinancialTransaction::income()->approved()->sum('amount');
-        $totalExpense  = FinancialTransaction::expense()->approved()->sum('amount');
+        // ── FINANCIAL DATA (replaces budgets) ───────────────────────────────────
+        // Cast to float to avoid number_format() errors
+        $totalIncome   = (float) FinancialTransaction::income()->approved()->sum('amount');
+        $totalExpense  = (float) FinancialTransaction::expense()->approved()->sum('amount');
         $netBalance    = $totalIncome - $totalExpense;
 
         $recentTransactions = null;
@@ -58,7 +59,11 @@ class DashboardController extends Controller
             $recentTransactions = FinancialTransaction::with('user')
                 ->latest('transaction_date')
                 ->take(5)
-                ->get();
+                ->get()
+                ->map(function ($tx) {
+                    $tx->amount = (float) $tx->amount;
+                    return $tx;
+                });
         }
 
         // ── Pending approvals (for financial transactions) ──────────────────────
@@ -80,9 +85,9 @@ class DashboardController extends Controller
             $pendingTasksCount = FinancialTransaction::pending()->count();
         }
 
-        // ── ROLE DESCRIPTION – NOW FULLY DYNAMIC (with fallback in Role model) ──
-        // The Role model's getDescriptionAttribute() provides a default if empty.
-        $roleDescription = $user->role->description;
+        // ── ROLE DESCRIPTION – dynamic from database ───────────────────────────
+        $roleDescription = $user->role->description
+            ?? 'Manage your account and participate in organization activities.';
 
         // ── User badges (unchanged) ────────────────────────────────────────────
         $userBadges = [];
@@ -108,13 +113,13 @@ class DashboardController extends Controller
         for ($i = 1; $i <= 12; $i++) {
             $months[] = date('M', mktime(0, 0, 0, $i, 1));
 
-            $income = FinancialTransaction::income()
+            $income = (float) FinancialTransaction::income()
                 ->approved()
                 ->whereYear('transaction_date', $currentYear)
                 ->whereMonth('transaction_date', $i)
                 ->sum('amount');
 
-            $expense = FinancialTransaction::expense()
+            $expense = (float) FinancialTransaction::expense()
                 ->approved()
                 ->whereYear('transaction_date', $currentYear)
                 ->whereMonth('transaction_date', $i)
@@ -124,7 +129,7 @@ class DashboardController extends Controller
             $monthlyExpense[] = $expense;
         }
 
-        // ── Return view ────────────────────────────────────────────────────────
+        // ── Return view with all required variables ────────────────────────────
         return view('dashboard.index', compact(
             'user',
             'totalMembers',

@@ -6,6 +6,7 @@ use App\Models\Document;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
 
 class DocumentController extends Controller
 {
@@ -22,7 +23,7 @@ class DocumentController extends Controller
             abort(403, 'You are not authorized to view documents.');
         }
 
-        $query = Document::with('uploader');
+        $query = Document::with('owner'); // use owner instead of uploader
 
         if ($request->filled('search')) {
             $search = $request->search;
@@ -36,8 +37,8 @@ class DocumentController extends Controller
             $query->where('category', $request->category);
         }
 
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
+        if ($request->filled('visibility')) {
+            $query->where('is_public', $request->visibility === 'public');
         }
 
         $documents = $query->latest()->paginate(15)->appends($request->query());
@@ -73,27 +74,22 @@ class DocumentController extends Controller
             'description' => 'nullable|string',
             'category'    => 'nullable|string|max:100',
             'is_public'   => 'boolean',
-            'file'        => 'required|file|max:10240|mimes:pdf,doc,docx,xls,xlsx,ppt,pptx,jpg,jpeg,png,gif,zip',
+            'file'        => 'required|file|max:20480|mimes:pdf,doc,docx,xls,xlsx,ppt,pptx,jpg,jpeg,png,gif,zip',
         ]);
 
-        $file         = $request->file('file');
-        $originalName = $file->getClientOriginalName();
-        $mime         = $file->getMimeType();
-        $size         = $file->getSize();
-        $path         = $file->store('documents/' . date('Y/m'), 'public');
+        DB::transaction(function () use ($validated, $request, $user) {
+            // Create the document record
+            $document = Document::create([
+                'title'       => $validated['title'],
+                'description' => $validated['description'] ?? null,
+                'category'    => $validated['category'] ?? null,
+                'is_public'   => $validated['is_public'] ?? false,
+                'owner_id'    => $user->id,
+            ]);
 
-        Document::create([
-            'title'       => $validated['title'],
-            'description' => $validated['description'],
-            'file_path'   => $path,
-            'file_name'   => $originalName,
-            'mime_type'   => $mime,
-            'size'        => $size,
-            'category'    => $validated['category'],
-            'uploaded_by' => $user->id,
-            'is_public'   => $validated['is_public'] ?? false,
-            'status'      => 'approved',
-        ]);
+            // Add the first version
+            $document->addVersion($request->file('file'), 'Initial upload');
+        });
 
         return redirect()->route('documents.index')
             ->with('success', 'Document uploaded successfully.');
@@ -118,8 +114,8 @@ class DocumentController extends Controller
             abort(403);
         }
 
-        // Non‑admin users can only edit their own uploaded documents
-        if ($user->role->level !== 1 && $document->uploaded_by !== $user->id) {
+        // Non‑admin users can only edit their own documents
+        if ($user->role->level !== 1 && $document->owner_id !== $user->id) {
             abort(403, 'You can only edit your own documents.');
         }
 
@@ -134,7 +130,7 @@ class DocumentController extends Controller
             abort(403);
         }
 
-        if ($user->role->level !== 1 && $document->uploaded_by !== $user->id) {
+        if ($user->role->level !== 1 && $document->owner_id !== $user->id) {
             abort(403);
         }
 
@@ -146,6 +142,14 @@ class DocumentController extends Controller
         ]);
 
         $document->update($validated);
+
+        // Optionally handle new file version
+        if ($request->hasFile('file')) {
+            $request->validate([
+                'file' => 'file|max:20480|mimes:pdf,doc,docx,xls,xlsx,ppt,pptx,jpg,jpeg,png,gif,zip',
+            ]);
+            $document->addVersion($request->file('file'), $request->input('change_notes', 'Updated document'));
+        }
 
         return redirect()->route('documents.index')
             ->with('success', 'Document updated successfully.');
@@ -159,11 +163,11 @@ class DocumentController extends Controller
             abort(403);
         }
 
-        if ($user->role->level !== 1 && $document->uploaded_by !== $user->id) {
+        if ($user->role->level !== 1 && $document->owner_id !== $user->id) {
             abort(403);
         }
 
-        Storage::disk('public')->delete($document->file_path);
+        // Document model's booted method will delete versions and files
         $document->delete();
 
         return redirect()->route('documents.index')
@@ -172,13 +176,59 @@ class DocumentController extends Controller
 
     public function download(Document $document)
     {
-        $user = Auth::user();
+        $this->authorize('view', $document);
 
-        if ($user->role->level !== 1 && !$user->hasPermission('documents.view')) {
-            abort(403);
+        if (!$document->currentVersion) {
+            abort(404, 'No file available for this document.');
         }
 
-        // All authenticated users can download any document
-        return Storage::disk('public')->download($document->file_path, $document->file_name);
+        $version = $document->currentVersion;
+        $path = $version->file_path;
+
+        return Storage::disk('private')->download($path, $version->file_name);
     }
+
+    public function preview(Document $document)
+    {
+        $this->authorize('view', $document);
+        
+        if (!$document->currentVersion) {
+            abort(404);
+        }
+        
+        $version = $document->currentVersion;
+        $path = $version->file_path;
+        
+        return response()->file(Storage::disk('private')->path($path), [
+            'Content-Type' => $version->mime_type,
+        ]);
+    }
+
+    // -------------------------------------------------------------------------
+    // Trash / Restore (optional, if you want soft delete management)
+    // -------------------------------------------------------------------------
+
+    public function trash()
+    {
+            $this->authorize('viewAny', Document::class);
+            $documents = Document::onlyTrashed()->with('owner')->latest()->paginate(15);
+            return view('documents.trash', compact('documents'));
+    }
+
+    public function restore($id)
+    {
+        $document = Document::onlyTrashed()->findOrFail($id);
+        $this->authorize('restore', $document);
+        $document->restore();
+        return redirect()->route('documents.trash')->with('success', 'Document restored.');
+    }
+
+    public function forceDelete($id)
+    {
+        $document = Document::onlyTrashed()->findOrFail($id);
+        $this->authorize('forceDelete', $document);
+        $document->forceDelete();
+        return redirect()->route('documents.trash')->with('success', 'Document permanently deleted.');
+    }
+
 }

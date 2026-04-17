@@ -54,7 +54,7 @@ class User extends Authenticatable implements MustVerifyEmail
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_active' => 'boolean',
-            'last_login_at' => 'datetime',
+            'last_login_at' => 'datetime:Y-m-d H:i:s',
             'birthday' => 'date',
         ];
     }
@@ -134,7 +134,7 @@ class User extends Authenticatable implements MustVerifyEmail
 
     public function documents(): HasMany
     {
-        return $this->hasMany(Document::class, 'uploaded_by');
+        return $this->hasMany(Document::class, 'owner_id');
     }
 
     public function hasPermission(string $moduleOrSlug, string $action = ''): bool
@@ -228,8 +228,13 @@ class User extends Authenticatable implements MustVerifyEmail
 
     public function updateLastLogin(): void
     {
-        $this->last_login_at = now();
-        $this->save();
+         if ($this->member) {
+        $this->member->last_login_at = now();
+        $this->member->save();
+        }
+        
+        // $this->last_login_at = now();
+        // $this->save();
     }
 
     // =========================================================================

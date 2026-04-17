@@ -165,20 +165,24 @@ class AdminController extends Controller
     /**
      * Toggle the visibility of a role (hide/unhide).
      * Hidden roles are excluded from all user-facing role selectors.
-     * Predefined roles can be hidden/unhidden but never deleted.
+     *
+     * Only two things are blocked:
+     *   1. Hiding the System Administrator role (id = 1) — never allowed.
+     *   2. Hiding your own role — would lock yourself out.
+     * Everything else, including predefined roles with users, can be hidden freely.
      */
     public function toggleRoleVisibility(Role $role)
     {
-        // Prevent hiding the currently logged-in user's own role
+        // System Administrator can never be hidden
+        if ($role->id === 1) {
+            return redirect()->route('admin.roles.index', ['show_hidden' => request()->boolean('show_hidden')])
+                ->with('error', '⚠️ The System Administrator role cannot be hidden.');
+        }
+
+        // Prevent hiding your own role
         if (auth()->user()->role_id == $role->id && $role->is_visible) {
             return redirect()->route('admin.roles.index', ['show_hidden' => request()->boolean('show_hidden')])
                 ->with('error', '⚠️ You cannot hide your own role.');
-        }
-
-        // Prevent hiding a role that still has active users assigned
-        if ($role->is_visible && $role->users()->count() > 0) {
-            return redirect()->route('admin.roles.index', ['show_hidden' => request()->boolean('show_hidden')])
-                ->with('error', "⚠️ Cannot hide role '{$role->name}' because it still has {$role->users()->count()} user(s) assigned to it. Reassign or remove those users first.");
         }
 
         $role->update(['is_visible' => !$role->is_visible]);
@@ -400,13 +404,15 @@ class AdminController extends Controller
             $validated['position'] = null;
         }
 
-        // Protect predefined roles: don't allow removing the last user from one
+        // Only protect System Administrator (id = 1) from losing its last user.
+        // All other roles, including predefined ones, can have their last user
+        // moved freely so the role can then be hidden.
         if ($user->role_id != $validated['role_id']) {
             $oldRole = Role::find($user->role_id);
-            if ($oldRole && $oldRole->is_predefined) {
-                $count = User::where('role_id', $user->role_id)->count();
+            if ($oldRole && $oldRole->id === 1) {
+                $count = User::where('role_id', 1)->count();
                 if ($count <= 1) {
-                    return back()->with('error', "⚠️ Cannot change role of the last user with the role '{$oldRole->name}'. This role is required for system functionality.");
+                    return back()->with('error', '⚠️ Cannot change the role of the last System Administrator.');
                 }
             }
         }
@@ -451,10 +457,13 @@ class AdminController extends Controller
             return back()->with('error', 'You cannot delete your own account.');
         }
 
-        if ($user->role && $user->role->is_predefined) {
-            $count = User::where('role_id', $user->role_id)->count();
+        // Only protect System Administrator (id = 1) from losing its last user.
+        // All other roles, including predefined ones, can have their last user
+        // deleted freely so the role can then be hidden.
+        if ($user->role && $user->role->id === 1) {
+            $count = User::where('role_id', 1)->count();
             if ($count <= 1) {
-                return back()->with('error', "⚠️ Cannot delete the last user with the role '{$user->role->name}'. This role is required for system functionality.");
+                return back()->with('error', '⚠️ Cannot delete the last System Administrator.');
             }
         }
 

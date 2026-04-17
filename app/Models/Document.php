@@ -4,32 +4,77 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphToMany;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Database\Eloquent\SoftDeletes; 
 
 class Document extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     protected $fillable = [
-        'title', 'description', 'file_path', 'file_name', 'mime_type',
-        'size', 'category', 'uploaded_by', 'is_public', 'status'
+        'title',
+        'description',
+        'category',
+        'tags',
+        'is_public',
+        'owner_id',
+        'current_version_id',
     ];
 
     protected $casts = [
         'is_public' => 'boolean',
-        'size' => 'integer',
+        'tags'      => 'array',
+        'deleted_at' => 'datetime',
     ];
 
-    // Relationships
-    public function uploader()
+    public function owner(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'uploaded_by');
+        return $this->belongsTo(User::class, 'owner_id');
     }
 
-
-    // Helper: formatted size
-    public function getFormattedSizeAttribute()
+    public function versions(): HasMany
     {
-        $bytes = $this->size;
+        return $this->hasMany(DocumentVersion::class)->orderBy('version_number', 'desc');
+    }
+
+    public function currentVersion(): BelongsTo
+    {
+        return $this->belongsTo(DocumentVersion::class, 'current_version_id');
+    }
+
+    public function financialTransactions(): MorphToMany
+    {
+        return $this->morphedByMany(FinancialTransaction::class, 'attachable', 'attachments');
+    }
+
+    public function addVersion($file, ?string $changeNotes = null): DocumentVersion
+    {
+        $nextVersion = $this->versions()->max('version_number') + 1;
+        $path = $file->store("documents/{$this->id}", 'private');
+
+        $version = $this->versions()->create([
+            'version_number' => $nextVersion,
+            'file_path'      => $path,
+            'file_name'      => $file->getClientOriginalName(),
+            'mime_type'      => $file->getMimeType(),
+            'file_size'      => $file->getSize(),
+            'change_notes'   => $changeNotes,
+            'uploaded_by'    => auth()->id(),
+        ]);
+
+        $this->update(['current_version_id' => $version->id]);
+        return $version;
+    }
+
+    public function getFormattedSizeAttribute(): string
+    {
+        if (!$this->currentVersion) {
+            return '0 B';
+        }
+        $bytes = $this->currentVersion->file_size;
         $units = ['B', 'KB', 'MB', 'GB'];
         $i = 0;
         while ($bytes >= 1024 && $i < count($units) - 1) {
@@ -38,10 +83,20 @@ class Document extends Model
         }
         return round($bytes, 2) . ' ' . $units[$i];
     }
-    public function scopeAccessible($query, User $user)
+
+    protected static function booted(): void
     {
-        return $query->where(function ($q) use ($user) {
-            $q->where('is_public', true);
+        static::deleting(function (Document $document) {
+            foreach ($document->versions as $version) {
+                Storage::disk('private')->delete($version->file_path);
+                $version->delete();
+            }
+            $document->financialTransactions()->detach();
         });
     }
+    public function uploader(): BelongsTo
+    {
+        return $this->owner();
+    }
+
 }

@@ -108,11 +108,17 @@
                 <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Positions are based on the selected role</p>
             </div>
 
+            {{-- Hidden input to track if position was manually changed --}}
+            <input type="hidden" name="position_manually_changed" x-model="positionManuallyChanged" value="0">
+
             {{-- Reason for Position Change --}}
-            <div x-show="positionChanged" x-cloak>
+            <div x-show="positionChanged()" x-cloak>
                 <div class="mb-4">
-                    <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Reason for Change <span class="text-red-500">*</span></label>
+                    <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                        Reason for Change <span class="text-red-500">*</span>
+                    </label>
                     <textarea name="position_change_reason" rows="2"
+                              x-bind:required="positionChanged()"
                               class="w-full border border-gold-300 dark:border-gold-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent"
                               placeholder="Please provide a reason for changing the position..."></textarea>
                     <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Required when changing position</p>
@@ -144,21 +150,47 @@
             </div>
 
             {{-- Change Password --}}
-            <div class="mb-4">
+            <div class="mb-4" x-data="{ showNew: false, showConfirm: false }">
                 <label class="flex items-center gap-2 cursor-pointer">
                     <input type="checkbox" x-model="changePassword" class="rounded border-gold-300 text-gold-600 focus:ring-gold-500">
                     <span class="text-sm text-gray-700 dark:text-gray-300">Change Password</span>
                 </label>
                 <div x-show="changePassword" x-cloak>
+                    {{-- New Password --}}
                     <div class="mt-2">
                         <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">New Password</label>
-                        <input type="password" name="password"
-                               class="w-full border border-gold-300 dark:border-gold-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent">
+                        <div class="relative">
+                            <input :type="showNew ? 'text' : 'password'" name="password"
+                                class="w-full border border-gold-300 dark:border-gold-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent">
+                            <button type="button" @click="showNew = !showNew" class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+                                {{-- Eye icon --}}
+                                <svg x-show="!showNew" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                </svg>
+                                {{-- Eye-slash icon --}}
+                                <svg x-show="showNew" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"></path>
+                                </svg>
+                            </button>
+                        </div>
                     </div>
+                    {{-- Confirm Password --}}
                     <div class="mt-2">
                         <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Confirm Password</label>
-                        <input type="password" name="password_confirmation"
-                               class="w-full border border-gold-300 dark:border-gold-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent">
+                        <div class="relative">
+                            <input :type="showConfirm ? 'text' : 'password'" name="password_confirmation"
+                                class="w-full border border-gold-300 dark:border-gold-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent">
+                            <button type="button" @click="showConfirm = !showConfirm" class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+                                <svg x-show="!showConfirm" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                </svg>
+                                <svg x-show="showConfirm" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"></path>
+                                </svg>
+                            </button>
+                        </div>
                     </div>
                 </div>
                 <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Leave blank to keep current password.</p>
@@ -192,7 +224,6 @@
 <style>[x-cloak] { display: none !important; }</style>
 
 <script>
-    // Hardcoded fallback mapping (same as Member::VALID_POSITIONS)
     const fallbackMapping = {
         1: [],
         2: ['SSLG President', 'SSLG Adviser', 'Student Affairs Head'],
@@ -204,54 +235,55 @@
         8: ['Guest'],
     };
 
-    // Use validPositions from PHP if available, otherwise fallback
-    let controllerMapping = @json(\App\Models\Member::VALID_POSITIONS);
-    console.log('Controller mapping (edit):', controllerMapping);
+    let controllerMapping = @json($positionMapping);
     const validPositions = (Object.keys(controllerMapping).length > 0) ? controllerMapping : fallbackMapping;
-    console.log('Final mapping (edit):', validPositions);
-
     const nonStudentRoleIds = @json($nonStudentRoleIds);
-    console.log('Non-student role IDs (edit):', nonStudentRoleIds);
 
     function memberEditForm() {
         return {
             selectedRoleId: {{ old('role_id', $member->role_id) }},
             selectedPosition: '{{ old('position', $member->position) }}',
+            originalPosition: '{{ $member->position }}',
             positionOptions: [],
             changePassword: false,
             isStudentRole: true,
             yearLevelValue: '{{ old('year_level', $member->year_level) }}',
+            positionManuallyChanged: 0,
             init() {
                 this.updatePositionOptions();
                 this.checkIfStudentRole();
                 this.$watch('selectedRoleId', () => {
-                    console.log('Edit: role changed to', this.selectedRoleId);
                     this.updatePositionOptions();
                     this.checkIfStudentRole();
                 });
-                this.$watch('selectedPosition', () => {
-                    console.log('Edit: position changed to', this.selectedPosition);
+                this.$watch('selectedPosition', (newVal, oldVal) => {
                     this.checkIfStudentRole();
+                    if (newVal !== this.originalPosition) {
+                        this.positionManuallyChanged = 1;
+                    } else {
+                        this.positionManuallyChanged = 0;
+                    }
                 });
             },
             updatePositionOptions() {
                 const roleId = parseInt(this.selectedRoleId);
-                console.log('Edit: updatePositionOptions for roleId', roleId);
                 if (roleId && validPositions[roleId]) {
                     this.positionOptions = validPositions[roleId];
-                    console.log('Options found:', this.positionOptions);
                 } else {
                     this.positionOptions = [];
-                    console.warn('No options for roleId', roleId);
                 }
+                // Auto-select first allowed if current position not allowed
                 if (this.selectedPosition && !this.positionOptions.includes(this.selectedPosition)) {
-                    this.selectedPosition = '';
+                    if (this.positionOptions.length > 0) {
+                        this.selectedPosition = this.positionOptions[0];
+                    } else {
+                        this.selectedPosition = '';
+                    }
                 }
             },
             checkIfStudentRole() {
                 const roleId = parseInt(this.selectedRoleId);
                 const position = this.selectedPosition;
-                console.log('Edit: checkIfStudentRole roleId', roleId, 'position', position);
                 if (nonStudentRoleIds.includes(roleId)) {
                     this.isStudentRole = false;
                     this.yearLevelValue = '';
@@ -265,8 +297,9 @@
                 this.isStudentRole = true;
             },
             positionChanged() {
-                const originalPosition = '{{ $member->position }}';
-                return this.selectedPosition && this.selectedPosition !== originalPosition;
+                const current = (this.selectedPosition || '').trim();
+                const original = (this.originalPosition || '').trim();
+                return current !== original;
             }
         };
     }

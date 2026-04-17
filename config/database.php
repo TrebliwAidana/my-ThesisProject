@@ -74,6 +74,25 @@ return [
             ]) : [],
         ],
 
+        'cloud_mysql' => [
+        'driver' => 'mysql',
+        'host' => env('CLOUD_DB_HOST', 'mysql-33909225-wilbertanadia-74b8.j.aivencloud.com'),
+        'port' => env('CLOUD_DB_PORT', '28389'),
+        'database' => env('CLOUD_DB_DATABASE', 'mythesis_db'),
+        'username' => env('CLOUD_DB_USERNAME', 'avnadmin'),
+        'password' => env('CLOUD_DB_PASSWORD', ''),
+        'charset' => 'utf8mb4',
+        'collation' => 'utf8mb4_unicode_ci',
+        'prefix' => '',
+        'prefix_indexes' => true,
+        'strict' => true,
+        'engine' => null,
+        'options' => extension_loaded('pdo_mysql') ? array_filter([
+            PDO::MYSQL_ATTR_SSL_CA => env('CLOUD_DB_SSL_CA'),    // optional
+            PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT => false,
+        ]) : [],
+    ],
+
         'mariadb' => [
             'driver' => 'mariadb',
             'url' => env('DB_URL'),
