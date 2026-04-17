@@ -4,11 +4,20 @@ namespace App\Services;
 
 class ThemeService
 {
-    // Example: determine the current theme for the school/user
-    public static function current(): string
+    /**
+     * Get the current theme (light/dark/navy).
+     */
+    public function getTheme(): string
     {
-        // You can replace this logic with DB or config
-        // Possible values: 'red', 'blue', 'green', 'yellow'
-        return session('school_theme', 'blue');
+        // Retrieve from session or default to 'light'
+        return session('theme', 'light');
+    }
+
+    /**
+     * Set the theme.
+     */
+    public function setTheme(string $theme): void
+    {
+        session(['theme' => $theme]);
     }
 }
