@@ -1,23 +1,36 @@
 <?php
 
-namespace App\Services;
+namespace App\Providers;
 
-class ThemeService
+use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Facades\View;
+use App\Services\ThemeService;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Schema;
+use App\Models\Role;
+
+class AppServiceProvider extends ServiceProvider
 {
-    /**
-     * Get the current theme (light/dark).
-     */
-    public function getTheme(): string
+    public function boot(): void
     {
-        // Default to 'light' or retrieve from session/cookie
-        return session('theme', 'light');
+        if (config('app.env') === 'production') {
+            URL::forceScheme('https');
+        }
+
+        View::composer('*', function ($view) {
+            $view->with('theme', app(ThemeService::class)->getTheme());
+        });
+
+        if (!app()->runningInConsole() || Schema::hasTable('roles')) {
+            Cache::remember('roles_with_perms', 3600, function () {
+                return Role::with('permissions')->get();
+            });
+        }
     }
 
-    /**
-     * Set the theme.
-     */
-    public function setTheme(string $theme): void
+    public function register(): void
     {
-        session(['theme' => $theme]);
+        //
     }
 }
