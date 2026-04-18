@@ -7,6 +7,7 @@
 @php
     $currentUser = auth()->user();
     $isSystemAdmin = $currentUser->role->level === 1;
+    $guestEmail = 'guest@gmail.com';
     $roleBadgeClasses = [
         'System Administrator' => 'bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300',
         'Supreme Admin'        => 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300',
@@ -264,6 +265,7 @@
                         $badgeClass  = $roleBadgeClasses[$member->role->name] ?? 'bg-gray-100 text-gray-700';
                         $gradientBg  = $avatarBg[$member->role->name]         ?? 'from-gray-400 to-gray-600';
                         $initials    = strtoupper(substr($member->full_name, 0, 2));
+                        $isGuest     = $member->email === $guestEmail;
                     @endphp
 
                     <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors duration-150">
@@ -338,43 +340,48 @@
 
                         <td class="px-4 py-3">
                             <div class="flex items-center justify-end gap-1.5">
-                                <a href="{{ route('members.show', $member->id) }}"
-                                   class="p-1.5 rounded-lg text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
-                                   title="View">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                                    </svg>
-                                </a>
+                                {{-- Guest account: show label, no actions --}}
+                                @if($isGuest)
+                                    <span class="text-xs text-gray-400 dark:text-gray-500 italic px-2 py-1">System Account</span>
+                                @else
+                                    <a href="{{ route('members.show', $member->id) }}"
+                                       class="p-1.5 rounded-lg text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+                                       title="View">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                        </svg>
+                                    </a>
 
-                                @if($isSystemAdmin || Gate::allows('members.edit'))
-                                <a href="{{ route('members.edit', $member->id) }}"
-                                   class="p-1.5 rounded-lg text-gray-500 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors"
-                                   title="Edit">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                                    </svg>
-                                </a>
-                                @endif
+                                    @if($isSystemAdmin || Gate::allows('members.edit'))
+                                    <a href="{{ route('members.edit', $member->id) }}"
+                                       class="p-1.5 rounded-lg text-gray-500 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors"
+                                       title="Edit">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                        </svg>
+                                    </a>
+                                    @endif
 
-                                <a href="{{ route('members.edit-history', $member->id) }}"
-                                   class="p-1.5 rounded-lg text-gray-500 hover:text-gold-600 hover:bg-gold-50 dark:hover:bg-gold-900/20 transition-colors"
-                                   title="History">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                                    </svg>
-                                </a>
+                                    <a href="{{ route('members.edit-history', $member->id) }}"
+                                       class="p-1.5 rounded-lg text-gray-500 hover:text-gold-600 hover:bg-gold-50 dark:hover:bg-gold-900/20 transition-colors"
+                                       title="History">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                        </svg>
+                                    </a>
 
-                                @if(($isSystemAdmin || Gate::allows('members.delete')) && $member->id !== auth()->id())
-                                <button
-                                    type="button"
-                                    onclick="confirmDelete('{{ $member->id }}', '{{ $member->full_name }}', '{{ $member->role->name }}')"
-                                    class="p-1.5 rounded-lg text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                                    title="Delete">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                                    </svg>
-                                </button>
+                                    @if(($isSystemAdmin || Gate::allows('members.delete')) && $member->id !== auth()->id())
+                                    <button
+                                        type="button"
+                                        onclick="confirmDelete('{{ $member->id }}', '{{ $member->full_name }}', '{{ $member->role->name }}', '{{ $member->email }}')"
+                                        class="p-1.5 rounded-lg text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                                        title="Delete">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                        </svg>
+                                    </button>
+                                    @endif
                                 @endif
                             </div>
                         </td>
@@ -437,14 +444,22 @@
 
 {{-- Hidden delete forms --}}
 @foreach($users as $member)
-<form id="delete-form-{{ $member->id }}" action="{{ route('members.destroy', $member->id) }}" method="POST" class="hidden">
-    @csrf
-    @method('DELETE')
-</form>
+    @if($member->email !== $guestEmail)
+    <form id="delete-form-{{ $member->id }}" action="{{ route('members.destroy', $member->id) }}" method="POST" class="hidden">
+        @csrf
+        @method('DELETE')
+    </form>
+    @endif
 @endforeach
 
 <script>
-function confirmDelete(userId, userName, userRole) {
+function confirmDelete(userId, userName, userRole, userEmail) {
+    // Prevent deletion of guest account (extra guard)
+    if (userEmail === '{{ $guestEmail }}') {
+        alert('The shared guest account cannot be deleted.');
+        return;
+    }
+
     const systemRoles = ['System Administrator', 'Supreme Admin', 'Supreme Officer'];
     if (systemRoles.includes(userRole)) {
         alert(`Cannot delete "${userName}".\n\nThis user has a system role (${userRole}) required for the system to function.`);

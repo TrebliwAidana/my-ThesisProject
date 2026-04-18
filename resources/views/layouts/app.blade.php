@@ -169,7 +169,7 @@
     x-data="{
         sidebarCollapsed: localStorage.getItem('sidebarCollapsed') === 'true',
         mobileMenuOpen: false,
-        adminOpen: {{ Str::startsWith(Route::currentRouteName() ?? '', 'admin.') || in_array(Route::currentRouteName() ?? '', ['settings.index','audit.logs']) ? 'true' : 'false' }},
+        adminOpen: {{ Str::startsWith(Route::currentRouteName() ?? '', 'admin.') || in_array(Route::currentRouteName() ?? '', ['settings.index','admin.auditlogs']) ? 'true' : 'false' }},
         activeRoute: '{{ Route::currentRouteName() ?? '' }}',
         userDropdownOpen: false
     }"
@@ -228,10 +228,11 @@
                 'label' => 'Administration',
                 'icon'  => 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z',
                 'submenu' => [
-                    ['label' => 'User Management',  'route' => 'admin.users.index',         'icon' => 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z', 'visible' => $canSee(['System Administrator','Supreme Admin','Club Adviser'], 'admin.users')],
-                    ['label' => 'Roles',            'route' => 'admin.roles.index',         'icon' => 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z', 'visible' => $canSee(['System Administrator'], 'admin.roles')],
-                    ['label' => 'Permissions',      'route' => 'admin.permissions.index',   'icon' => 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z', 'visible' => $canSee(['System Administrator'], 'admin.permissions')],
-                    ['label' => 'Audit Logs',       'route' => 'audit.logs',                'icon' => 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z', 'visible' => $canSee(['System Administrator','Supreme Admin'], 'admin.audit')],
+                    ['label' => 'User Management',  'route' => 'admin.users.index',              'icon' => 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z', 'visible' => $canSee(['System Administrator','Supreme Admin','Club Adviser'], 'admin.users')],
+                    ['label' => 'Roles',            'route' => 'admin.roles.index',              'icon' => 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z', 'visible' => $canSee(['System Administrator'], 'admin.roles')],
+                    ['label' => 'Permissions',      'route' => 'admin.permissions.index',        'icon' => 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z', 'visible' => $canSee(['System Administrator'], 'admin.permissions')],
+                    ['label' => 'Audit Logs',       'route' => 'admin.auditlogs.index', 'icon' => '...', 'visible' => $canSee(['System Administrator'], 'admin.audit')],
+                    ['label' => 'Doc Categories',   'route' => 'admin.document-categories.index','icon' => 'M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a2 2 0 012-2h2z', 'visible' => $canSee(['System Administrator'], 'admin.document-categories')],
                 ],
             ];
             $adminMenu['visible'] = collect($adminMenu['submenu'])->contains('visible', true);

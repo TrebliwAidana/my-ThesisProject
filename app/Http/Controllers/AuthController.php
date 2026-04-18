@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use App\Services\AuditLogger;
 use Illuminate\Support\Facades\Hash;
 use App\Models\User;
 
@@ -71,15 +72,8 @@ class AuthController extends Controller
             \Log::info('Login successful for user: ' . $user->email);
             \Log::info('Session ID: ' . session()->getId());
             \Log::info('Remember token after login: ' . ($user->fresh()->remember_token ?? 'null'));
-            
-            // Optional: Log successful login to audit log
-            // \App\Models\AuditLog::create([
-            //     'user_id' => $user->id,
-            //     'action' => 'login',
-            //     'ip_address' => $request->ip(),
-            //     'user_agent' => $request->userAgent(),
-            // ]);
-            
+        
+             AuditLogger::log('login');
             return redirect()->intended(route('dashboard'));
         }
 
@@ -102,6 +96,8 @@ class AuthController extends Controller
             //     'ip_address' => $request->ip(),
             // ]);
         }
+
+        AuditLogger::log('logout');
         
         Auth::logout();
         $request->session()->invalidate();
@@ -141,7 +137,7 @@ class AuthController extends Controller
     }
     public function guestLogin(Request $request)
     {
-        $guestUser = User::where('email', 'guest@vsulhs.edu.ph')->firstOrFail();
+        $guestUser = User::where('email', 'guest@gmail.com')->firstOrFail();
         
         Auth::login($guestUser);
         $request->session()->regenerate();

@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use App\Models\FinancialTransaction;
+use App\Services\AuditLogger;
 
 class MemberController extends Controller
 {
@@ -263,7 +264,7 @@ class MemberController extends Controller
             'first_name'  => ['required', 'string', 'max:255'],
             'middle_name' => ['nullable', 'string', 'max:255'],
             'last_name'   => ['required', 'string', 'max:255'],
-            'email'       => ['required', 'email', 'ends_with:@gmail.com', 'unique:users,email'],
+            'email'       => ['required', 'email', 'ends_with:@gmail.com', 'unique:users,email','not_in:guest@gmail.com'],
             'student_id'  => ['nullable', 'string', 'unique:users,student_id', function ($attr, $val, $fail) {
                 if (!empty($val) && !preg_match('/^\d{4}-\d{5}$/', $val)) {
                     $fail('Student ID must be in format: YYYY-XXXXX');
@@ -356,6 +357,9 @@ class MemberController extends Controller
 
             DB::commit();
 
+            AuditLogger::log('created', $member, $member->full_name, [], $member->toArray());
+
+
             $user->notify(new \App\Notifications\NewUserWelcomeNotification($password));
 
             return redirect()->route('members.index')
@@ -403,6 +407,13 @@ class MemberController extends Controller
         $memberRecord = $user->member;
         $currentUser = Auth::user();
         if (!$currentUser || !$currentUser->role) abort(403);
+
+        if ($user->email === 'guest@gmail.com') {
+            return back()->with('error', 'The shared guest account cannot be modified.');
+        }
+        if ($user->email === 'guest@gmail.com') {
+            return response()->json(['error' => 'Guest account cannot be deactivated.'], 403);
+        }
 
         if ($currentUser->role->level !== 1 && (!$currentUser->hasPermission('members.edit') || !$this->canManageMember($user, 'edit'))) {
             abort(403, 'Unauthorized to edit this member.');
@@ -545,6 +556,9 @@ class MemberController extends Controller
 
             DB::commit();
 
+            AuditLogger::log('updated', $member, $member->full_name, $old, $member->getChanges());
+
+
             $message = "Member {$fullName} updated successfully.";
             if ($positionChanged) {
                 $message .= " Position changed from '{$oldPosition}' to '{$newPosition}'.";
@@ -556,6 +570,7 @@ class MemberController extends Controller
             \Log::error('MemberController@update error: ' . $e->getMessage());
             return back()->with('error', 'Failed to update member: ' . $e->getMessage())->withInput();
         }
+
     }
 
     // -------------------------------------------------------------------------
@@ -606,6 +621,10 @@ class MemberController extends Controller
         $targetUser  = User::findOrFail($id);
         $currentUser = Auth::user();
 
+        if ($targetUser->email === 'guest@gmail.com') {
+            return back()->with('error', 'The shared guest account cannot be deleted.');
+        }
+
         if ($currentUser->role->level !== 1 && !$currentUser->hasPermission('members.delete')) {
             abort(403);
         }
@@ -630,6 +649,10 @@ class MemberController extends Controller
             $userRole = $targetUser->role->name ?? 'Unknown';
             $targetUser->member?->delete();
             $targetUser->delete();
+
+            AuditLogger::log('deleted', $member, $member->full_name, $member->toArray());
+
+
             return redirect()->route('members.index')
                 ->with('success', "{$userName} ({$userRole}) has been removed from the system.");
         } catch (\Exception $e) {

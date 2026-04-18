@@ -5,6 +5,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\MemberController;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\DocumentVersionController;
+use App\Http\Controllers\Admin\DocumentCategoryController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\ProfileController;
@@ -174,18 +175,33 @@ Route::middleware(['auth.custom', 'verified'])->group(function () {
 
         // ── Permissions ───────────────────────────────────────────────────────
         Route::middleware('role:System Administrator,Supreme Admin,Club Adviser')
-            ->prefix('permissions')
-            ->name('permissions.')
+            ->prefix('permissions')->name('permissions.')
             ->group(function () {
                 Route::get('/',       [PermissionController::class, 'index'])->name('index');
                 Route::put('/{role}', [PermissionController::class, 'update'])->name('update');
             });
-    });
 
-    // ── Audit Logs ────────────────────────────────────────────────────────────
-    Route::get('/audit-logs', [AuditLogController::class, 'index'])
-        ->name('audit.logs')
-        ->middleware('role:System Administrator,Supreme Admin');
+        // ── Document Category ─────────────────────────────────────────────────
+        Route::middleware('role:System Administrator')
+            ->prefix('document-categories')->name('document-categories.')
+            ->group(function () {
+                Route::get('/',                    [DocumentCategoryController::class, 'index'])->name('index');
+                Route::get('/create',              [DocumentCategoryController::class, 'create'])->name('create');
+                Route::post('/',                   [DocumentCategoryController::class, 'store'])->name('store');
+                Route::get('/{category}/edit',     [DocumentCategoryController::class, 'edit'])->name('edit');
+                Route::put('/{category}',          [DocumentCategoryController::class, 'update'])->name('update');
+                Route::delete('/{category}',       [DocumentCategoryController::class, 'destroy'])->name('destroy');
+            });
+
+        // ── Audit Logs ───────────────────────────────────────────────────────
+        Route::middleware('role:System Administrator')
+            ->prefix('auditlogs')
+            ->name('auditlogs.')
+            ->group(function () {
+                Route::get('/', [AuditLogController::class, 'index'])->name('index');
+            });
+
+    }); // ✅ closes the admin group
 
     // ── Profile ───────────────────────────────────────────────────────────────
     Route::prefix('profile')->name('profile.')->group(function () {
@@ -194,7 +210,8 @@ Route::middleware(['auth.custom', 'verified'])->group(function () {
         Route::put('/password', [ProfileController::class, 'updatePassword'])->name('password');
         Route::post('/theme',   [ProfileController::class, 'updateTheme'])->name('theme');
     });
-});
+
+}); 
 
 // ── Flash message clear ───────────────────────────────────────────────────────
 Route::post('/clear-flash-messages', function () {

@@ -70,7 +70,7 @@ class UserController extends Controller
         
         $validated = $request->validate([
             'full_name' => ['required', 'string', 'max:255'],
-            'email'     => ['required', 'email', 'unique:users,email'],
+            'email'     => ['required', 'email', 'unique:users,email','not_in:guest@gmail.com'],
             'password'  => ['required', 'confirmed', Password::min(8)],
             'role_id'   => ['required', 'exists:roles,id'],
         ]);
@@ -135,14 +135,21 @@ class UserController extends Controller
     public function update(Request $request, User $user)
     {
         $currentUser = auth()->user();
-        
+
+        if ($user->email === 'guest@gmail.com') {
+            return back()->with('error', 'The shared guest account cannot be modified.');
+        }
+        if ($user->email === 'guest@gmail.com') {
+            return response()->json(['error' => 'Guest account cannot be deactivated.'], 403);
+        }
+            
         if ($currentUser->role->name === 'Adviser' || $currentUser->role->abbreviation === 'AD') {
             $allowedRoles = ['Org Admin', 'Org Officer', 'Org Member', 'Guest'];
             if (!in_array($user->role->name, $allowedRoles)) {
                 abort(403, 'Unauthorized to update this user.');
             }
         }
-        if (auth()->user()->email === 'guest@vsulhs.edu.ph') {
+        if (auth()->user()->email === 'guest@gmail.com') {
             abort(403, 'Guest account cannot be modified.');
 }
         
@@ -180,6 +187,10 @@ class UserController extends Controller
     public function destroy(User $user)
     {
         $currentUser = auth()->user();
+
+        if ($targetUser->email === 'guest@gmail.com') {
+            return back()->with('error', 'The shared guest account cannot be deleted.');
+        }
         
         if ($currentUser->role->name === 'Adviser' || $currentUser->role->abbreviation === 'AD') {
             $allowedRoles = ['Org Admin', 'Org Officer', 'Org Member', 'Guest'];

@@ -22,6 +22,7 @@ class DatabaseSeeder extends Seeder
             UserSeeder::class,
             MemberSeeder::class,
             DocumentSeeder::class,
+            DocumentCategorySeeder::class,
         ]);
     }
 }
