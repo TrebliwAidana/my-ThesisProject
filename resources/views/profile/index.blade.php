@@ -1,283 +1,229 @@
 @extends('layouts.app')
 
-@section('title', $user->full_name . ' — Member Profile')
+@section('title', 'My Profile')
+@section('page-title', 'My Profile')
 
 @section('content')
-
-<?php
-$currentUser = auth()->user();
-$isSystemAdmin = $currentUser->role_id == 1;
-$canManageAccounts = ($isSystemAdmin || $currentUser->role->name === 'Supreme Admin' || $currentUser->role->name === 'Club Adviser');
-
-$roleColors = [
-    'System Administrator' => 'bg-gold-100 text-gold-700 dark:bg-gold-900/50 dark:text-gold-300',
-    'Supreme Admin' => 'bg-primary-100 text-primary-700 dark:bg-primary-900/50 dark:text-primary-300',
-    'Supreme Officer' => 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300',
-    'Org Admin' => 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300',
-    'Org Officer' => 'bg-sky-100 text-sky-700 dark:bg-sky-900/50 dark:text-sky-300',
-    'Club Adviser' => 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300',
-    'Org Member' => 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
-];
-$colorClass = $roleColors[$user->role->name] ?? 'bg-gray-100 text-gray-700';
-?>
-
-<div class="mb-6">
-    <a href="{{ route('members.index') }}" class="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 transition">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
-        </svg>
-        Back to Members
-    </a>
-</div>
-
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-    
-    {{-- Profile Card --}}
-    <div class="lg:col-span-1">
-        <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gold-200 dark:border-gold-800 overflow-hidden shadow-sm">
-            <div class="bg-gradient-to-r from-primary-600 to-primary-700 px-6 py-6">
-                <div class="flex flex-col items-center text-center">
-                    <div class="w-24 h-24 rounded-full bg-white/20 flex items-center justify-center text-white text-4xl font-bold shadow-lg mb-3">
-                        {{ strtoupper(substr($user->full_name, 0, 2)) }}
-                    </div>
-                    <h2 class="text-xl font-bold text-white">{{ $user->full_name }}</h2>
-                    <p class="text-primary-200 text-sm mt-1">{{ $user->position ?? 'No position' }}</p>
-                    <div class="mt-3 flex flex-wrap gap-2 justify-center">
-                        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium {{ $colorClass }}">
-                            {{ $user->role->name }}
-                        </span>
-                        @if($user->role->abbreviation)
-                        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-mono bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400">
-                            {{ $user->role->abbreviation }}
-                        </span>
-                        @endif
-                    </div>
-                </div>
-            </div>
-
-            <div class="p-6 space-y-4">
-                <div class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gold-800">
-                    <span class="text-sm text-gray-500 dark:text-gray-400">Email</span>
-                    <span class="text-sm font-medium text-gray-900 dark:text-white">{{ $user->email }}</span>
-                </div>
-                <div class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gold-800">
-                    <span class="text-sm text-gray-500 dark:text-gray-400">Member Since</span>
-                    <span class="text-sm font-medium text-gray-900 dark:text-white">{{ $user->created_at->format('F d, Y') }}</span>
-                </div>
-                <div class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gold-800">
-                    <span class="text-sm text-gray-500 dark:text-gray-400">Status</span>
-                    <span class="text-sm font-medium">
-                        @if($user->is_active)
-                            <span class="inline-flex items-center gap-1 text-green-600 dark:text-green-400">
-                                <span class="w-2 h-2 rounded-full bg-green-500"></span>
-                                Active
-                            </span>
-                        @else
-                            <span class="inline-flex items-center gap-1 text-red-600 dark:text-red-400">
-                                <span class="w-2 h-2 rounded-full bg-red-500"></span>
-                                Inactive
-                            </span>
-                        @endif
-                    </span>
-                </div>
-                @if($user->student_id)
-                <div class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gold-800">
-                    <span class="text-sm text-gray-500 dark:text-gray-400">Student ID</span>
-                    <span class="text-sm font-medium text-gray-900 dark:text-white">{{ $user->student_id }}</span>
-                </div>
-                @endif
-                @if($user->year_level)
-                <div class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gold-800">
-                    <span class="text-sm text-gray-500 dark:text-gray-400">Year Level</span>
-                    <span class="text-sm font-medium text-gray-900 dark:text-white">{{ $user->year_level }}</span>
-                </div>
-                @endif
-                @if($user->gender)
-                <div class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gold-800">
-                    <span class="text-sm text-gray-500 dark:text-gray-400">Gender</span>
-                    <span class="text-sm font-medium text-gray-900 dark:text-white">{{ $user->gender }}</span>
-                </div>
-                @endif
-                @if($user->phone)
-                <div class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gold-800">
-                    <span class="text-sm text-gray-500 dark:text-gray-400">Phone</span>
-                    <span class="text-sm font-medium text-gray-900 dark:text-white">{{ $user->phone }}</span>
-                </div>
-                @endif
-                @if($user->birthday)
-                <div class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gold-800">
-                    <span class="text-sm text-gray-500 dark:text-gray-400">Birthday</span>
-                    <span class="text-sm font-medium text-gray-900 dark:text-white">{{ $user->birthday->format('F d, Y') }}</span>
-                </div>
-                @endif
-                <div class="flex justify-between items-center py-2">
-                    <span class="text-sm text-gray-500 dark:text-gray-400">Role Level</span>
-                    <span class="text-sm font-medium text-gray-900 dark:text-white">Level {{ $user->role->level }}</span>
-                </div>
-            </div>
-
-            {{-- Action Buttons --}}
-            <div class="px-6 py-4 border-t border-gray-100 dark:border-gold-800 bg-gray-50 dark:bg-gray-800/50">
-                <div class="grid grid-cols-2 gap-3">
-                    <a href="{{ route('members.edit', $user->id) }}" 
-                       class="flex items-center justify-center gap-2 bg-primary-600 hover:bg-gold-500 text-white text-sm font-semibold px-4 py-2 rounded-lg transition">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
-                        </svg>
-                        Edit Profile
-                    </a>
-                    <a href="{{ route('members.edit-history', $user->id) }}" 
-                       class="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                        </svg>
-                        View History
-                    </a>
-                </div>
-                
-                <div class="mt-3 grid grid-cols-1 gap-3">
-                    @if($canManageAccounts && $user->id !== auth()->id())
-                        @if($user->is_active)
-                            <button onclick="toggleAccountStatus('{{ $user->id }}', '{{ $user->full_name }}', 'deactivate')" 
-                                    class="flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path>
-                                </svg>
-                                Deactivate Account
-                            </button>
-                        @else
-                            <button onclick="toggleAccountStatus('{{ $user->id }}', '{{ $user->full_name }}', 'activate')" 
-                                    class="flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                </svg>
-                                Activate Account
-                            </button>
-                        @endif
-                    @endif
-                </div>
-                
-                <div class="mt-3">
-                    <a href="{{ route('members.index') }}" 
-                       class="flex items-center justify-center gap-2 text-gray-600 dark:text-gray-400 border border-gray-300 dark:border-gray-600 px-4 py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
-                        </svg>
-                        Back to Members
-                    </a>
-                </div>
-            </div>
+<div class="max-w-4xl mx-auto space-y-6">
+    {{-- Flash Messages --}}
+    @if(session('success'))
+        <div class="p-4 bg-green-100 border border-green-300 text-green-800 rounded-xl text-sm flex items-center gap-2">
+            ✅ {{ session('success') }}
         </div>
-    </div>
+    @endif
+    @if(session('password_success'))
+        <div class="p-4 bg-green-100 border border-green-300 text-green-800 rounded-xl text-sm flex items-center gap-2">
+            🔒 {{ session('password_success') }}
+        </div>
+    @endif
+    @if($errors->any())
+        <div class="p-4 bg-red-100 border border-red-300 text-red-800 rounded-xl text-sm">
+            <strong>Please fix the following errors:</strong>
+            <ul class="mt-2 list-disc list-inside">
+                @foreach($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
 
-    {{-- Stats Cards --}}
-    <div class="lg:col-span-2 space-y-6">
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gold-200 dark:border-gold-800 p-6">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-sm text-gray-500 dark:text-gray-400">Documents Uploaded</p>
-                        <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ $documentsCount }}</p>
-                    </div>
-                    <div class="w-12 h-12 bg-amber-100 dark:bg-amber-900/30 rounded-xl flex items-center justify-center">
-                        <svg class="w-6 h-6 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                        </svg>
-                    </div>
-                </div>
-            </div>
-            <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gold-200 dark:border-gold-800 p-6">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-sm text-gray-500 dark:text-gray-400">Financial Transactions</p>
-                        <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ $financialTransactionsCount ?? 0 }}</p>
-                    </div>
-                    <div class="w-12 h-12 bg-emerald-100 dark:bg-emerald-900/30 rounded-xl flex items-center justify-center">
-                        <svg class="w-6 h-6 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                        </svg>
-                    </div>
-                </div>
-            </div>
+    {{-- Profile Information Card --}}
+    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gold-200 dark:border-gold-800 overflow-hidden">
+        <div class="px-6 py-4 border-b border-gold-200 dark:border-gold-800 bg-emerald-50 dark:bg-emerald-900/20">
+            <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Profile Information</h2>
+            <p class="text-sm text-gray-500 dark:text-gray-400">Update your personal details</p>
         </div>
 
-        {{-- Recent Activity --}}
-        <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gold-200 dark:border-gold-800 overflow-hidden">
-            <div class="px-6 py-4 border-b border-gray-100 dark:border-gold-800 bg-gray-50 dark:bg-gray-800/50">
-                <h3 class="font-semibold text-gray-900 dark:text-white">Recent Activity</h3>
-            </div>
-            <div class="divide-y divide-gray-100 dark:divide-gray-700">
-                @forelse($recentFinancialTransactions ?? [] as $activity)
-                <div class="p-4 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition">
-                    <div class="flex items-center gap-3">
-                        <div class="w-8 h-8 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center">
-                            @if($activity['type'] === 'document')
-                                <svg class="w-4 h-4 text-primary-600 dark:text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                                </svg>
-                            @else
-                                <svg class="w-4 h-4 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                </svg>
-                            @endif
-                        </div>
+        <div class="p-6">
+            <form method="POST" action="{{ route('profile.update') }}" enctype="multipart/form-data">
+                @csrf
+                @method('PUT')
+
+                {{-- Avatar Upload --}}
+                <div class="mb-6">
+                    <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Profile Picture</label>
+                    <div class="flex items-center gap-4">
+                        @if(auth()->user()->avatar)
+                            <img src="{{ Storage::url(auth()->user()->avatar) }}" alt="Avatar" class="w-16 h-16 rounded-full object-cover border-2 border-gold-200">
+                        @else
+                            <div class="w-16 h-16 rounded-full bg-gradient-to-br from-gold to-gold-dark flex items-center justify-center text-white text-xl font-bold shadow-md">
+                                {{ strtoupper(substr(auth()->user()->full_name, 0, 2)) }}
+                            </div>
+                        @endif
                         <div class="flex-1">
-                            <p class="text-sm text-gray-900 dark:text-white">{{ $activity['description'] }}</p>
-                            <p class="text-xs text-gray-500 dark:text-gray-400">{{ $activity['time'] }}</p>
+                            <input type="file" name="avatar" accept="image/jpeg,image/png,image/gif,image/webp"
+                                   class="text-sm text-gray-600 dark:text-gray-300 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-gold-100 file:text-gold-700 hover:file:bg-gold-200 dark:file:bg-gold-900/30 dark:file:text-gold-300">
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">JPG, PNG, GIF, WEBP — Max 2MB</p>
                         </div>
                     </div>
                 </div>
-                @empty
-                <div class="p-12 text-center text-gray-500 dark:text-gray-400">
-                    <p class="text-sm">No recent activity to display.</p>
+
+                {{-- Full Name --}}
+                <div class="mb-4">
+                    <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Full Name <span class="text-red-500">*</span></label>
+                    <input type="text" name="full_name" value="{{ old('full_name', $user->full_name) }}" required
+                           class="w-full border border-gold-300 dark:border-gold-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500">
                 </div>
-                @endforelse
+
+                {{-- First & Last Name (hidden/optional, but kept for backend) --}}
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">First Name</label>
+                        <input type="text" name="first_name" value="{{ old('first_name', $user->first_name) }}"
+                               class="w-full border border-gold-300 dark:border-gold-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Last Name</label>
+                        <input type="text" name="last_name" value="{{ old('last_name', $user->last_name) }}"
+                               class="w-full border border-gold-300 dark:border-gold-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500">
+                    </div>
+                </div>
+
+                {{-- Middle Name --}}
+                <div class="mb-4">
+                    <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Middle Name</label>
+                    <input type="text" name="middle_name" value="{{ old('middle_name', $user->middle_name) }}"
+                           class="w-full border border-gold-300 dark:border-gold-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500">
+                </div>
+
+                {{-- Email --}}
+                <div class="mb-4">
+                    <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Email <span class="text-red-500">*</span></label>
+                    <input type="email" name="email" value="{{ old('email', $user->email) }}" required
+                           class="w-full border border-gold-300 dark:border-gold-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500">
+                </div>
+
+                {{-- Student ID --}}
+                <div class="mb-4">
+                    <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Student ID</label>
+                    <input type="text" name="student_id" value="{{ old('student_id', $user->student_id) }}" placeholder="2020-12345"
+                           class="w-full border border-gold-300 dark:border-gold-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500">
+                </div>
+
+                {{-- Year Level --}}
+                <div class="mb-4">
+                    <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Year Level</label>
+                    <select name="year_level"
+                            class="w-full border border-gold-300 dark:border-gold-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500">
+                        <option value="">Select Grade</option>
+                        @for($i = 7; $i <= 12; $i++)
+                            <option value="Grade {{ $i }}" {{ old('year_level', $user->year_level) == "Grade $i" ? 'selected' : '' }}>Grade {{ $i }}</option>
+                        @endfor
+                    </select>
+                </div>
+
+                {{-- Gender --}}
+                <div class="mb-4">
+                    <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Gender</label>
+                    <select name="gender"
+                            class="w-full border border-gold-300 dark:border-gold-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500">
+                        <option value="">Select Gender</option>
+                        <option value="Male" {{ old('gender', $user->gender) == 'Male' ? 'selected' : '' }}>Male</option>
+                        <option value="Female" {{ old('gender', $user->gender) == 'Female' ? 'selected' : '' }}>Female</option>
+                        <option value="Other" {{ old('gender', $user->gender) == 'Other' ? 'selected' : '' }}>Other</option>
+                    </select>
+                </div>
+
+                {{-- Phone --}}
+                <div class="mb-4">
+                    <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Phone Number</label>
+                    <div class="flex">
+                        <span class="inline-flex items-center px-3 rounded-l-lg border border-r-0 border-gold-300 dark:border-gold-600 bg-gray-50 dark:bg-gray-700 text-gray-500 text-sm">+63</span>
+                        <input type="tel" name="phone" value="{{ old('phone', $user->phone ? substr($user->phone, 3) : '') }}" maxlength="10" placeholder="9123456789"
+                               class="flex-1 border border-gold-300 dark:border-gold-600 dark:bg-gray-700 dark:text-white rounded-r-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500">
+                    </div>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Enter 10-digit number. +63 added automatically.</p>
+                </div>
+
+                {{-- Birthday --}}
+                <div class="mb-6">
+                    <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Birthday</label>
+                    <input type="date" name="birthday" value="{{ old('birthday', optional($user->birthday)->format('Y-m-d')) }}"
+                           class="w-full border border-gold-300 dark:border-gold-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500">
+                </div>
+
+                <div class="flex gap-3">
+                    <button type="submit" class="bg-primary-600 hover:bg-gold-500 text-white font-semibold px-6 py-2 rounded-lg transition shadow-sm">
+                        Save Changes
+                    </button>
+                    <button type="reset" class="bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 font-semibold px-6 py-2 rounded-lg transition">
+                        Reset
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {{-- Change Password Card --}}
+    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gold-200 dark:border-gold-800 overflow-hidden">
+        <div class="px-6 py-4 border-b border-gold-200 dark:border-gold-800 bg-emerald-50 dark:bg-emerald-900/20">
+            <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Change Password</h2>
+            <p class="text-sm text-gray-500 dark:text-gray-400">Keep your account secure</p>
+        </div>
+
+        <div class="p-6">
+            <form method="POST" action="{{ route('profile.password') }}" x-data="{ showCurrent: false, showNew: false, showConfirm: false }">
+                @csrf
+                @method('PUT')
+
+                <div class="mb-4">
+                    <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Current Password</label>
+                    <div class="relative">
+                        <input :type="showCurrent ? 'text' : 'password'" name="current_password" required
+                               class="w-full border border-gold-300 dark:border-gold-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500">
+                        <button type="button" @click="showCurrent = !showCurrent" class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500 hover:text-gray-700">
+                            <svg x-show="!showCurrent" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                            <svg x-show="showCurrent" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/></svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">New Password</label>
+                    <div class="relative">
+                        <input :type="showNew ? 'text' : 'password'" name="new_password" required
+                               class="w-full border border-gold-300 dark:border-gold-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500">
+                        <button type="button" @click="showNew = !showNew" class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500 hover:text-gray-700">
+                            <svg x-show="!showNew" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                            <svg x-show="showNew" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/></svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="mb-6">
+                    <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Confirm New Password</label>
+                    <div class="relative">
+                        <input :type="showConfirm ? 'text' : 'password'" name="new_password_confirmation" required
+                               class="w-full border border-gold-300 dark:border-gold-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500">
+                        <button type="button" @click="showConfirm = !showConfirm" class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500 hover:text-gray-700">
+                            <svg x-show="!showConfirm" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                            <svg x-show="showConfirm" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/></svg>
+                        </button>
+                    </div>
+                </div>
+
+                <button type="submit" class="bg-primary-600 hover:bg-gold-500 text-white font-semibold px-6 py-2 rounded-lg transition shadow-sm">
+                    Update Password
+                </button>
+            </form>
+        </div>
+    </div>
+
+    {{-- Stats Card --}}
+    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gold-200 dark:border-gold-800 overflow-hidden">
+        <div class="px-6 py-4 border-b border-gold-200 dark:border-gold-800 bg-emerald-50 dark:bg-emerald-900/20">
+            <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Activity Summary</h2>
+        </div>
+        <div class="p-6 grid grid-cols-2 gap-6">
+            <div>
+                <p class="text-sm text-gray-500 dark:text-gray-400">Documents Uploaded</p>
+                <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ $documentsCount }}</p>
+            </div>
+            <div>
+                <p class="text-sm text-gray-500 dark:text-gray-400">Financial Transactions</p>
+                <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ $transactionsCount }}</p>
             </div>
         </div>
     </div>
 </div>
-
-<script>
-function toggleAccountStatus(userId, userName, action) {
-    const isDeactivate = action === 'deactivate';
-    const message = isDeactivate 
-        ? `⚠️ Are you sure you want to deactivate ${userName}'s account?\n\nDeactivated accounts cannot log in or access the system until reactivated.\n\nThis action can be undone by activating the account later.`
-        : `✅ Are you sure you want to activate ${userName}'s account?\n\nActivated accounts will be able to log in and access the system again.`;
-    
-    if (confirm(message)) {
-        const button = event.currentTarget;
-        const originalText = button.innerHTML;
-        
-        button.innerHTML = '<svg class="animate-spin w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg> Processing...';
-        button.disabled = true;
-        
-        fetch(`/members/${userId}/${action}`, {
-            method: 'POST',
-            headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert(data.message);
-                setTimeout(() => window.location.reload(), 1000);
-            } else {
-                alert(data.error || 'Failed to process request');
-                button.innerHTML = originalText;
-                button.disabled = false;
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('An error occurred. Please try again.');
-            button.innerHTML = originalText;
-            button.disabled = false;
-        });
-    }
-}
-</script>
-
 @endsection

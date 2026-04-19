@@ -31,6 +31,8 @@ class PermissionMatrixSeeder extends Seeder
         // Admin
         'roles'        => ['manage'],
         'permissions'  => ['manage'],
+        // //Profile
+        // 'profile' => ['view', 'edit'],
     ];
 
     /**
@@ -73,6 +75,11 @@ class PermissionMatrixSeeder extends Seeder
         // Admin
         'roles.manage'        => 'Manage Roles',
         'permissions.manage'  => 'Manage Permissions',
+
+        // //Profile
+        // 'profile.view' => 'View Profile',
+        // 'profile.edit' => 'Edit Profile',
+
     ];
 
     public function run(): void

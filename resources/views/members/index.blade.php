@@ -254,7 +254,7 @@
                         <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide">Verified</th>
                         <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide">Status</th>
                         <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide">Level</th>
-                        <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide">Joined</th>
+                        <th class="text01-left px-4 py-3 text-xs font-semibold uppercase tracking-wide">Joined</th>
                         <th class="text-right px-4 py-3 text-xs font-semibold uppercase tracking-wide">Actions</th>
                     </tr>
                 </thead>
@@ -266,6 +266,8 @@
                         $gradientBg  = $avatarBg[$member->role->name]         ?? 'from-gray-400 to-gray-600';
                         $initials    = strtoupper(substr($member->full_name, 0, 2));
                         $isGuest     = $member->email === $guestEmail;
+                        // For guest account, only show actions to System Admin; Delete always hidden for guest
+                        $canEditGuest = $isGuest && $isSystemAdmin;
                     @endphp
 
                     <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors duration-150">
@@ -340,10 +342,11 @@
 
                         <td class="px-4 py-3">
                             <div class="flex items-center justify-end gap-1.5">
-                                {{-- Guest account: show label, no actions --}}
-                                @if($isGuest)
+                                {{-- Guest account: show actions only to System Admin; no delete --}}
+                                @if($isGuest && !$isSystemAdmin)
                                     <span class="text-xs text-gray-400 dark:text-gray-500 italic px-2 py-1">System Account</span>
                                 @else
+                                    {{-- View button always shown --}}
                                     <a href="{{ route('members.show', $member->id) }}"
                                        class="p-1.5 rounded-lg text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
                                        title="View">
@@ -353,7 +356,8 @@
                                         </svg>
                                     </a>
 
-                                    @if($isSystemAdmin || Gate::allows('members.edit'))
+                                    {{-- Edit button: hide for guest unless system admin --}}
+                                    @if(($isSystemAdmin || Gate::allows('members.edit')) && (!$isGuest || $canEditGuest))
                                     <a href="{{ route('members.edit', $member->id) }}"
                                        class="p-1.5 rounded-lg text-gray-500 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors"
                                        title="Edit">
@@ -363,6 +367,7 @@
                                     </a>
                                     @endif
 
+                                    {{-- History button always shown (even for guest, system admin can see history) --}}
                                     <a href="{{ route('members.edit-history', $member->id) }}"
                                        class="p-1.5 rounded-lg text-gray-500 hover:text-gold-600 hover:bg-gold-50 dark:hover:bg-gold-900/20 transition-colors"
                                        title="History">
@@ -371,7 +376,8 @@
                                         </svg>
                                     </a>
 
-                                    @if(($isSystemAdmin || Gate::allows('members.delete')) && $member->id !== auth()->id())
+                                    {{-- Delete button: never shown for guest --}}
+                                    @if(!$isGuest && ($isSystemAdmin || Gate::allows('members.delete')) && $member->id !== auth()->id())
                                     <button
                                         type="button"
                                         onclick="confirmDelete('{{ $member->id }}', '{{ $member->full_name }}', '{{ $member->role->name }}', '{{ $member->email }}')"
