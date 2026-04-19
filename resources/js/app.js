@@ -456,7 +456,7 @@ document.addEventListener('alpine:init', () => {
 // ============================================
 // INITIALIZE ALPINE AND ANIMATIONS
 // ============================================
-Alpine.start();
+//Alpine.start();
 
 document.addEventListener('DOMContentLoaded', () => {
     window.animations.init();

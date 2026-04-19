@@ -16,11 +16,34 @@ class DocumentController extends Controller
         $this->middleware('auth.custom');
     }
 
+    // -------------------------------------------------------------------------
+    // Guest restriction helper (redirects with flash message)
+    // -------------------------------------------------------------------------
+
+    /**
+     * Redirect guest users back with a friendly message.
+     *
+     * @param string $action Description of the blocked action.
+     * @return \Illuminate\Http\RedirectResponse|null
+     */
+    private function blockGuest(string $action = 'perform this action')
+    {
+        if (Auth::user()->email === 'guest@gmail.com') {
+            return redirect()->route('dashboard')
+                ->with('error', "Guest accounts cannot {$action}.");
+        }
+        return null;
+    }
+
+    // -------------------------------------------------------------------------
+    // Index – guests can view (policy restricts to public)
+    // -------------------------------------------------------------------------
+
     public function index(Request $request)
     {
         $user = Auth::user();
 
-        if ($user->role->level !== 1 && !$user->hasPermission('documents.view')) {
+        if (!$user->hasPermission('documents.view') && $user->role->level !== 1) {
             abort(403, 'You are not authorized to view documents.');
         }
 
@@ -51,10 +74,17 @@ class DocumentController extends Controller
         return view('documents.index', compact('documents', 'categories', 'publicCount', 'privateCount'));
     }
 
+    // -------------------------------------------------------------------------
+    // Create / Store – blocked for guests with redirect + flash
+    // -------------------------------------------------------------------------
+
     public function create()
     {
-        $user = Auth::user();
+        if ($redirect = $this->blockGuest('upload documents')) {
+            return $redirect;
+        }
 
+        $user = Auth::user();
         if ($user->role->level !== 1 && !$user->hasPermission('documents.upload')) {
             abort(403, 'You are not allowed to upload documents.');
         }
@@ -65,8 +95,11 @@ class DocumentController extends Controller
 
     public function store(Request $request)
     {
-        $user = Auth::user();
+        if ($redirect = $this->blockGuest('upload documents')) {
+            return $redirect;
+        }
 
+        $user = Auth::user();
         if ($user->role->level !== 1 && !$user->hasPermission('documents.upload')) {
             abort(403);
         }
@@ -98,25 +131,30 @@ class DocumentController extends Controller
             ->with('success', 'Document uploaded successfully.');
     }
 
+    // -------------------------------------------------------------------------
+    // Show – policy handles access (guests can view public docs)
+    // -------------------------------------------------------------------------
+
     public function show(Document $document)
     {
-        $user = Auth::user();
-
-        if ($user->role->level !== 1 && !$user->hasPermission('documents.view')) {
-            abort(403);
-        }
-
+        $this->authorize('view', $document);
         return view('documents.show', compact('document'));
     }
 
+    // -------------------------------------------------------------------------
+    // Edit / Update – blocked for guests
+    // -------------------------------------------------------------------------
+
     public function edit(Document $document)
     {
-        $user = Auth::user();
+        if ($redirect = $this->blockGuest('edit documents')) {
+            return $redirect;
+        }
 
+        $user = Auth::user();
         if ($user->role->level !== 1 && !$user->hasPermission('documents.edit')) {
             abort(403);
         }
-
         if ($user->role->level !== 1 && $document->owner_id !== $user->id) {
             abort(403, 'You can only edit your own documents.');
         }
@@ -127,12 +165,14 @@ class DocumentController extends Controller
 
     public function update(Request $request, Document $document)
     {
-        $user = Auth::user();
+        if ($redirect = $this->blockGuest('edit documents')) {
+            return $redirect;
+        }
 
+        $user = Auth::user();
         if ($user->role->level !== 1 && !$user->hasPermission('documents.edit')) {
             abort(403);
         }
-
         if ($user->role->level !== 1 && $document->owner_id !== $user->id) {
             abort(403);
         }
@@ -160,14 +200,20 @@ class DocumentController extends Controller
             ->with('success', 'Document updated successfully.');
     }
 
+    // -------------------------------------------------------------------------
+    // Destroy – blocked for guests
+    // -------------------------------------------------------------------------
+
     public function destroy(Document $document)
     {
-        $user = Auth::user();
+        if ($redirect = $this->blockGuest('delete documents')) {
+            return $redirect;
+        }
 
+        $user = Auth::user();
         if ($user->role->level !== 1 && !$user->hasPermission('documents.delete')) {
             abort(403);
         }
-
         if ($user->role->level !== 1 && $document->owner_id !== $user->id) {
             abort(403);
         }
@@ -178,16 +224,24 @@ class DocumentController extends Controller
             ->with('success', 'Document deleted successfully.');
     }
 
+    // -------------------------------------------------------------------------
+    // Download / Preview – policy handles access
+    // -------------------------------------------------------------------------
+
     public function download(Document $document)
     {
         $this->authorize('view', $document);
 
         if (!$document->currentVersion) {
-            abort(404, 'No file available for this document.');
+            return redirect()->back()->with('error', 'No file available for this document.');
         }
 
         $version = $document->currentVersion;
         $path = $version->file_path;
+
+        if (!Storage::disk('private')->exists($path)) {
+            return redirect()->back()->with('error', 'File not found on server. Please contact administrator.');
+        }
 
         return Storage::disk('private')->download($path, $version->file_name);
     }
@@ -195,21 +249,33 @@ class DocumentController extends Controller
     public function preview(Document $document)
     {
         $this->authorize('view', $document);
-        
+
         if (!$document->currentVersion) {
             abort(404);
         }
-        
+
         $version = $document->currentVersion;
         $path = $version->file_path;
-        
+
+        if (!Storage::disk('private')->exists($path)) {
+            abort(404);
+        }
+
         return response()->file(Storage::disk('private')->path($path), [
             'Content-Type' => $version->mime_type,
         ]);
     }
 
+    // -------------------------------------------------------------------------
+    // Trash / Restore / Force Delete – blocked for guests
+    // -------------------------------------------------------------------------
+
     public function trash()
     {
+        if ($redirect = $this->blockGuest('access trash')) {
+            return $redirect;
+        }
+
         $this->authorize('viewAny', Document::class);
         $documents = Document::onlyTrashed()->with('owner')->latest()->paginate(15);
         return view('documents.trash', compact('documents'));
@@ -217,17 +283,27 @@ class DocumentController extends Controller
 
     public function restore($id)
     {
+        if ($redirect = $this->blockGuest('restore documents')) {
+            return $redirect;
+        }
+
         $document = Document::onlyTrashed()->findOrFail($id);
         $this->authorize('restore', $document);
         $document->restore();
-        return redirect()->route('documents.trash')->with('success', 'Document restored.');
+        return redirect()->route('documents.trash')
+            ->with('success', 'Document restored successfully.');
     }
 
     public function forceDelete($id)
     {
+        if ($redirect = $this->blockGuest('permanently delete documents')) {
+            return $redirect;
+        }
+
         $document = Document::onlyTrashed()->findOrFail($id);
         $this->authorize('forceDelete', $document);
         $document->forceDelete();
-        return redirect()->route('documents.trash')->with('success', 'Document permanently deleted.');
+        return redirect()->route('documents.trash')
+            ->with('success', 'Document permanently deleted.');
     }
 }

@@ -16,7 +16,7 @@
     <form method="GET" class="flex flex-wrap gap-3 items-end">
         <div class="flex-1 min-w-[200px]">
             <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Search</label>
-            <input type="text" name="search" value="{{ request('search') }}" placeholder="Title or description..."
+            <input type="text" name="249_search" value="{{ request('search') }}" placeholder="Title or description..."
                    class="w-full px-3 py-1.5 border border-gold-300 dark:border-gold-600 rounded-lg text-sm dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-gold-500">
         </div>
         <div>
@@ -51,22 +51,25 @@
             @endif
         </div>
 
-        {{-- Action Buttons (Trash + Upload) --}}
-        <div class="ml-auto flex gap-2">
-            <a href="{{ route('documents.trash') }}"
-               class="inline-flex items-center gap-1 bg-gray-600 hover:bg-gray-700 text-white text-sm font-semibold px-3 py-1.5 rounded-lg transition">
-                🗑️ Trash
-            </a>
-            @if(auth()->user()->hasPermission('documents.upload'))
-                <a href="{{ route('documents.create') }}"
-                   class="inline-flex items-center gap-1 bg-emerald-600 hover:bg-gold-500 text-white text-sm font-semibold px-3 py-1.5 rounded-lg transition">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-                    </svg>
-                    Upload Document
+        {{-- Action Buttons (Trash + Upload) - hidden for guest --}}
+        @php $isGuest = auth()->user()->email === 'guest@gmail.com'; @endphp
+        @if(!$isGuest)
+            <div class="ml-auto flex gap-2">
+                <a href="{{ route('documents.trash') }}"
+                   class="inline-flex items-center gap-1 bg-gray-600 hover:bg-gray-700 text-white text-sm font-semibold px-3 py-1.5 rounded-lg transition">
+                    🗑️ Trash
                 </a>
-            @endif
-        </div>
+                @if(auth()->user()->hasPermission('documents.upload'))
+                    <a href="{{ route('documents.create') }}"
+                       class="inline-flex items-center gap-1 bg-emerald-600 hover:bg-gold-500 text-white text-sm font-semibold px-3 py-1.5 rounded-lg transition">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                        </svg>
+                        Upload Document
+                    </a>
+                @endif
+            </div>
+        @endif
     </form>
 </div>
 
@@ -181,7 +184,8 @@
                                 <span class="text-xs text-gray-400 px-2" title="No file attached">—</span>
                             @endif
 
-                            @if(auth()->user()->hasPermission('documents.manage'))
+                            {{-- Edit & Delete – hidden for guest --}}
+                            @if(!$isGuest && auth()->user()->hasPermission('documents.manage'))
                             <a href="{{ route('documents.edit', $doc) }}" class="p-1.5 text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition" title="Edit">✏️</a>
                             <form method="POST" action="{{ route('documents.destroy', $doc) }}" onsubmit="return confirm('Delete this document?')" class="inline">
                                 @csrf @method('DELETE')
@@ -199,7 +203,7 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                             </svg>
                             <p class="text-gray-500 dark:text-gray-400">No documents found.</p>
-                            @if(auth()->user()->hasPermission('documents.upload'))
+                            @if(!$isGuest && auth()->user()->hasPermission('documents.upload'))
                             <a href="{{ route('documents.create') }}" class="text-emerald-600 hover:underline text-sm">Upload your first document</a>
                             @endif
                         </div>
@@ -217,7 +221,7 @@
     @endif
 </div>
 
-{{-- Preview Modal --}}
+{{-- Preview Modal (unchanged) --}}
 <div id="preview-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4" style="background:rgba(0,0,0,0.7)">
     <div class="relative bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
         <div class="flex items-center justify-between px-5 py-3 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">

@@ -19,7 +19,7 @@ class ProfileController extends Controller
     public function index()
     {
         
-            if (auth()->user()->email === 'guest@vsulhs.edu.ph') {
+            if (auth()->user()->email === 'guest@gmail.com') {
         abort(403, 'Guest accounts cannot access profile settings.');
     }
         $user = Auth::user()->load('role');
@@ -32,7 +32,10 @@ class ProfileController extends Controller
 
     public function updateProfile(Request $request)
     {
-        $user = Auth::user();
+         if (auth()->user()->email === 'guest@gmail.com') {
+            abort(403, 'Guest accounts cannot be modified.');
+        }
+            $user = Auth::user();
 
         $validated = $request->validate([
             'full_name'  => 'required|string|max:255',
@@ -121,6 +124,9 @@ class ProfileController extends Controller
 
     public function updateTheme(Request $request)
     {
+         if (auth()->user()->email === 'guest@gmail.com') {
+            abort(403, 'Guest accounts cannot be modified.');
+        }
         $user = Auth::user();
 
         $validated = $request->validate([

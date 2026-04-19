@@ -76,11 +76,17 @@ class FinancialController extends Controller
 
     public function createIncome()
     {
+        if ($response = $this->authorizeFinancialAction('create')) {
+            return $response;
+        }
         return view('financial.create', ['type' => 'income']);
     }
 
     public function createExpense()
     {
+        if ($response = $this->authorizeFinancialAction('create')) {
+            return $response;
+        }
         return view('financial.create', ['type' => 'expense']);
     }
 
@@ -90,11 +96,17 @@ class FinancialController extends Controller
 
     public function storeIncome(Request $request)
     {
+        if ($response = $this->authorizeFinancialAction('create')) {
+            return $response;
+        }
         return $this->storeTransaction($request, 'income');
     }
 
     public function storeExpense(Request $request)
     {
+        if ($response = $this->authorizeFinancialAction('create')) {
+            return $response;
+        }
         return $this->storeTransaction($request, 'expense');
     }
 
@@ -123,6 +135,9 @@ class FinancialController extends Controller
 
     public function edit(int $id)
     {
+        if ($response = $this->authorizeFinancialAction('edit')) {
+            return $response;
+        }
         $transaction = FinancialTransaction::with('documents')->findOrFail($id);
 
         if ($transaction->status !== 'pending') {
@@ -134,6 +149,9 @@ class FinancialController extends Controller
 
     public function update(Request $request, int $id)
     {
+        if ($response = $this->authorizeFinancialAction('edit')) {
+            return $response;
+        }
         $transaction = FinancialTransaction::with('documents')->findOrFail($id);
 
         if ($transaction->status !== 'pending') {
@@ -146,12 +164,10 @@ class FinancialController extends Controller
             $transaction->update($validated);
 
             if ($request->hasFile('receipt')) {
-                // Remove old receipt document(s)
                 foreach ($transaction->documents as $doc) {
                     $transaction->documents()->detach($doc->id);
                     $doc->delete();
                 }
-
                 $this->attachReceiptDocument($transaction, $request->file('receipt'), 'Updated receipt');
             }
         });
@@ -166,6 +182,9 @@ class FinancialController extends Controller
 
     public function approve(int $id)
     {
+        if ($response = $this->authorizeFinancialAction('approve')) {
+            return $response;
+        }
         $transaction = FinancialTransaction::findOrFail($id);
 
         if ($transaction->status !== 'pending') {
@@ -183,6 +202,9 @@ class FinancialController extends Controller
 
     public function reject(int $id)
     {
+        if ($response = $this->authorizeFinancialAction('approve')) {
+            return $response;
+        }
         $transaction = FinancialTransaction::findOrFail($id);
 
         if ($transaction->status !== 'pending') {
@@ -200,6 +222,9 @@ class FinancialController extends Controller
 
     public function destroy(int $id)
     {
+        if ($response = $this->authorizeFinancialAction('delete')) {
+            return $response;
+        }
         $transaction = FinancialTransaction::with('documents')->findOrFail($id);
 
         if ($transaction->status === 'approved') {
@@ -207,7 +232,6 @@ class FinancialController extends Controller
         }
 
         DB::transaction(function () use ($transaction) {
-            // Delete attached documents (cascade deletes versions/files)
             foreach ($transaction->documents as $doc) {
                 $doc->delete();
             }
@@ -222,12 +246,43 @@ class FinancialController extends Controller
     // Private Helpers
     // -------------------------------------------------------------------------
 
+    /**
+     * Authorize financial action. Returns a redirect response if unauthorized,
+     * or null if authorized.
+     */
+    private function authorizeFinancialAction(string $action)
+    {
+        $user = Auth::user();
+
+        // Block guest completely
+        if ($user->email === 'guest@gmail.com') {
+            return redirect()->route('dashboard')
+                ->with('error', 'Guest accounts cannot perform financial actions.');
+        }
+
+        // Permission mapping
+        $permissionMap = [
+            'create'  => 'financial.create',
+            'edit'    => 'financial.edit',
+            'delete'  => 'financial.delete',
+            'approve' => 'financial.approve',
+        ];
+
+        $permission = $permissionMap[$action] ?? null;
+
+        if ($permission && !$user->hasPermission($permission) && $user->role->level !== 1) {
+            return back()->with('error', "You do not have permission to {$action} financial records.");
+        }
+
+        return null; // Authorized
+    }
+
     private function validateTransaction(Request $request): array
     {
-        return $request->validate([
+        $validated = $request->validate([
             'description'      => ['required', 'string', 'max:255'],
             'amount'           => ['required', 'numeric', 'min:0.01', 'max:9999999.99'],
-            'category'         => ['nullable', 'string', 'max:100'],
+            'category_final'   => ['nullable', 'string', 'max:100'],
             'transaction_date' => ['required', 'date', 'before_or_equal:today'],
             'notes'            => ['nullable', 'string', 'max:1000'],
             'receipt'          => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
@@ -236,13 +291,15 @@ class FinancialController extends Controller
             'transaction_date.before_or_equal' => 'Transaction date cannot be in the future.',
             'receipt.max'                 => 'Receipt file must not exceed 5MB.',
         ]);
-            $validated['category'] = $validated['category_final'] ?? null;
-             unset($validated['category_final']);
 
-            return $validated;
+        $validated['category'] = $validated['category_final'] ?? null;
+        unset($validated['category_final']);
+
+        return $validated;
     }
 
-private function attachReceiptDocument(FinancialTransaction $transaction, $file, ?string $changeNotes = null)    {
+    private function attachReceiptDocument(FinancialTransaction $transaction, $file, ?string $changeNotes = null)
+    {
         $document = Document::create([
             'title'       => 'Receipt: ' . $transaction->description,
             'description' => 'Attached to financial transaction #' . $transaction->id,
@@ -251,7 +308,6 @@ private function attachReceiptDocument(FinancialTransaction $transaction, $file,
             'owner_id'    => Auth::id(),
         ]);
 
-        // Assumes your Document model has an addVersion() method
         $document->addVersion($file, $changeNotes ?? 'Receipt uploaded');
 
         $transaction->documents()->attach($document->id);

@@ -11,11 +11,21 @@
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 
-    {{-- Alpine Collapse plugin must come BEFORE Alpine core --}}
-    <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.x.x/dist/cdn.min.js"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
+
+    {{-- Flash Notifications (corrected JSON output) --}}
+       @if(session()->hasAny(['success','error','warning','info']))
+        @php
+            $flashData = [
+                'success' => session('success'),
+                'error'   => session('error'),
+                'warning' => session('warning'),
+                'info'    => session('info'),
+            ];
+        @endphp
+        <meta name="flash-data" content="{{ json_encode($flashData) }}">
+    @endif
 
     <style>
         /* ─────────────────────────────────────────────────────────────
@@ -117,7 +127,7 @@
             background: var(--emerald);
             color: white;
         }
-        /* FIX: sidebar tooltip for collapsed state */
+        /* sidebar tooltip for collapsed state */
         .sidebar-tooltip {
             position: absolute;
             left: calc(100% + 8px);
@@ -153,13 +163,6 @@
         .page-transition {
             animation: fadeSlideUp 0.4s ease-out forwards;
         }
-        .notification {
-            animation: slideInDown 0.3s ease-out forwards;
-        }
-        @keyframes slideInDown {
-            from { opacity: 0; transform: translateY(-20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
     </style>
 
     @stack('styles')
@@ -169,7 +172,7 @@
     x-data="{
         sidebarCollapsed: localStorage.getItem('sidebarCollapsed') === 'true',
         mobileMenuOpen: false,
-        adminOpen: {{ Str::startsWith(Route::currentRouteName() ?? '', 'admin.') || in_array(Route::currentRouteName() ?? '', ['settings.index','admin.auditlogs']) ? 'true' : 'false' }},
+        adminOpen: {{ Str::startsWith(Route::currentRouteName() ?? '', 'admin.') || in_array(Route::currentRouteName() ?? '', ['admin.auditlogs.index']) ? 'true' : 'false' }},
         activeRoute: '{{ Route::currentRouteName() ?? '' }}',
         userDropdownOpen: false
     }"
@@ -190,7 +193,7 @@
     :style="sidebarCollapsed ? 'width: 4.5rem' : 'width: 16rem'"
     aria-label="Main navigation"
 >
-    {{-- Brand with logo image instead of profile icon --}}
+    {{-- Brand --}}
     <div class="flex items-center h-16 px-4 border-b border-border dark:border-gray-800 flex-shrink-0"
          :class="sidebarCollapsed ? 'justify-center' : 'justify-start'">
         <div x-show="!sidebarCollapsed" class="flex items-center gap-2">
@@ -212,37 +215,61 @@
         @php
             $user = auth()->user();
             $userRole = $user?->role->name ?? 'Guest';
-            $canSee = function(array $roles, string $permission = '') use ($user, $userRole) {
+            $isGuest = $user && $user->email === 'guest@gmail.com';
+
+            $canSee = function(array $roles, string $permission = '') use ($user, $userRole, $isGuest) {
                 if (!$user) return false;
+                if ($isGuest) return false;
                 if (in_array($userRole, $roles)) return true;
                 if ($permission && $user->hasPermission($permission)) return true;
                 return false;
             };
+
             $menuItems = [
-                ['label' => 'Dashboard',       'route' => 'dashboard',         'icon' => 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6', 'visible' => (bool) $user],
-                ['label' => 'Members',         'route' => 'members.index',     'icon' => 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z', 'visible' => $canSee(['System Administrator','Supreme Admin','Supreme Officer','Org Admin','Org Officer','Club Adviser'], 'members.view')],
-                ['label' => 'Documents',       'route' => 'documents.index',   'icon' => 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z', 'visible' => $canSee(['System Administrator','Supreme Admin','Supreme Officer','Org Admin','Org Officer','Club Adviser'], 'documents.view')],
-                ['label' => 'Financial Records', 'route' => 'financial.index',   'icon' => 'M9 7h6m0 10v-3m-6 3v-3m-6 3h18M3 5h18a2 2 0 012 2v10a2 2 0 01-2 2H3a2 2 0 01-2-2V7a2 2 0 012-2z', 'visible' => $canSee(['System Administrator','Supreme Admin','Supreme Officer','Org Admin','Org Officer','Club Adviser'], 'financial.view')],
+                [
+                    'label'   => 'Dashboard',
+                    'route'   => 'dashboard',
+                    'icon'    => 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6',
+                    'visible' => (bool) $user,
+                ],
+                [
+                    'label'   => 'Members',
+                    'route'   => 'members.index',
+                    'icon'    => 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z',
+                    'visible' => $canSee(['System Administrator','Supreme Admin','Supreme Officer','Org Admin','Org Officer','Club Adviser'], 'members.view'),
+                ],
+                [
+                    'label'   => 'Documents',
+                    'route'   => 'documents.index',
+                    'icon'    => 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
+                    'visible' => $isGuest || $canSee(['System Administrator','Supreme Admin','Supreme Officer','Org Admin','Org Officer','Club Adviser'], 'documents.view'),
+                ],
+                [
+                    'label'   => 'Financial Records',
+                    'route'   => 'financial.index',
+                    'icon'    => 'M9 7h6m0 10v-3m-6 3v-3m-6 3h18M3 5h18a2 2 0 012 2v10a2 2 0 01-2 2H3a2 2 0 01-2-2V7a2 2 0 012-2z',
+                    'visible' => $isGuest || $canSee(['System Administrator','Supreme Admin','Supreme Officer','Org Admin','Org Officer','Club Adviser'], 'financial.view'),
+                ],
             ];
+
             $adminMenu = [
                 'label' => 'Administration',
                 'icon'  => 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z',
                 'submenu' => [
-                    ['label' => 'User Management',  'route' => 'admin.users.index',              'icon' => 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z', 'visible' => $canSee(['System Administrator','Supreme Admin','Club Adviser'], 'admin.users')],
-                    ['label' => 'Roles',            'route' => 'admin.roles.index',              'icon' => 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z', 'visible' => $canSee(['System Administrator'], 'admin.roles')],
-                    ['label' => 'Permissions',      'route' => 'admin.permissions.index',        'icon' => 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z', 'visible' => $canSee(['System Administrator'], 'admin.permissions')],
-                    ['label' => 'Audit Logs',       'route' => 'admin.auditlogs.index', 'icon' => '...', 'visible' => $canSee(['System Administrator'], 'admin.audit')],
-                    ['label' => 'Doc Categories',   'route' => 'admin.document-categories.index','icon' => 'M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a2 2 0 012-2h2z', 'visible' => $canSee(['System Administrator'], 'admin.document-categories')],
+                    ['label' => 'User Management', 'route' => 'admin.users.index',               'icon' => 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z',                                                                                                                                                                                                                              'visible' => $canSee(['System Administrator','Supreme Admin','Club Adviser'], 'admin.users')],
+                    ['label' => 'Roles',            'route' => 'admin.roles.index',               'icon' => 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z',                                                                                                                                           'visible' => $canSee(['System Administrator'], 'admin.roles')],
+                    ['label' => 'Permissions',      'route' => 'admin.permissions.index',         'icon' => 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z',                                                                                                                                           'visible' => $canSee(['System Administrator'], 'admin.permissions')],
+                    ['label' => 'Audit Logs',       'route' => 'admin.auditlogs.index',           'icon' => 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z',                                                                                                                                                                                                                                                                                               'visible' => $canSee(['System Administrator','Supreme Admin'], 'audit.view')],
+                    ['label' => 'Doc Categories',   'route' => 'admin.document-categories.index', 'icon' => 'M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a2 2 0 012-2h2z',                                                                                                                                                                                                                   'visible' => $canSee(['System Administrator'], 'admin.document-categories')],
                 ],
             ];
-            $adminMenu['visible'] = collect($adminMenu['submenu'])->contains('visible', true);
-            
-            // Hide profile for guest user
+            $adminMenu['visible'] = !$isGuest && collect($adminMenu['submenu'])->contains('visible', true);
+
             $profileItem = [
                 'label'   => 'My Profile',
                 'route'   => 'profile.index',
                 'icon'    => 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z',
-                'visible' => (bool) $user && $user->email !== 'guest@gmail.com'
+                'visible' => (bool) $user && !$isGuest,
             ];
 
             $isActive = fn(string $routeName) =>
@@ -397,9 +424,9 @@
                      id="user-dropdown-menu"
                      role="menu"
                      class="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 z-50 overflow-hidden">
-                    
+
                     {{-- Profile link – hidden for guest --}}
-                    @if(auth()->user()->email !== 'guest@vsulhs.edu.ph')
+                    @if(auth()->user()->email !== 'guest@gmail.com')
                         <a href="{{ route('profile.index') }}"
                            role="menuitem"
                            class="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-emerald-100 dark:hover:bg-gold/20 hover:text-emerald-700 dark:hover:text-white transition">
@@ -410,7 +437,7 @@
                         </a>
                         <hr class="border-gray-200 dark:border-gray-700">
                     @endif
-                    
+
                     <form method="POST" action="{{ route('logout') }}">
                         @csrf
                         <button type="submit"
@@ -433,23 +460,15 @@
     </main>
 </div>
 
+{{-- ══════════════════════ NOTIFICATION CONTAINER ══════════════════════ --}}
 <div id="notification-container"
      class="fixed top-20 right-6 z-50 space-y-2 w-80 pointer-events-none"
      aria-live="polite"
      aria-atomic="true"></div>
 
-@if(session()->hasAny(['success','error','warning','info']))
+{{-- ══════════════════════ SCRIPTS ══════════════════════ --}}
 <script>
-    document.addEventListener('DOMContentLoaded', () => {
-        @if(session('success')) showNotification(@json(session('success')), 'success'); @endif
-        @if(session('error'))   showNotification(@json(session('error')), 'error'); @endif
-        @if(session('warning')) showNotification(@json(session('warning')), 'warning'); @endif
-        @if(session('info'))    showNotification(@json(session('info')), 'info'); @endif
-    });
-</script>
-@endif
-
-<script>
+    // Define Alpine theme store BEFORE Alpine initializes
     document.addEventListener('alpine:init', () => {
         Alpine.store('theme', {
             dark: localStorage.getItem('dark') === 'true',
@@ -458,7 +477,9 @@
                 localStorage.setItem('dark', this.dark);
                 document.documentElement.classList.toggle('dark', this.dark);
             },
-            init() { document.documentElement.classList.toggle('dark', this.dark); },
+            init() {
+                document.documentElement.classList.toggle('dark', this.dark);
+            }
         });
         Alpine.store('theme').init();
     });
@@ -483,43 +504,6 @@
                 .observe(topbar, { attributes: true, attributeFilter: ['class', 'style'] });
         }
     });
-
-    function showNotification(message, type = 'success') {
-        const container = document.getElementById('notification-container');
-        if (!container) return;
-        const colors = { success: 'bg-emerald-600', error: 'bg-red-600', warning: 'bg-amber-600', info: 'bg-blue-600' };
-        const iconPaths = {
-            success: 'M5 13l4 4L19 7',
-            error:   'M6 18L18 6M6 6l12 12',
-            warning: 'M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z',
-            info:    'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
-        };
-        const el = document.createElement('div');
-        el.className = `notification pointer-events-auto ${colors[type] ?? colors.success} text-white text-sm font-medium px-4 py-3 rounded-xl shadow-lg flex items-center gap-2`;
-        el.setAttribute('role', 'alert');
-        const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-        icon.setAttribute('class', 'w-4 h-4 flex-shrink-0');
-        icon.setAttribute('fill', 'none');
-        icon.setAttribute('stroke', 'currentColor');
-        icon.setAttribute('viewBox', '0 0 24 24');
-        icon.setAttribute('aria-hidden', 'true');
-        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-        path.setAttribute('stroke-linecap', 'round');
-        path.setAttribute('stroke-linejoin', 'round');
-        path.setAttribute('stroke-width', '2');
-        path.setAttribute('d', iconPaths[type] ?? iconPaths.success);
-        icon.appendChild(path);
-        const span = document.createElement('span');
-        span.textContent = message;
-        el.appendChild(icon);
-        el.appendChild(span);
-        container.appendChild(el);
-        setTimeout(() => {
-            el.style.transition = 'opacity 0.3s ease';
-            el.style.opacity = '0';
-            setTimeout(() => el.remove(), 300);
-        }, 4000);
-    }
 </script>
 
 @stack('scripts')
