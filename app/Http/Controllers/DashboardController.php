@@ -5,7 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use App\Models\Document;
 use App\Models\FinancialTransaction;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 
 class DashboardController extends Controller
 {
@@ -14,7 +16,7 @@ class DashboardController extends Controller
         $this->middleware('auth.custom');
     }
 
-    public function index()
+    public function index(Request $request)
     {
         $user = Auth::user()->load('role');
 
@@ -22,7 +24,10 @@ class DashboardController extends Controller
             ? asset('storage/' . $user->avatar)
             : asset('images/default-avatar.png');
 
-        // ── Statistics ──────────────────────────────────────────────────────────
+        // Get the selected range (default: monthly)
+        $range = $request->get('range', 'monthly');
+
+        // ── Member Statistics ───────────────────────────────────────────────────
         $totalMembers = User::count();
         $activeMembers = User::where('is_active', true)->count();
         $officersCount = User::whereHas('role', function ($q) {
@@ -39,7 +44,7 @@ class DashboardController extends Controller
             ->whereYear('created_at', now()->year)
             ->count();
 
-        // ── Recent documents ────────────────────────────────────────────────────
+        // ── Recent Documents ────────────────────────────────────────────────────
         $recentDocuments = null;
         if ($user->hasPermission('documents.view')) {
             $recentDocuments = Document::with('uploader')
@@ -48,12 +53,13 @@ class DashboardController extends Controller
                 ->get();
         }
 
-        // ── FINANCIAL DATA (replaces budgets) ───────────────────────────────────
-        // Cast to float to avoid number_format() errors
-        $totalIncome   = (float) FinancialTransaction::income()->approved()->sum('amount');
-        $totalExpense  = (float) FinancialTransaction::expense()->approved()->sum('amount');
-        $netBalance    = $totalIncome - $totalExpense;
+        // ── Financial Summaries (approved only) ─────────────────────────────────
+        $incomeTotal   = (float) FinancialTransaction::income()->approved()->sum('amount');
+        $expenseTotal  = (float) FinancialTransaction::expense()->approved()->sum('amount');
+        $balance       = $incomeTotal - $expenseTotal;
+        $pendingTransactions = FinancialTransaction::pending()->count();
 
+        // ── Recent Transactions ─────────────────────────────────────────────────
         $recentTransactions = null;
         if ($user->hasPermission('financial.view')) {
             $recentTransactions = FinancialTransaction::with('user')
@@ -66,30 +72,30 @@ class DashboardController extends Controller
                 });
         }
 
-        // ── Pending approvals (for financial transactions) ──────────────────────
+        // ── Pending Approvals ───────────────────────────────────────────────────
         $pendingApprovals = [];
         $pendingTasksCount = 0;
         if ($user->hasPermission('financial.approve')) {
-            $pendingTransactions = FinancialTransaction::pending()
+            $pendingTransactionsForApproval = FinancialTransaction::pending()
                 ->with('user')
                 ->take(3)
                 ->get();
-            foreach ($pendingTransactions as $tx) {
+            foreach ($pendingTransactionsForApproval as $tx) {
                 $pendingApprovals[] = [
-                    'title' => $tx->description,
-                    'type' => ucfirst($tx->type) . ' Transaction',
+                    'title'     => $tx->description,
+                    'type'      => ucfirst($tx->type) . ' Transaction',
                     'submitter' => $tx->user->full_name ?? $tx->user->email,
-                    'link' => route('financial.index', ['filter' => 'pending']),
+                    'link'      => route('financial.index', ['filter' => 'pending']),
                 ];
             }
             $pendingTasksCount = FinancialTransaction::pending()->count();
         }
 
-        // ── ROLE DESCRIPTION – dynamic from database ───────────────────────────
+        // ── Role Description ────────────────────────────────────────────────────
         $roleDescription = $user->role->description
             ?? 'Manage your account and participate in organization activities.';
 
-        // ── User badges (unchanged) ────────────────────────────────────────────
+        // ── User Badges ─────────────────────────────────────────────────────────
         $userBadges = [];
         if ($user->role->name === 'System Administrator') {
             $userBadges[] = ['color' => 'purple', 'text' => 'System Admin'];
@@ -104,32 +110,10 @@ class DashboardController extends Controller
             $userBadges[] = ['color' => 'emerald', 'text' => 'Org Leader'];
         }
 
-        // ── CHART DATA (monthly income vs expenses) ────────────────────────────
-        $currentYear = now()->year;
-        $months = [];
-        $monthlyIncome = [];
-        $monthlyExpense = [];
+        // ── Chart Data (with caching) ───────────────────────────────────────────
+        $chartData = $this->getChartData($range);
 
-        for ($i = 1; $i <= 12; $i++) {
-            $months[] = date('M', mktime(0, 0, 0, $i, 1));
-
-            $income = (float) FinancialTransaction::income()
-                ->approved()
-                ->whereYear('transaction_date', $currentYear)
-                ->whereMonth('transaction_date', $i)
-                ->sum('amount');
-
-            $expense = (float) FinancialTransaction::expense()
-                ->approved()
-                ->whereYear('transaction_date', $currentYear)
-                ->whereMonth('transaction_date', $i)
-                ->sum('amount');
-
-            $monthlyIncome[] = $income;
-            $monthlyExpense[] = $expense;
-        }
-
-        // ── Return view with all required variables ────────────────────────────
+        // Return the view with all required variables
         return view('dashboard.index', compact(
             'user',
             'totalMembers',
@@ -138,16 +122,85 @@ class DashboardController extends Controller
             'newMembersThisMonth',
             'recentDocuments',
             'recentTransactions',
-            'totalIncome',
-            'totalExpense',
-            'netBalance',
+            'incomeTotal',
+            'expenseTotal',
+            'balance',
+            'pendingTransactions',
             'pendingApprovals',
             'pendingTasksCount',
             'roleDescription',
             'userBadges',
-            'months',
-            'monthlyIncome',
-            'monthlyExpense'
+            'chartData',
+            'range'
         ));
+    }
+
+    /**
+     * Get chart data based on the selected range (weekly, monthly, yearly).
+     * Results are cached for 1 hour to improve performance.
+     */
+    private function getChartData(string $range): array
+    {
+        $cacheKey = "dashboard_chart_{$range}";
+
+        return Cache::remember($cacheKey, 3600, function () use ($range) {
+            $labels = [];
+            $incomeData = [];
+            $expenseData = [];
+
+            if ($range === 'weekly') {
+                // Last 7 days
+                for ($i = 6; $i >= 0; $i--) {
+                    $date = now()->subDays($i)->format('Y-m-d');
+                    $labels[] = now()->subDays($i)->format('D, M d');
+
+                    $incomeData[] = FinancialTransaction::income()->approved()
+                        ->whereDate('transaction_date', $date)
+                        ->sum('amount');
+
+                    $expenseData[] = FinancialTransaction::expense()->approved()
+                        ->whereDate('transaction_date', $date)
+                        ->sum('amount');
+                }
+            } elseif ($range === 'yearly') {
+                // Last 12 months
+                for ($i = 11; $i >= 0; $i--) {
+                    $date = now()->subMonths($i);
+                    $labels[] = $date->format('M Y');
+
+                    $incomeData[] = FinancialTransaction::income()->approved()
+                        ->whereYear('transaction_date', $date->year)
+                        ->whereMonth('transaction_date', $date->month)
+                        ->sum('amount');
+
+                    $expenseData[] = FinancialTransaction::expense()->approved()
+                        ->whereYear('transaction_date', $date->year)
+                        ->whereMonth('transaction_date', $date->month)
+                        ->sum('amount');
+                }
+            } else {
+                // Default: monthly (current year)
+                $currentYear = now()->year;
+                for ($i = 1; $i <= 12; $i++) {
+                    $labels[] = now()->setMonth($i)->format('M');
+
+                    $incomeData[] = FinancialTransaction::income()->approved()
+                        ->whereYear('transaction_date', $currentYear)
+                        ->whereMonth('transaction_date', $i)
+                        ->sum('amount');
+
+                    $expenseData[] = FinancialTransaction::expense()->approved()
+                        ->whereYear('transaction_date', $currentYear)
+                        ->whereMonth('transaction_date', $i)
+                        ->sum('amount');
+                }
+            }
+
+            return [
+                'labels'  => $labels,
+                'income'  => $incomeData,
+                'expense' => $expenseData,
+            ];
+        });
     }
 }

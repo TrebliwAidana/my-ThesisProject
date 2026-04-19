@@ -6,6 +6,7 @@ use App\Models\Permission;
 use App\Models\Role;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
 
 class PermissionController extends Controller
 {
@@ -16,6 +17,13 @@ class PermissionController extends Controller
 
     public function index(Request $request)
     {
+        $user = Auth::user();
+
+        // Permission check: System Admin bypasses, otherwise requires permissions.view
+        if ($user->role->level !== 1 && !$user->hasPermission('permissions.view')) {
+            abort(403, 'You do not have permission to view the permission matrix.');
+        }
+
         // Only fetch visible roles for the permission matrix
         $roles = Role::where('is_visible', true)
             ->with('permissions')
@@ -47,6 +55,8 @@ class PermissionController extends Controller
             'roles',
             'permissions',
             'admin',
+            'audit',          
+            'activities', 
         ];
 
         $allPerms = Permission::all();
@@ -77,6 +87,13 @@ class PermissionController extends Controller
 
     public function update(Request $request, Role $role)
     {
+        $user = Auth::user();
+
+        // Permission check: System Admin bypasses, otherwise requires permissions.edit
+        if ($user->role->level !== 1 && !$user->hasPermission('permissions.edit')) {
+            abort(403, 'You do not have permission to edit permissions.');
+        }
+
         // Ensure the role being updated is visible (prevent tampering)
         if (!$role->is_visible) {
             return redirect()->route('admin.permissions.index')

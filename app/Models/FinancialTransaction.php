@@ -127,4 +127,13 @@ class FinancialTransaction extends Model
             $transaction->documents()->detach();
         });
     }
+    public function auditor()
+    {
+        return $this->belongsTo(User::class, 'audited_by');
+    }
+    public function scopeAudited($query)
+    {
+        return $query->where('status', 'audited');
+    }
+
 }

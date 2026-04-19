@@ -31,6 +31,7 @@
                 @php
                     $statusColors = [
                         'pending'  => 'bg-amber-100 text-amber-700',
+                        'audited'  => 'bg-blue-100 text-blue-700',
                         'approved' => 'bg-emerald-100 text-emerald-700',
                         'rejected' => 'bg-red-100 text-red-700',
                     ];
@@ -54,7 +55,7 @@
             </div>
             <div>
                 <p class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Category</p>
-                <p class="text-gray-800 dark:text-white">{{ $transaction->category ?? '—' }}</p>
+                <p class="text-gray-800 dark:text-white">{{ $transaction->17_category ?? '—' }}</p>
             </div>
             <div>
                 <p class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Submitted By</p>
@@ -64,10 +65,24 @@
                 <p class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Submitted On</p>
                 <p class="text-gray-800 dark:text-white">{{ $transaction->created_at->format('M d, Y h:i A') }}</p>
             </div>
-            @if($transaction->approver)
+
+            {{-- Auditor Info (if audited) --}}
+            @if($transaction->audited_at)
+            <div>
+                <p class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Audited By</p>
+                <p class="text-gray-800 dark:text-white">{{ $transaction->auditor->full_name ?? '—' }}</p>
+            </div>
+            <div>
+                <p class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Audited On</p>
+                <p class="text-gray-800 dark:text-white">{{ $transaction->audited_at->format('M d, Y h:i A') }}</p>
+            </div>
+            @endif
+
+            {{-- Approver Info (if approved) --}}
+            @if($transaction->approved_at)
             <div>
                 <p class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Approved By</p>
-                <p class="text-gray-800 dark:text-white">{{ $transaction->approver->full_name }}</p>
+                <p class="text-gray-800 dark:text-white">{{ $transaction->approver->full_name ?? '—' }}</p>
             </div>
             <div>
                 <p class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Approved On</p>
@@ -87,13 +102,15 @@
         @endif
 
         {{-- Receipt --}}
-        @if($transaction->receipt_path)
+        @if($transaction->documents->isNotEmpty())
         <div>
             <p class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Receipt</p>
-            <a href="{{ Storage::url($transaction->receipt_path) }}" target="_blank"
-               class="inline-flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800 font-medium">
-                📎 View attached receipt
-            </a>
+            @foreach($transaction->documents as $doc)
+                <a href="{{ route('documents.show', $doc->id) }}" target="_blank"
+                   class="inline-flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800 font-medium">
+                    📎 View Receipt
+                </a>
+            @endforeach
         </div>
         @endif
 
@@ -101,27 +118,14 @@
 
         {{-- Actions --}}
         <div class="flex flex-wrap gap-3">
-            @if($transaction->status === 'pending')
+            @php $user = auth()->user(); @endphp
+
+            {{-- Treasurer / Creator: Edit & Delete (only when pending) --}}
+            @if($transaction->status === 'pending' && $user->can('update', $transaction))
                 <a href="{{ route('financial.edit', $transaction->id) }}"
                    class="bg-gold-500 hover:bg-gold-600 text-white text-sm font-semibold px-4 py-2 rounded-lg transition">
                     Edit
                 </a>
-
-                <form method="POST" action="{{ route('financial.approve', $transaction->id) }}" style="display:inline;">
-                    @csrf
-                    @method('PATCH') 
-                    <button type="submit" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded">
-                        Approve
-                    </button>
-                </form>
-
-                <form method="POST" action="{{ route('financial.reject', $transaction->id) }}" style="display:inline;">
-                    @csrf
-                    @method('PATCH') 
-                    <button type="submit" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded">
-                        Reject
-                    </button>
-                </form>
 
                 <form method="POST" action="{{ route('financial.destroy', $transaction->id) }}"
                       class="inline" onsubmit="return confirm('Delete this transaction?')">
@@ -129,6 +133,36 @@
                     <button type="submit"
                             class="bg-gray-200 hover:bg-red-600 hover:text-white text-gray-700 text-sm font-semibold px-4 py-2 rounded-lg transition">
                         Delete
+                    </button>
+                </form>
+            @endif
+
+            {{-- Auditor: Mark as Audited (only when pending) --}}
+            @if($transaction->status === 'pending' && $user->hasPermission('financial.audit'))
+                <form method="POST" action="{{ route('financial.audit', $transaction->id) }}" style="display:inline;">
+                    @csrf
+                    @method('PATCH')
+                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">
+                        Mark as Audited
+                    </button>
+                </form>
+            @endif
+
+            {{-- Adviser / Final Approver: Approve & Reject (only when audited) --}}
+            @if($transaction->status === 'audited' && $user->hasPermission('financial.approve'))
+                <form method="POST" action="{{ route('financial.approve', $transaction->id) }}" style="display:inline;">
+                    @csrf
+                    @method('PATCH')
+                    <button type="submit" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded">
+                        Approve
+                    </button>
+                </form>
+
+                <form method="POST" action="{{ route('financial.reject', $transaction->id) }}" style="display:inline;">
+                    @csrf
+                    @method('PATCH')
+                    <button type="submit" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded">
+                        Reject
                     </button>
                 </form>
             @endif

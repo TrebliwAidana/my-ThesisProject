@@ -8,6 +8,7 @@ use App\Models\Permission;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Auth;
 use App\Notifications\NewUserWelcomeNotification;
 use App\Notifications\PasswordResetNotification;
 
@@ -19,6 +20,13 @@ class AdminController extends Controller
 
     public function roles(Request $request)
     {
+        $user = Auth::user();
+
+        // 权限检查：System Admin 自动通过，否则需要 roles.view
+        if ($user->role->level !== 1 && !$user->hasPermission('roles.view')) {
+            abort(403, 'You do not have permission to view roles.');
+        }
+
         $query = Role::withCount('users')->with('permissions', 'users');
         if (!$request->boolean('show_hidden')) {
             $query->where('is_visible', true);
@@ -32,12 +40,22 @@ class AdminController extends Controller
 
     public function createRole()
     {
+        $user = Auth::user();
+        if ($user->role->level !== 1 && !$user->hasPermission('roles.create')) {
+            abort(403, 'You do not have permission to create roles.');
+        }
+
         $roles = Role::where('is_visible', true)->orderBy('level')->get();
         return view('admin.roles.create', compact('roles'));
     }
 
     public function editRole(int $id)
     {
+        $user = Auth::user();
+        if ($user->role->level !== 1 && !$user->hasPermission('roles.edit')) {
+            abort(403, 'You do not have permission to edit roles.');
+        }
+
         $role = Role::with('permissions')->findOrFail($id);
         if (!$role->is_visible) {
             return redirect()->route('admin.roles.index')
@@ -49,6 +67,11 @@ class AdminController extends Controller
 
     public function storeRole(Request $request)
     {
+        $user = Auth::user();
+        if ($user->role->level !== 1 && !$user->hasPermission('roles.create')) {
+            abort(403);
+        }
+
         $validated = $request->validate([
             'name'         => ['required', 'string', 'max:100', 'unique:roles,name'],
             'abbreviation' => ['nullable', 'string', 'max:10'],
@@ -87,6 +110,11 @@ class AdminController extends Controller
 
     public function updateRole(Request $request, int $id)
     {
+        $user = Auth::user();
+        if ($user->role->level !== 1 && !$user->hasPermission('roles.edit')) {
+            abort(403);
+        }
+
         $role = Role::findOrFail($id);
 
         if (!$role->is_visible) {
@@ -140,6 +168,11 @@ class AdminController extends Controller
 
     public function destroyRole(int $id)
     {
+        $user = Auth::user();
+        if ($user->role->level !== 1 && !$user->hasPermission('roles.delete')) {
+            abort(403);
+        }
+
         $role = Role::findOrFail($id);
 
         if (!$role->is_visible) {
@@ -162,24 +195,18 @@ class AdminController extends Controller
         }
     }
 
-    /**
-     * Toggle the visibility of a role (hide/unhide).
-     * Hidden roles are excluded from all user-facing role selectors.
-     *
-     * Only two things are blocked:
-     *   1. Hiding the System Administrator role (id = 1) — never allowed.
-     *   2. Hiding your own role — would lock yourself out.
-     * Everything else, including predefined roles with users, can be hidden freely.
-     */
     public function toggleRoleVisibility(Role $role)
     {
-        // System Administrator can never be hidden
+        $user = Auth::user();
+        if ($user->role->level !== 1 && !$user->hasPermission('roles.edit')) {
+            abort(403);
+        }
+
         if ($role->id === 1) {
             return redirect()->route('admin.roles.index', ['show_hidden' => request()->boolean('show_hidden')])
                 ->with('error', '⚠️ The System Administrator role cannot be hidden.');
         }
 
-        // Prevent hiding your own role
         if (auth()->user()->role_id == $role->id && $role->is_visible) {
             return redirect()->route('admin.roles.index', ['show_hidden' => request()->boolean('show_hidden')])
                 ->with('error', '⚠️ You cannot hide your own role.');
@@ -198,6 +225,11 @@ class AdminController extends Controller
 
     public function users(Request $request)
     {
+        $authUser = Auth::user();
+        if ($authUser->role->level !== 1 && !$authUser->hasPermission('users.view')) {
+            abort(403, 'You do not have permission to view users.');
+        }
+
         $query = User::with('role');
 
         if ($request->boolean('trashed')) {
@@ -236,7 +268,6 @@ class AdminController extends Controller
         $verifiedEmails = User::whereNotNull('email_verified_at')->count();
         $recentLogins   = User::where('last_login_at', '>=', now()->subDays(7))->count();
 
-        // Only visible roles appear in filter dropdowns
         $roles = Role::where('is_visible', true)->get();
 
         return view('admin.users.index', compact(
@@ -247,13 +278,22 @@ class AdminController extends Controller
 
     public function createUser()
     {
-        // Only visible roles are offered when creating a user
+        $authUser = Auth::user();
+        if ($authUser->role->level !== 1 && !$authUser->hasPermission('users.create')) {
+            abort(403, 'You do not have permission to create users.');
+        }
+
         $roles = Role::where('is_visible', true)->orderBy('level')->get();
         return view('admin.users.create', compact('roles'));
     }
 
     public function storeUser(Request $request)
     {
+        $authUser = Auth::user();
+        if ($authUser->role->level !== 1 && !$authUser->hasPermission('users.create')) {
+            abort(403);
+        }
+
         $validated = $request->validate([
             'first_name'  => ['required', 'string', 'max:255'],
             'middle_name' => ['nullable', 'string', 'max:255'],
@@ -274,7 +314,6 @@ class AdminController extends Controller
             'phone.unique'      => 'This phone number is already in use.',
         ]);
 
-        // Ensure the selected role is visible (guards against tampered form submissions)
         $selectedRole = Role::where('id', $validated['role_id'])
             ->where('is_visible', true)
             ->first();
@@ -343,14 +382,23 @@ class AdminController extends Controller
 
     public function editUser(int $id)
     {
+        $authUser = Auth::user();
+        if ($authUser->role->level !== 1 && !$authUser->hasPermission('users.edit')) {
+            abort(403);
+        }
+
         $user  = User::findOrFail($id);
-        // Only visible roles offered when editing a user
         $roles = Role::where('is_visible', true)->orderBy('level')->get();
         return view('admin.users.edit', compact('user', 'roles'));
     }
 
     public function updateUser(Request $request, int $id)
     {
+        $authUser = Auth::user();
+        if ($authUser->role->level !== 1 && !$authUser->hasPermission('users.edit')) {
+            abort(403);
+        }
+
         $user = User::findOrFail($id);
 
         $validated = $request->validate([
@@ -373,7 +421,6 @@ class AdminController extends Controller
             'phone.unique'      => 'This phone number is already in use.',
         ]);
 
-        // Ensure the new role is visible (guards against tampered form submissions)
         $selectedRole = Role::where('id', $validated['role_id'])
             ->where('is_visible', true)
             ->first();
@@ -404,9 +451,6 @@ class AdminController extends Controller
             $validated['position'] = null;
         }
 
-        // Only protect System Administrator (id = 1) from losing its last user.
-        // All other roles, including predefined ones, can have their last user
-        // moved freely so the role can then be hidden.
         if ($user->role_id != $validated['role_id']) {
             $oldRole = Role::find($user->role_id);
             if ($oldRole && $oldRole->id === 1) {
@@ -451,15 +495,21 @@ class AdminController extends Controller
 
     public function destroyUser(int $id)
     {
+        $authUser = Auth::user();
+        if ($authUser->role->level !== 1 && !$authUser->hasPermission('users.delete')) {
+            abort(403);
+        }
+
         $user = User::findOrFail($id);
 
         if ($user->id === auth()->id()) {
             return back()->with('error', 'You cannot delete your own account.');
         }
 
-        // Only protect System Administrator (id = 1) from losing its last user.
-        // All other roles, including predefined ones, can have their last user
-        // deleted freely so the role can then be hidden.
+        if ($user->email === 'guest@gmail.com') {
+            return back()->with('error', 'The shared guest account cannot be deleted.');
+        }
+
         if ($user->role && $user->role->id === 1) {
             $count = User::where('role_id', 1)->count();
             if ($count <= 1) {
@@ -476,6 +526,11 @@ class AdminController extends Controller
 
     public function resetPassword(int $id)
     {
+        $authUser = Auth::user();
+        if ($authUser->role->level !== 1 && !$authUser->hasPermission('users.edit')) {
+            abort(403);
+        }
+
         $user        = User::findOrFail($id);
         $newPassword = Str::random(10);
         $user->password = Hash::make($newPassword);
@@ -489,6 +544,11 @@ class AdminController extends Controller
 
     public function sendVerificationEmail(int $id)
     {
+        $authUser = Auth::user();
+        if ($authUser->role->level !== 1 && !$authUser->hasPermission('users.edit')) {
+            abort(403);
+        }
+
         $user = User::findOrFail($id);
 
         if ($user->hasVerifiedEmail()) {
@@ -509,11 +569,12 @@ class AdminController extends Controller
 
     public function verifyEmailManually($id)
     {
-        $user = User::findOrFail($id);
-
-        if (!in_array(auth()->user()->role->level, [1, 2])) {
-            return back()->with('error', 'Unauthorized.');
+        $authUser = Auth::user();
+        if ($authUser->role->level !== 1 && !$authUser->hasPermission('users.edit')) {
+            abort(403);
         }
+
+        $user = User::findOrFail($id);
 
         if ($user->hasVerifiedEmail()) {
             return back()->with('info', 'User already verified.');
@@ -526,6 +587,11 @@ class AdminController extends Controller
 
     public function restoreUser(int $id)
     {
+        $authUser = Auth::user();
+        if ($authUser->role->level !== 1 && !$authUser->hasPermission('users.delete')) {
+            abort(403);
+        }
+
         $user = User::withTrashed()->findOrFail($id);
         $user->restore();
         return redirect()->route('admin.users.index')
@@ -534,6 +600,11 @@ class AdminController extends Controller
 
     public function forceDeleteUser(int $id)
     {
+        $authUser = Auth::user();
+        if ($authUser->role->level !== 1 && !$authUser->hasPermission('users.delete')) {
+            abort(403);
+        }
+
         $user     = User::withTrashed()->findOrFail($id);
         $userName = $user->full_name;
         $user->forceDelete();
@@ -547,11 +618,10 @@ class AdminController extends Controller
 
     private function shouldClearYearLevel($roleId, $position): bool
     {
-        $alwaysNonStudent = [1, 6, 8]; // System Admin, Club Adviser, Guest
+        $alwaysNonStudent = [1, 6, 8];
         if (in_array($roleId, $alwaysNonStudent)) {
             return true;
         }
-        // Supreme Admin without SSLG President position also clears year level
         if ($roleId == 2 && $position !== 'SSLG President') {
             return true;
         }

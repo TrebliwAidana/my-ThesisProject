@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
+use App\Services\AuditLogger;
 
 class DocumentController extends Controller
 {
@@ -115,7 +116,7 @@ class DocumentController extends Controller
         $validated['category'] = $validated['category_final'] ?? null;
         unset($validated['category_final']);
 
-        DB::transaction(function () use ($validated, $request, $user) {
+        DB::transaction(function () use ($validated, $request, $5_user) {
             $document = Document::create([
                 'title'       => $validated['title'],
                 'description' => $validated['description'] ?? null,
@@ -125,6 +126,8 @@ class DocumentController extends Controller
             ]);
 
             $document->addVersion($request->file('file'), 'Initial upload');
+
+            AuditLogger::log('created', $document, "Document: {$document->title}", [], $document->toArray());
         });
 
         return redirect()->route('documents.index')
@@ -132,12 +135,21 @@ class DocumentController extends Controller
     }
 
     // -------------------------------------------------------------------------
-    // Show – policy handles access (guests can view public docs)
+    // Show – policy handles access; guests redirected on private docs
     // -------------------------------------------------------------------------
 
     public function show(Document $document)
     {
-        $this->authorize('view', $document);
+        try {
+            $this->authorize('view', $document);
+        } catch (\Illuminate\Auth\Access\AuthorizationException $e) {
+            if (Auth::user()->email === 'guest@gmail.com') {
+                return redirect()->route('dashboard')
+                    ->with('error', 'This document is private. Guest accounts can only view public documents.');
+            }
+            throw $e;
+        }
+
         return view('documents.show', compact('document'));
     }
 
@@ -187,6 +199,7 @@ class DocumentController extends Controller
         $validated['category'] = $validated['category_final'] ?? null;
         unset($validated['category_final']);
 
+        $oldData = $document->getOriginal();
         $document->update($validated);
 
         if ($request->hasFile('file')) {
@@ -195,6 +208,8 @@ class DocumentController extends Controller
             ]);
             $document->addVersion($request->file('file'), $request->input('change_notes', 'Updated document'));
         }
+
+        AuditLogger::log('updated', $document, "Document: {$document->title}", $oldData, $document->getChanges());
 
         return redirect()->route('documents.index')
             ->with('success', 'Document updated successfully.');
@@ -218,6 +233,8 @@ class DocumentController extends Controller
             abort(403);
         }
 
+        AuditLogger::log('deleted', $document, "Document: {$document->title}", $document->toArray(), []);
+
         $document->delete();
 
         return redirect()->route('documents.index')
@@ -225,12 +242,20 @@ class DocumentController extends Controller
     }
 
     // -------------------------------------------------------------------------
-    // Download / Preview – policy handles access
+    // Download / Preview – policy handles access; guests redirected
     // -------------------------------------------------------------------------
 
     public function download(Document $document)
     {
-        $this->authorize('view', $document);
+        try {
+            $this->authorize('view', $document);
+        } catch (\Illuminate\Auth\Access\AuthorizationException $e) {
+            if (Auth::user()->email === 'guest@gmail.com') {
+                return redirect()->route('dashboard')
+                    ->with('error', 'You do not have permission to download this document.');
+            }
+            throw $e;
+        }
 
         if (!$document->currentVersion) {
             return redirect()->back()->with('error', 'No file available for this document.');
@@ -248,7 +273,15 @@ class DocumentController extends Controller
 
     public function preview(Document $document)
     {
-        $this->authorize('view', $document);
+        try {
+            $this->authorize('view', $document);
+        } catch (\Illuminate\Auth\Access\AuthorizationException $e) {
+            if (Auth::user()->email === 'guest@gmail.com') {
+                return redirect()->route('dashboard')
+                    ->with('error', 'You do not have permission to preview this document.');
+            }
+            throw $e;
+        }
 
         if (!$document->currentVersion) {
             abort(404);
@@ -290,6 +323,9 @@ class DocumentController extends Controller
         $document = Document::onlyTrashed()->findOrFail($id);
         $this->authorize('restore', $document);
         $document->restore();
+
+        AuditLogger::log('restored', $document, "Document: {$document->title}");
+
         return redirect()->route('documents.trash')
             ->with('success', 'Document restored successfully.');
     }
@@ -302,7 +338,11 @@ class DocumentController extends Controller
 
         $document = Document::onlyTrashed()->findOrFail($id);
         $this->authorize('forceDelete', $document);
+
+        AuditLogger::log('force_deleted', $document, "Document: {$document->title}", $document->toArray(), []);
+
         $document->forceDelete();
+
         return redirect()->route('documents.trash')
             ->with('success', 'Document permanently deleted.');
     }

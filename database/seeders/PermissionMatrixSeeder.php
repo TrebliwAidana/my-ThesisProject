@@ -5,94 +5,110 @@ namespace Database\Seeders;
 use Illuminate\Database\Seeder;
 use App\Models\Permission;
 use App\Models\Role;
+use Illuminate\Support\Facades\DB;
 
 class PermissionMatrixSeeder extends Seeder
 {
     /**
-     * Permission matrix.
+     * Permission matrix – fine‑grained CRUD.
      * Format: 'module' => ['action', ...]
      */
     private array $matrix = [
-        // Core modules
-        'users'        => ['view', 'manage'],
-        'members'      => ['view', 'manage'],
-        'documents'    => ['view', 'manage', 'trash', 'restore', 'force-delete'],
-        
-        // Financial module
-        'financial'    => ['view', 'create', 'edit', 'delete', 'approve', 'review'],
-        
+        // Users – fine‑grained
+        'users'     => ['view', 'create', 'edit', 'delete'],
+
+        // Members – fine‑grained
+        'members'   => ['view', 'create', 'edit', 'delete'],
+
+        // Documents – fine‑grained + trash actions
+        'documents' => ['view', 'create', 'edit', 'delete', 'trash', 'restore', 'force-delete'],
+
+        // Financial – fine‑grained + audit / approve / review
+        'financial' => ['view', 'create', 'edit', 'delete', 'audit', 'approve', 'review'],
+
         // Reports
-        'reports'      => ['view', 'generate', 'public'],
-        
+        'reports'   => ['view', 'generate', 'public'],
+
         // Audit & monitoring
-        'audit'        => ['view', 'remarks'],
-        'activities'   => ['monitor'],
-        
-        // Admin
-        'roles'        => ['manage'],
-        'permissions'  => ['manage'],
-        // //Profile
-        // 'profile' => ['view', 'edit'],
+        'audit'     => ['view', 'remarks'],
+        'activities'=> ['monitor'],
+
+        // Roles – fine‑grained
+        'roles'     => ['view', '17_create', 'edit', 'delete'],
+
+        // Permissions – view + edit (no create/delete needed)
+        'permissions' => ['view', 'edit'],
     ];
 
     /**
-     * Human-readable label overrides.
+     * Human‑readable labels.
      */
     private array $labels = [
-        // Users & Members
-        'users.view'          => 'View Users',
-        'users.manage'        => 'Manage Users',
-        'members.view'        => 'View Members',
-        'members.manage'      => 'Manage Members',
-        
+        // Users
+        'users.view'   => 'View Users',
+        'users.create' => 'Create Users',
+        'users.edit'   => 'Edit Users',
+        'users.delete' => 'Delete Users',
+
+        // Members
+        'members.view'   => 'View Members',
+        'members.create' => 'Create Members',
+        'members.edit'   => 'Edit Members',
+        'members.delete' => 'Delete Members',
+
         // Documents
-        'documents.view'       => 'View Documents',
-        'documents.manage'     => 'Manage Documents',
-        'documents.trash'      => 'View Trash / Deleted Documents',
-        'documents.restore'    => 'Restore Documents',
-        'documents.force-delete' => 'Permanently Delete Documents',
-        
+        'documents.view'         => 'View Documents',
+        'documents.create'       => 'Upload Documents',
+        'documents.edit'         => 'Edit Documents',
+        'documents.delete'       => 'Delete Documents',
+        'documents.trash'        => 'View Trash',
+        'documents.restore'      => 'Restore Documents',
+        'documents.force-delete' => 'Permanently Delete',
+
         // Financial
-        'financial.view'      => 'View Financial Records',
-        'financial.create'    => 'Record Income/Expense',
-        'financial.edit'      => 'Edit Transactions',
-        'financial.delete'    => 'Delete Transactions',
-        'financial.approve'   => 'Approve Transactions',
-        'financial.review'    => 'Review Transactions',
-        
+        'financial.view'    => 'View Financial Records',
+        'financial.create'  => 'Record Income/Expense',
+        'financial.edit'    => 'Edit Transactions',
+        'financial.delete'  => 'Delete Transactions',
+        'financial.audit'   => 'Audit Transactions',
+        'financial.approve' => 'Approve Transactions',
+        'financial.review'  => 'Review Transactions',
+
         // Reports
-        'reports.view'        => 'View Reports',
-        'reports.generate'    => 'Generate Reports',
-        'reports.public'      => 'View Public Reports',
-        
+        'reports.view'     => 'View Reports',
+        'reports.generate' => 'Generate Reports',
+        'reports.public'   => 'View Public Reports',
+
         // Audit
-        'audit.view'          => 'View Audit Logs',
-        'audit.remarks'       => 'Add Audit Remarks',
-        
+        'audit.view'    => 'View Audit Logs',
+        'audit.remarks' => 'Add Audit Remarks',
+
         // Activities
-        'activities.monitor'  => 'Monitor Activities',
-        
-        // Admin
-        'roles.manage'        => 'Manage Roles',
-        'permissions.manage'  => 'Manage Permissions',
+        'activities.monitor' => 'Monitor Activities',
 
-        // //Profile
-        // 'profile.view' => 'View Profile',
-        // 'profile.edit' => 'Edit Profile',
+        // Roles
+        'roles.view'   => 'View Roles',
+        'roles.create' => 'Create Roles',
+        'roles.edit'   => 'Edit Roles',
+        'roles.delete' => 'Delete Roles',
 
+        // Permissions
+        'permissions.view' => 'View Permissions',
+        'permissions.edit' => 'Edit Permissions',
     ];
 
     public function run(): void
     {
-        // ── 1. Upsert all permissions ─────────────────────────────────────────
+        // 1. Upsert all permissions
         foreach ($this->matrix as $module => $actions) {
             foreach ($actions as $action) {
                 $slug  = "{$module}.{$action}";
                 $label = $this->labels[$slug] ?? ucwords("{$action} {$module}");
 
                 Permission::updateOrCreate(
-                    ['slug' => $slug, 'name' => $label],
+                    ['slug' => $slug], 
                     [
+                        'name'   => $label,
                         'module' => $module,
                         'action' => $action,
                         'label'  => $label,
@@ -103,88 +119,84 @@ class PermissionMatrixSeeder extends Seeder
 
         $this->command->info('Permissions seeded: ' . Permission::count() . ' total.');
 
-        // ── 2. Assign permissions to roles ────────────────────────────────────
+        // 2. Assign permissions to roles
         $this->assignRolePermissions();
     }
 
     private function assignRolePermissions(): void
     {
-        $all = Permission::pluck('id', 'slug'); // ['documents.view' => 1, ...]
+        $all = Permission::pluck('id', 'slug');
 
-        // Define permission sets per role (using slugs)
         $matrix = [
-            // System Administrator – everything
             'System Administrator' => $all->keys()->toArray(),
 
-            // Supreme Admin – full access except system permissions
-            'Supreme Admin' => $all->except(['roles.manage', 'permissions.manage'])->keys()->toArray(),
+            'Supreme Admin' => $all->except([
+                'roles.create', 'roles.edit', 'roles.delete',
+                'permissions.edit'
+            ])->keys()->toArray(),
 
-            // Supreme Officer – similar to Org Admin but higher level
             'Supreme Officer' => [
                 'users.view',
-                'members.view', 'members.manage',
-                'documents.view', 'documents.manage', 'documents.trash', 'documents.restore', 'documents.force-delete',
-                'financial.view', 'financial.create', 'financial.edit', 'financial.delete', 'financial.approve', 'financial.review',
+                'members.view', 'members.create', 'members.edit', 'members.delete',
+                'documents.view', 'documents.create', 'documents.edit', 'documents.delete',
+                'documents.trash', 'documents.restore', 'documents.force-delete',
+                'financial.view', 'financial.create', 'financial.edit', 'financial.delete',
+                'financial.audit', 'financial.approve', 'financial.review',
                 'reports.view', 'reports.generate',
                 'audit.view', 'audit.remarks',
                 'activities.monitor',
             ],
 
-            // Org Admin – full organisation management
             'Org Admin' => [
-                'members.view', 'members.manage',
-                'documents.view', 'documents.manage', 'documents.trash', 'documents.restore', 'documents.force-delete',
-                'financial.view', 'financial.create', 'financial.edit', 'financial.delete', 'financial.approve', 'financial.review',
+                'members.view', 'members.create', 'members.edit', 'members.delete',
+                'documents.view', 'documents.create', 'documents.edit', 'documents.delete',
+                'documents.trash', 'documents.restore', 'documents.force-delete',
+                'financial.view', 'financial.create', 'financial.edit', 'financial.delete',
+                'financial.audit', 'financial.approve', 'financial.review',
                 'reports.view', 'reports.generate',
                 'audit.view',
                 'activities.monitor',
             ],
 
-            // Org Officer – operational
             'Org Officer' => [
                 'members.view',
-                'documents.view', 'documents.manage', 'documents.trash', 'documents.restore',
+                'documents.view', 'documents.create', 'documents.edit', 'documents.delete',
+                'documents.trash', 'documents.restore',
                 'financial.view', 'financial.create', 'financial.edit', 'financial.delete',
                 'reports.view', 'reports.generate',
             ],
 
-            // Club Adviser – approval and oversight
             'Club Adviser' => [
                 'members.view',
                 'documents.view', 'documents.trash', 'documents.restore',
-                'financial.view', 'financial.approve', 'financial.review',
+                'financial.view', 'financial.audit', 'financial.approve', 'financial.review',
                 'reports.view',
                 'audit.view',
                 'activities.monitor',
             ],
 
-            // Treasurer – full transaction management + reports
             'Treasurer' => [
                 'financial.view', 'financial.create', 'financial.edit', 'financial.delete',
                 'reports.view', 'reports.generate',
             ],
 
-            // Auditor – review and audit
             'Auditor' => [
-                'financial.view', 'financial.review',
+                'financial.view', 'financial.audit', 'financial.review',
                 'reports.view',
                 'audit.view', 'audit.remarks',
             ],
 
-            // Member – read‑only
             'Member' => [
                 'financial.view',
                 'reports.view',
             ],
 
-            // Guest – only public reports
             'Guest' => [
                 'reports.public',
             ],
 
-            // Additional role: Admin/Adviser (if you have it separately)
             'Admin/Adviser' => [
-                'financial.approve', 'financial.review',
+                'financial.audit', 'financial.approve', 'financial.review',
                 'reports.view',
                 'activities.monitor',
             ],
@@ -204,7 +216,6 @@ class PermissionMatrixSeeder extends Seeder
                 ->values()
                 ->toArray();
 
-            // Sync (replace) permissions for this role
             $role->permissions()->sync($ids);
 
             $this->command->line("  {$roleName}: " . count($ids) . ' permissions assigned.');

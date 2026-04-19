@@ -469,4 +469,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
+// Compatibility alias for older Alpine components expecting showNotification
+window.showNotification = (message, type = 'success') => {
+    window.notificationManager?.show(type, message);
+};
+
 export default window.animations;

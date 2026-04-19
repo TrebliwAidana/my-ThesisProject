@@ -16,16 +16,13 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Http\Request;
+use App\Http\Controllers\LandingController;
 use Illuminate\Support\Facades\Log;
 
 
+
 // ── Root redirect ─────────────────────────────────────────────────────────────
-Route::get('/', function () {
-    if (Auth::check()) {
-        return redirect()->route('dashboard');
-    }
-    return view('landing');
-})->name('landing');
+Route::get('/', [LandingController::class, 'index'])->name('landing');
 
 // ── Guest ─────────────────────────────────────────────────────────────────────
 Route::middleware('guest')->group(function () {
@@ -125,6 +122,9 @@ Route::middleware(['auth.custom', 'verified'])->group(function () {
         // Expense
         Route::get('/expense/create', [FinancialController::class, 'createExpense'])->name('expense.create');
         Route::post('/expense',       [FinancialController::class, 'storeExpense'])->name('expense.store');
+
+        //audit
+        Route::patch('/{id}/audit', [FinancialController::class, 'audit'])->name('audit');
     
         // Edit / Update
         Route::get('/{id}/edit',      [FinancialController::class, 'edit'])->name('edit');

@@ -66,7 +66,65 @@
         <div class="absolute top-0 right-0 -mt-8 -mr-8 w-64 h-64 bg-white/5 rounded-full blur-3xl"></div>
     </div>
 
-    {{-- Stats Grid (unchanged financial stats) --}}
+    {{-- Summary Cards (Income, Expense, Balance, Pending) --}}
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="bg-white dark:bg-gray-800 rounded-xl border border-gold-200 dark:border-gold-800 p-4 shadow-sm">
+            <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Total Income</p>
+            <p class="text-2xl font-bold text-emerald-600">₱{{ number_format($incomeTotal, 2) }}</p>
+            <p class="text-xs text-gray-400 mt-1">Approved income</p>
+        </div>
+        <div class="bg-white dark:bg-gray-800 rounded-xl border border-gold-200 dark:border-gold-800 p-4 shadow-sm">
+            <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Total Expenses</p>
+            <p class="text-2xl font-bold text-red-500">₱{{ number_format($expenseTotal, 2) }}</p>
+            <p class="text-xs text-gray-400 mt-1">Approved expenses</p>
+        </div>
+        <div class="bg-white dark:bg-gray-800 rounded-xl border border-gold-200 dark:border-gold-800 p-4 shadow-sm">
+            <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Balance</p>
+            <p class="text-2xl font-bold {{ $balance >= 0 ? 'text-emerald-600' : 'text-red-600' }}">
+                ₱{{ number_format($balance, 2) }}
+            </p>
+            <p class="text-xs text-gray-400 mt-1">Net balance</p>
+        </div>
+        <div class="bg-white dark:bg-gray-800 rounded-xl border border-gold-200 dark:border-gold-800 p-4 shadow-sm">
+            <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Pending</p>
+            <p class="text-2xl font-bold text-amber-500">{{ $pendingTransactions }}</p>
+            <p class="text-xs text-gray-400 mt-1">Awaiting action</p>
+        </div>
+    </div>
+
+    {{-- Financial Chart with Range Toggle (Weekly / Monthly / Yearly) --}}
+    <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gold-200 dark:border-gold-800 p-6">
+        <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg flex items-center justify-center">
+                    <svg class="w-4 h-4 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                    </svg>
+                </div>
+                <h3 class="font-semibold text-gray-900 dark:text-white">Income vs Expenses</h3>
+            </div>
+            {{-- Range Toggle Buttons --}}
+            <div class="flex gap-2">
+                <a href="{{ route('dashboard', ['range' => 'weekly']) }}"
+                   class="px-3 py-1 text-xs rounded-lg {{ $range === 'weekly' ? 'bg-emerald-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300' }} transition">
+                    Weekly
+                </a>
+                <a href="{{ route('dashboard', ['range' => 'monthly']) }}"
+                   class="px-3 py-1 text-xs rounded-lg {{ $range === 'monthly' ? 'bg-emerald-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300' }} transition">
+                    Monthly
+                </a>
+                <a href="{{ route('dashboard', ['range' => 'yearly']) }}"
+                   class="px-3 py-1 text-xs rounded-lg {{ $range === 'yearly' ? 'bg-emerald-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300' }} transition">
+                    Yearly
+                </a>
+            </div>
+        </div>
+        <div class="relative h-64">
+            <canvas id="financialChart"></canvas>
+        </div>
+    </div>
+
+    {{-- Stats Grid (unchanged, but kept for context) --}}
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         <div class="group bg-white dark:bg-gray-800 rounded-2xl border border-gold-200 dark:border-gold-800 p-6 hover:shadow-lg transition-all duration-300 hover:scale-[1.02]">
             <div class="flex items-center justify-between mb-4">
@@ -121,7 +179,7 @@
         </div>
     </div>
 
-    {{-- Quick Actions (Updated: Add Income / Add Expense) --}}
+    {{-- Quick Actions --}}
     <div class="flex flex-wrap gap-3">
         @if($user->hasPermission('members.create'))
         <a href="{{ route('members.create') }}" class="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-gold-500 text-white text-sm font-medium rounded-xl transition shadow-sm">
@@ -139,8 +197,7 @@
             Upload Document
         </a>
         @endif
-        {{-- Financial Record quick actions --}}
-        @if($user->hasPermission('financial.create')) {{-- Use your financial permission --}}
+        @if($user->hasPermission('financial.create'))
         <a href="{{ route('financial.income.create') }}" class="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-gold-500 text-white text-sm font-medium rounded-xl transition shadow-sm">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
@@ -157,7 +214,7 @@
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {{-- Profile Card (unchanged) --}}
+        {{-- Profile Card --}}
         <div class="lg:col-span-1">
             <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gold-200 dark:border-gold-800 overflow-hidden lg:sticky lg:top-6">
                 <div class="bg-gradient-to-r from-primary-600 to-primary-700 px-6 py-5">
@@ -218,21 +275,7 @@
         {{-- Right column --}}
         <div class="lg:col-span-2 space-y-6">
 
-            {{-- Financial Chart: Monthly Income vs Expenses (replaces budget chart) --}}
-            <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gold-200 dark:border-gold-800 p-6">
-                <div class="flex items-center gap-3 mb-4">
-                    <div class="w-8 h-8 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg flex items-center justify-center">
-                        <svg class="w-4 h-4 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
-                        </svg>
-                    </div>
-                    <h3 class="font-semibold text-gray-900 dark:text-white">Monthly Income vs Expenses (₱)</h3>
-                    <p class="text-xs text-gray-500 dark:text-gray-400 ml-auto">{{ now()->year }}</p>
-                </div>
-                <canvas id="financialChart" height="300"></canvas>
-            </div>
-
-            {{-- Recent Documents (unchanged) --}}
+            {{-- Recent Documents --}}
             @if($user->hasPermission('documents.view') && isset($recentDocuments) && count($recentDocuments) > 0)
             <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gold-200 dark:border-gold-800 overflow-hidden">
                 <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gold-800">
@@ -255,7 +298,7 @@
             </div>
             @endif
 
-            {{-- Recent Transactions (replaces Recent Budgets) --}}
+            {{-- Recent Transactions --}}
             @if($user->hasPermission('financial.view') && isset($recentTransactions) && count($recentTransactions) > 0)
             <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gold-200 dark:border-gold-800 overflow-hidden">
                 <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gold-800">
@@ -292,13 +335,12 @@
             </div>
             @endif
 
-            {{-- Pending Approvals (if any, maybe for financial transactions? For now keep but adjust) --}}
+            {{-- Pending Approvals --}}
             @if($user->hasPermission('financial.approve') && isset($pendingApprovals) && count($pendingApprovals) > 0)
             <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gold-200 dark:border-gold-800 overflow-hidden">
                 <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gold-800">
                     <div class="flex items-center gap-3"><div class="w-8 h-8 bg-orange-100 dark:bg-orange-900/30 rounded-lg flex items-center justify-center"><svg class="w-4 h-4 text-orange-600 dark:text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div><h3 class="font-semibold text-gray-900 dark:text-white">Pending Approvals</h3></div>
-                        {{-- Update link to financial approvals if needed --}}
-                        <a href="{{ route('financial.index') }}" class="text-sm text-primary-600 hover:text-primary-700 dark:text-primary-400 font-medium flex items-center gap-1">Review all <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg></a>
+                    <a href="{{ route('financial.index') }}" class="text-sm text-primary-600 hover:text-primary-700 dark:text-primary-400 font-medium flex items-center gap-1">Review all <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg></a>
                 </div>
                 <ul class="divide-y divide-gray-100 dark:divide-gray-700">
                     @foreach($pendingApprovals as $item)
@@ -311,7 +353,7 @@
             </div>
             @endif
 
-            {{-- Financial Summary Card (replaces Budget Summary) --}}
+            {{-- Financial Summary Card --}}
             @if($user->hasPermission('financial.view') && isset($totalIncome))
             <div class="bg-gradient-to-r from-emerald-600 to-teal-600 dark:from-emerald-800 dark:to-teal-800 rounded-2xl p-6">
                 <div class="flex items-center justify-between">
@@ -332,36 +374,40 @@
     </div>
 </div>
 
+{{-- Chart.js Script --}}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         const ctx = document.getElementById('financialChart').getContext('2d');
+        const chartData = @json($chartData);
+
         new Chart(ctx, {
             type: 'bar',
             data: {
-                labels: @json($months),
+                labels: chartData.labels,
                 datasets: [
                     {
                         label: 'Income',
-                        data: @json($monthlyIncome),
-                        backgroundColor: 'rgba(16, 185, 129, 0.6)',
-                        borderColor: 'rgb(16, 185, 129)',
-                        borderWidth: 1,
-                        borderRadius: 4,
+                        data: chartData.income,
+                        backgroundColor: '#059669',
+                        borderRadius: 6
                     },
                     {
-                        label: 'Expenses',
-                        data: @json($monthlyExpense),
-                        backgroundColor: 'rgba(239, 68, 68, 0.6)',
-                        borderColor: 'rgb(239, 68, 68)',
-                        borderWidth: 1,
-                        borderRadius: 4,
+                        label: 'Expense',
+                        data: chartData.expense,
+                        backgroundColor: '#EF4444',
+                        borderRadius: 6
                     }
                 ]
             },
             options: {
                 responsive: true,
-                maintainAspectRatio: true,
+                maintainAspectRatio: false,
                 plugins: {
+                    legend: {
+                        position: 'top',
+                        labels: { color: document.documentElement.classList.contains('dark') ? '#E2E8F0' : '#1E293B' }
+                    },
                     tooltip: {
                         callbacks: {
                             label: function(context) {
@@ -369,18 +415,13 @@
                                 return context.dataset.label + ': ₱' + value.toLocaleString();
                             }
                         }
-                    },
-                    legend: {
-                        position: 'top',
                     }
                 },
                 scales: {
                     y: {
                         beginAtZero: true,
                         ticks: {
-                            callback: function(value) {
-                                return '₱' + value.toLocaleString();
-                            }
+                            callback: value => '₱' + value.toLocaleString()
                         }
                     }
                 }

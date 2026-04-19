@@ -29,4 +29,32 @@ class AuditLog extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    /**
+     * Get a human‑readable description of the audit event.
+     */
+    public function getDescriptionAttribute(): string
+    {
+        $user = $this->user_name ?? ($this->user->full_name ?? 'System');
+        $target = $this->auditable_label 
+            ? $this->auditable_label 
+            : (class_basename($this->auditable_type) . ' #' . $this->auditable_id);
+
+        switch ($this->event) {
+            case 'created':
+                return "{$user} created {$target}.";
+            case 'updated':
+                return "{$user} updated {$target}.";
+            case 'deleted':
+                return "{$user} deleted {$target}.";
+            case 'restored':
+                return "{$user} restored {$target}.";
+            case 'login':
+                return "{$user} logged in.";
+            case 'logout':
+                return "{$user} logged out.";
+            default:
+                return "{$user} performed {$this->event} on {$target}.";
+        }
+    }
 }

@@ -5,10 +5,16 @@
 @section('content')
 <div class="relative overflow-hidden">
     {{-- Hero Section with Back button and Search --}}
-    <div class="relative bg-gradient-to-r from-emerald-700 to-emerald-900 dark:from-emerald-900 dark:to-emerald-950 py-16 px-6 md:px-12 text-center overflow-hidden">
-
-        {{-- Back Button Component --}}
-        <x-back-button />
+    <div class="relative bg-gradient-to-r from-emerald-700 to-emerald-900 dark:from-emerald-900 dark:to-emerald-950 py-20 px-6 md:px-12 text-center overflow-hidden">
+        {{-- Back Button (always goes to landing) --}}
+        <div class="absolute top-6 left-6 z-20">
+            <a href="{{ route('landing') }}" class="inline-flex items-center gap-2 text-white/70 hover:text-white text-sm transition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                </svg>
+                Back to Home
+            </a>
+        </div>
 
         <div class="absolute inset-0 opacity-20">
             <div class="absolute inset-0 bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:32px_32px]"></div>
@@ -179,7 +185,6 @@
                         </svg>
                         Email Support
                     </a>
-                    {{-- Link to the SSLG adviser's profile or a contact route --}}
                     <a href="{{ route('landing') }}#contact"
                        class="inline-flex items-center gap-2 px-5 py-2.5 border border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 text-sm font-medium rounded-xl hover:bg-emerald-50 dark:hover:bg-emerald-900/30 transition">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

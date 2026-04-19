@@ -4,11 +4,24 @@ namespace App\Http\Controllers;
 
 use App\Models\AuditLog;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class AuditLogController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('auth.custom');
+    }
+
     public function index(Request $request)
     {
+        $user = Auth::user();
+
+        // Permission check: System Admin bypasses, otherwise requires audit.view
+        if ($user->role->level !== 1 && !$user->hasPermission('audit.view')) {
+            abort(403, 'You do not have permission to view audit logs.');
+        }
+
         $query = AuditLog::with('user')->latest();
 
         if ($request->filled('event')) {

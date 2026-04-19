@@ -5,10 +5,16 @@
 @section('content')
 <div class="relative overflow-hidden">
     {{-- Hero Section with Back button --}}
-    <div class="relative bg-gradient-to-r from-emerald-700 to-emerald-900 dark:from-emerald-900 dark:to-emerald-950 py-16 px-6 md:px-12 text-center overflow-hidden">
-
-        {{-- Back Button Component --}}
-        <x-back-button />
+    <div class="relative bg-gradient-to-r from-emerald-700 to-emerald-900 dark:from-emerald-900 dark:to-emerald-950 py-20 px-6 md:px-12 text-center overflow-hidden">
+        {{-- Back Button (always goes to landing) --}}
+        <div class="absolute top-6 left-6 z-20">
+            <a href="{{ route('landing') }}" class="inline-flex items-center gap-2 text-white/70 hover:text-white text-sm transition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                </svg>
+                Back to Home
+            </a>
+        </div>
 
         <div class="absolute inset-0 opacity-20">
             <div class="absolute inset-0 bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:32px_32px]"></div>
@@ -17,7 +23,7 @@
 
         <div class="relative z-10 max-w-3xl mx-auto">
             <div class="inline-block mb-4 px-4 py-1 rounded-full bg-emerald-500/20 text-emerald-100 text-xs font-semibold tracking-wide border border-emerald-400/30 backdrop-blur-sm">
-                Terms of Service
+                Legal
             </div>
             <h1 class="font-serif text-4xl md:text-5xl lg:text-6xl font-bold text-white leading-tight tracking-tight">
                 Terms of Service

@@ -358,7 +358,7 @@ class MemberController extends Controller
 
             DB::commit();
 
-            AuditLogger::log('created', $user, $user->full_name, [], $user->toArray());
+            AuditLogger::log('created', $user, "Member: {$user->full_name}", [], $user->toArray());
 
             $user->notify(new \App\Notifications\NewUserWelcomeNotification($password));
 
@@ -408,9 +408,29 @@ class MemberController extends Controller
         $currentUser = Auth::user();
         if (!$currentUser || !$currentUser->role) abort(403);
 
-        // Guest account protection: only System Admin can edit
-        if ($user->email === 'guest@gmail.com' && $currentUser->role->level !== 1) {
-            return back()->with('error', 'Only a System Administrator can modify the shared guest account.');
+        // Guest account protection: only System Admin can edit, and only avatar can be changed
+        if ($user->email === 'guest@gmail.com') {
+            if ($currentUser->role->level !== 1) {
+                return back()->with('error', 'Only a System Administrator can modify the shared guest account.');
+            }
+
+            // Only allow updating the avatar – everything else is locked
+            if ($request->hasFile('avatar') && $request->file('avatar')->isValid()) {
+                // Delete old avatar
+                if ($user->avatar && !str_starts_with($user->avatar, 'http')) {
+                    Storage::disk('public')->delete($user->avatar);
+                }
+                $path = $request->file('avatar')->store('avatars', 'public');
+                $user->avatar = $path;
+                $user->save();
+
+                AuditLogger::log('updated', $user, "Guest avatar updated", [], ['avatar' => $path]);
+
+                return redirect()->route('members.index')
+                    ->with('success', 'Guest avatar updated successfully.');
+            }
+
+            return back()->with('error', 'Only the avatar can be updated for the guest account.');
         }
 
         if ($currentUser->role->level !== 1 && (!$currentUser->hasPermission('members.edit') || !$this->canManageMember($user, 'edit'))) {
@@ -445,7 +465,7 @@ class MemberController extends Controller
             'first_name'  => ['required', 'string', 'max:255'],
             'middle_name' => ['nullable', 'string', 'max:255'],
             'last_name'   => ['required', 'string', 'max:255'],
-            'email'       => ['required', 'email', 'ends_with:@gmail.com', 'unique:users,email,' . $user->id],
+            '246_email'   => ['required', 'email', 'ends_with:@gmail.com', 'unique:users,email,' . $user->id],
             'student_id'  => ['nullable', 'string', 'unique:users,student_id,' . $user->id, function ($attr, $val, $fail) {
                 if (!empty($val) && !preg_match('/^\d{4}-\d{5}$/', $val)) $fail('Student ID must be in format: YYYY-XXXXX');
             }],
@@ -520,6 +540,7 @@ class MemberController extends Controller
         DB::beginTransaction();
         try {
             $fullName = $this->buildFullName($validated);
+            $oldData = $user->getOriginal();
 
             $user->fill([
                 'full_name'   => $fullName,
@@ -543,7 +564,6 @@ class MemberController extends Controller
 
             // Avatar upload handling
             if ($request->hasFile('avatar') && $request->file('avatar')->isValid()) {
-                // Delete old avatar if exists and not default
                 if ($user->avatar && !str_starts_with($user->avatar, 'http')) {
                     Storage::disk('public')->delete($user->avatar);
                 }
@@ -566,7 +586,7 @@ class MemberController extends Controller
 
             DB::commit();
 
-            AuditLogger::log('updated', $user, $user->full_name, $user->getOriginal(), $user->getChanges());
+            AuditLogger::log('updated', $user, "Member: {$user->full_name}", $oldData, $user->getChanges());
 
             $message = "Member {$fullName} updated successfully.";
             if ($positionChanged) {
@@ -628,7 +648,7 @@ class MemberController extends Controller
         $currentUser = Auth::user();
 
         // Guest account cannot be deleted by anyone
-        if ($targetUser->email === 'guest@gmail.com') { 
+        if ($targetUser->email === 'guest@gmail.com') {
             return back()->with('error', 'The shared guest account cannot be deleted.');
         }
 
@@ -654,10 +674,11 @@ class MemberController extends Controller
         try {
             $userName = $targetUser->full_name;
             $userRole = $targetUser->role->name ?? 'Unknown';
+
+            AuditLogger::log('deleted', $targetUser, "Member: {$targetUser->full_name}", $targetUser->toArray(), []);
+
             $targetUser->member?->delete();
             $targetUser->delete();
-
-            AuditLogger::log('deleted', $targetUser, $targetUser->full_name, $targetUser->toArray());
 
             return redirect()->route('members.index')
                 ->with('success', "{$userName} ({$userRole}) has been removed from the system.");
@@ -682,7 +703,11 @@ class MemberController extends Controller
             return response()->json(['error' => 'Unauthorized.'], 403);
         }
 
+        $oldStatus = $user->is_active;
         $user->update(['is_active' => false]);
+
+        AuditLogger::log('deactivated', $user, "Member: {$user->full_name}", ['is_active' => $oldStatus], ['is_active' => false]);
+
         return response()->json(['success' => true, 'message' => 'Account deactivated successfully.']);
     }
 
@@ -695,7 +720,11 @@ class MemberController extends Controller
             return response()->json(['error' => 'Unauthorized.'], 403);
         }
 
+        $oldStatus = $user->is_active;
         $user->update(['is_active' => true]);
+
+        AuditLogger::log('activated', $user, "Member: {$user->full_name}", ['is_active' => $oldStatus], ['is_active' => true]);
+
         return response()->json(['success' => true, 'message' => 'Account activated successfully.']);
     }
 

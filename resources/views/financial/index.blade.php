@@ -19,7 +19,7 @@
     @endif
 
     {{-- Summary Cards (Responsive Grid) --}}
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         {{-- Balance --}}
         <div class="bg-white dark:bg-gray-800 rounded-2xl shadow border border-gold-200 dark:border-gold-800 p-5">
             <p class="text-xs font-semibold uppercase tracking-widest text-gray-500 dark:text-gray-400">Balance</p>
@@ -44,12 +44,23 @@
         <div class="bg-white dark:bg-gray-800 rounded-2xl shadow border border-gold-200 dark:border-gold-800 p-5">
             <p class="text-xs font-semibold uppercase tracking-widest text-gray-500 dark:text-gray-400">Pending</p>
             <p class="mt-1 text-2xl font-bold text-amber-500">{{ $pendingCount }}</p>
+            <p class="text-xs text-gray-400 mt-1">Awaiting audit</p>
+        </div>
+        {{-- Audited --}}
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow border border-gold-200 dark:border-gold-800 p-5">
+            <p class="text-xs font-semibold uppercase tracking-widest text-gray-500 dark:text-gray-400">Audited</p>
+            <p class="mt-1 text-2xl font-bold text-blue-500">{{ $auditedCount }}</p>
             <p class="text-xs text-gray-400 mt-1">Awaiting approval</p>
         </div>
     </div>
 
     {{-- Actions + Filters (Responsive Stack) --}}
     <div class="bg-white dark:bg-gray-800 rounded-2xl shadow border border-gold-200 dark:border-gold-800 p-5">
+        @php
+            $user = auth()->user();
+            $canCreate = $user->hasPermission('financial.create') || $user->role->level === 1;
+        @endphp
+        @if($canCreate)
         <div class="flex flex-wrap gap-3 mb-4">
             <a href="{{ route('financial.income.create') }}"
                class="inline-flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition w-full sm:w-auto">
@@ -66,8 +77,9 @@
                 Add Expense
             </a>
         </div>
+        @endif
 
-        {{-- Filters (Collapsible on mobile? We'll keep it simple with wrap) --}}
+        {{-- Filters --}}
         <form method="GET" action="{{ route('financial.index') }}" class="flex flex-col sm:flex-row flex-wrap gap-3">
             <div class="flex-1 min-w-[180px]">
                 <input type="text" name="search" value="{{ request('search') }}" placeholder="Search description..."
@@ -84,6 +96,7 @@
                 <select name="status" class="border border-gold-300 dark:border-gold-600 dark:bg-gray-700 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500">
                     <option value="">All Statuses</option>
                     <option value="pending"  {{ request('status') === 'pending'  ? 'selected' : '' }}>Pending</option>
+                    <option value="audited"  {{ request('status') === 'audited'  ? 'selected' : '' }}>Audited</option>
                     <option value="approved" {{ request('status') === 'approved' ? 'selected' : '' }}>Approved</option>
                     <option value="rejected" {{ request('status') === 'rejected' ? 'selected' : '' }}>Rejected</option>
                 </select>
@@ -129,11 +142,21 @@
                         <th class="px-5 py-3 text-right">Amount</th>
                         <th class="px-5 py-3 text-left">Status</th>
                         <th class="px-5 py-3 text-left">Submitted By</th>
+                        <th class="px-5 py-3 text-left">Auditor</th>
+                        <th class="px-5 py-3 text-left">Approver</th>
                         <th class="px-5 py-3 text-center">Actions</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
                     @forelse($transactions as $tx)
+                    @php
+                        $user = auth()->user();
+                        $canEdit = ($user->hasPermission('financial.edit') || $user->role->level === 1) && $tx->status === 'pending';
+                        $canDelete = ($user->hasPermission('financial.delete') || $user->role->level === 1) && $tx->status === 'pending';
+                        $canAudit = ($user->hasPermission('financial.audit') || $user->role->level === 1) && $tx->status === 'pending';
+                        $canApprove = ($user->hasPermission('financial.approve') || $user->role->level === 1) && $tx->status === 'audited';
+                        $canReject = $canApprove;
+                    @endphp
                     <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition">
                         <td class="px-5 py-3 text-gray-600 dark:text-gray-300 whitespace-nowrap">
                             {{ $tx->transaction_date->format('M d, Y') }}
@@ -158,6 +181,7 @@
                             @php
                                 $statusColors = [
                                     'pending'  => 'bg-amber-100 text-amber-700',
+                                    'audited'  => 'bg-blue-100 text-blue-700',
                                     'approved' => 'bg-emerald-100 text-emerald-700',
                                     'rejected' => 'bg-red-100 text-red-700',
                                 ];
@@ -169,25 +193,44 @@
                         <td class="px-5 py-3 text-gray-500 dark:text-gray-400 text-xs">
                             {{ $tx->user->full_name ?? '—' }}
                         </td>
+                        <td class="px-5 py-3 text-gray-500 dark:text-gray-400 text-xs">
+                            {{ $tx->auditor->full_name ?? '—' }}
+                        </td>
+                        <td class="px-5 py-3 text-gray-500 dark:text-gray-400 text-xs">
+                            {{ $tx->approver->full_name ?? '—' }}
+                        </td>
                         <td class="px-5 py-3 text-center">
                             <div class="flex items-center justify-center gap-2">
                                 <a href="{{ route('financial.show', $tx->id) }}"
                                    class="text-xs text-blue-600 hover:text-blue-800 font-medium">View</a>
 
-                                @if($tx->status === 'pending')
+                                @if($canEdit)
                                     <a href="{{ route('financial.edit', $tx->id) }}"
                                        class="text-xs text-gold-600 hover:text-gold-800 font-medium">Edit</a>
+                                @endif
 
+                                @if($canAudit)
+                                    <form method="POST" action="{{ route('financial.audit', $tx->id) }}" class="inline">
+                                        @csrf @method('PATCH')
+                                        <button type="submit" class="text-xs text-blue-600 hover:text-blue-800 font-medium">Audit</button>
+                                    </form>
+                                @endif
+
+                                @if($canApprove)
                                     <form method="POST" action="{{ route('financial.approve', $tx->id) }}" class="inline">
                                         @csrf @method('PATCH')
                                         <button type="submit" class="text-xs text-emerald-600 hover:text-emerald-800 font-medium">Approve</button>
                                     </form>
+                                @endif
 
+                                @if($canReject)
                                     <form method="POST" action="{{ route('financial.reject', $tx->id) }}" class="inline">
                                         @csrf @method('PATCH')
                                         <button type="submit" class="text-xs text-red-500 hover:text-red-700 font-medium">Reject</button>
                                     </form>
+                                @endif
 
+                                @if($canDelete)
                                     <form method="POST" action="{{ route('financial.destroy', $tx->id) }}"
                                           class="inline" onsubmit="return confirm('Delete this transaction?')">
                                         @csrf @method('DELETE')
@@ -199,7 +242,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="8" class="px-5 py-10 text-center text-gray-400 dark:text-gray-500">
+                        <td colspan="10" class="px-5 py-10 text-center text-gray-400 dark:text-gray-500">
                             No transactions found.
                         </td>
                     </tr>
@@ -211,6 +254,14 @@
         {{-- Mobile Cards (Visible only on small screens) --}}
         <div class="md:hidden divide-y divide-gray-100 dark:divide-gray-700">
             @forelse($transactions as $tx)
+            @php
+                $user = auth()->user();
+                $canEdit = ($user->hasPermission('financial.edit') || $user->role->level === 1) && $tx->status === 'pending';
+                $canDelete = ($user->hasPermission('financial.delete') || $user->role->level === 1) && $tx->status === 'pending';
+                $canAudit = ($user->hasPermission('financial.audit') || $user->role->level === 1) && $tx->status === 'pending';
+                $canApprove = ($user->hasPermission('financial.approve') || $user->role->level === 1) && $tx->status === 'audited';
+                $canReject = $canApprove;
+            @endphp
             <div class="p-4 space-y-3">
                 {{-- Header: Description + Amount --}}
                 <div class="flex justify-between items-start">
@@ -248,6 +299,7 @@
                         @php
                             $statusColors = [
                                 'pending'  => 'bg-amber-100 text-amber-700',
+                                'audited'  => 'bg-blue-100 text-blue-700',
                                 'approved' => 'bg-emerald-100 text-emerald-700',
                                 'rejected' => 'bg-red-100 text-red-700',
                             ];
@@ -260,6 +312,14 @@
                         <span class="text-xs text-gray-400 block">Submitted By</span>
                         <span class="font-medium">{{ $tx->user->full_name ?? '—' }}</span>
                     </div>
+                    <div>
+                        <span class="text-xs text-gray-400 block">Auditor</span>
+                        <span class="font-medium">{{ $tx->auditor->full_name ?? '—' }}</span>
+                    </div>
+                    <div>
+                        <span class="text-xs text-gray-400 block">Approver</span>
+                        <span class="font-medium">{{ $tx->approver->full_name ?? '—' }}</span>
+                    </div>
                 </div>
 
                 {{-- Actions --}}
@@ -267,20 +327,33 @@
                     <a href="{{ route('financial.show', $tx->id) }}"
                        class="text-xs bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-3 py-1 rounded-full font-medium">View</a>
 
-                    @if($tx->status === 'pending')
+                    @if($canEdit)
                         <a href="{{ route('financial.edit', $tx->id) }}"
                            class="text-xs bg-gold-50 dark:bg-gold-900/30 text-gold-700 dark:text-gold-300 px-3 py-1 rounded-full font-medium">Edit</a>
+                    @endif
 
+                    @if($canAudit)
+                        <form method="POST" action="{{ route('financial.audit', $tx->id) }}" class="inline">
+                            @csrf @method('PATCH')
+                            <button type="submit" class="text-xs bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-3 py-1 rounded-full font-medium">Audit</button>
+                        </form>
+                    @endif
+
+                    @if($canApprove)
                         <form method="POST" action="{{ route('financial.approve', $tx->id) }}" class="inline">
                             @csrf @method('PATCH')
                             <button type="submit" class="text-xs bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 px-3 py-1 rounded-full font-medium">Approve</button>
                         </form>
+                    @endif
 
+                    @if($canReject)
                         <form method="POST" action="{{ route('financial.reject', $tx->id) }}" class="inline">
                             @csrf @method('PATCH')
                             <button type="submit" class="text-xs bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 px-3 py-1 rounded-full font-medium">Reject</button>
                         </form>
+                    @endif
 
+                    @if($canDelete)
                         <form method="POST" action="{{ route('financial.destroy', $tx->id) }}"
                               class="inline" onsubmit="return confirm('Delete this transaction?')">
                             @csrf @method('DELETE')

@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use App\Services\AuditLogger;
 
 class FinancialController extends Controller
 {
@@ -17,12 +18,25 @@ class FinancialController extends Controller
     }
 
     // -------------------------------------------------------------------------
-    // Index — dashboard summary + transaction list
+    // Index
     // -------------------------------------------------------------------------
 
     public function index(Request $request)
     {
-        $query = FinancialTransaction::with('user', 'approver')->latest('transaction_date');
+        $user = Auth::user();
+
+        // Guest block
+        if ($user->email === 'guest@gmail.com') {
+            return redirect()->route('dashboard')
+                ->with('error', 'Guest accounts cannot view financial records.');
+        }
+
+        // Permission check (System Admin level 1 bypasses)
+        if ($user->role->level !== 1 && !$user->hasPermission('financial.view')) {
+            abort(403, 'You do not have permission to view financial records.');
+        }
+
+        $query = FinancialTransaction::with(['user', 'approver', 'auditor'])->latest('transaction_date');
 
         if ($request->filled('type')) {
             $query->where('type', $request->type);
@@ -49,6 +63,7 @@ class FinancialController extends Controller
         $expenseTotal  = FinancialTransaction::expense()->approved()->sum('amount');
         $balance       = $incomeTotal - $expenseTotal;
         $pendingCount  = FinancialTransaction::pending()->count();
+        $auditedCount  = FinancialTransaction::audited()->count();
 
         $categories = FinancialTransaction::select('category')
             ->distinct()
@@ -56,7 +71,8 @@ class FinancialController extends Controller
             ->pluck('category');
 
         return view('financial.index', compact(
-            'transactions', 'incomeTotal', 'expenseTotal', 'balance', 'pendingCount', 'categories'
+            'transactions', 'incomeTotal', 'expenseTotal', 'balance',
+            'pendingCount', 'auditedCount', 'categories'
         ));
     }
 
@@ -66,7 +82,18 @@ class FinancialController extends Controller
 
     public function show(int $id)
     {
-        $transaction = FinancialTransaction::with('user', 'approver', 'documents')->findOrFail($id);
+        $user = Auth::user();
+
+        if ($user->email === 'guest@gmail.com') {
+            return redirect()->route('dashboard')
+                ->with('error', 'Guest accounts cannot view financial records.');
+        }
+
+        if ($user->role->level !== 1 && !$user->hasPermission('financial.view')) {
+            abort(403, 'You do not have permission to view financial records.');
+        }
+
+        $transaction = FinancialTransaction::with(['user', 'approver', 'auditor', 'documents'])->findOrFail($id);
         return view('financial.show', compact('transaction'));
     }
 
@@ -76,37 +103,29 @@ class FinancialController extends Controller
 
     public function createIncome()
     {
-        if ($response = $this->authorizeFinancialAction('create')) {
-            return $response;
-        }
+        if ($response = $this->authorizeFinancialAction('create')) return $response;
         return view('financial.create', ['type' => 'income']);
     }
 
     public function createExpense()
     {
-        if ($response = $this->authorizeFinancialAction('create')) {
-            return $response;
-        }
+        if ($response = $this->authorizeFinancialAction('create')) return $response;
         return view('financial.create', ['type' => 'expense']);
     }
 
     // -------------------------------------------------------------------------
-    // Store (Unified)
+    // Store
     // -------------------------------------------------------------------------
 
     public function storeIncome(Request $request)
     {
-        if ($response = $this->authorizeFinancialAction('create')) {
-            return $response;
-        }
+        if ($response = $this->authorizeFinancialAction('create')) return $response;
         return $this->storeTransaction($request, 'income');
     }
 
     public function storeExpense(Request $request)
     {
-        if ($response = $this->authorizeFinancialAction('create')) {
-            return $response;
-        }
+        if ($response = $this->authorizeFinancialAction('create')) return $response;
         return $this->storeTransaction($request, 'expense');
     }
 
@@ -119,14 +138,15 @@ class FinancialController extends Controller
 
         DB::transaction(function () use ($validated, $request) {
             $transaction = FinancialTransaction::create($validated);
-
             if ($request->hasFile('receipt')) {
                 $this->attachReceiptDocument($transaction, $request->file('receipt'), 'Initial upload');
             }
+
+            AuditLogger::log('created', $transaction, "Transaction: {$transaction->description}", [], $transaction->toArray());
         });
 
         return redirect()->route('financial.index')
-            ->with('success', ucfirst($type) . ' recorded successfully and is pending approval.');
+            ->with('success', ucfirst($type) . ' recorded successfully and is pending review.');
     }
 
     // -------------------------------------------------------------------------
@@ -135,9 +155,7 @@ class FinancialController extends Controller
 
     public function edit(int $id)
     {
-        if ($response = $this->authorizeFinancialAction('edit')) {
-            return $response;
-        }
+        if ($response = $this->authorizeFinancialAction('edit')) return $response;
         $transaction = FinancialTransaction::with('documents')->findOrFail($id);
 
         if ($transaction->status !== 'pending') {
@@ -149,9 +167,7 @@ class FinancialController extends Controller
 
     public function update(Request $request, int $id)
     {
-        if ($response = $this->authorizeFinancialAction('edit')) {
-            return $response;
-        }
+        if ($response = $this->authorizeFinancialAction('edit')) return $response;
         $transaction = FinancialTransaction::with('documents')->findOrFail($id);
 
         if ($transaction->status !== 'pending') {
@@ -159,8 +175,9 @@ class FinancialController extends Controller
         }
 
         $validated = $this->validateTransaction($request);
+        $oldData = $transaction->getOriginal();
 
-        DB::transaction(function () use ($request, $transaction, $validated) {
+        DB::transaction(function () use ($request, $transaction, $validated, $oldData) {
             $transaction->update($validated);
 
             if ($request->hasFile('receipt')) {
@@ -170,6 +187,8 @@ class FinancialController extends Controller
                 }
                 $this->attachReceiptDocument($transaction, $request->file('receipt'), 'Updated receipt');
             }
+
+            AuditLogger::log('updated', $transaction, "Transaction: {$transaction->description}", $oldData, $transaction->getChanges());
         });
 
         return redirect()->route('financial.index')
@@ -177,41 +196,78 @@ class FinancialController extends Controller
     }
 
     // -------------------------------------------------------------------------
-    // Approve / Reject
+    // Audit (Auditor only)
+    // -------------------------------------------------------------------------
+
+    public function audit(Request $request, int $id)
+    {
+        $user = Auth::user();
+        if ($user->email === 'guest@gmail.com') {
+            return redirect()->route('dashboard')->with('error', 'Guest accounts cannot perform this action.');
+        }
+
+        if (!$user->hasPermission('financial.audit') && $user->role->level !== 1) {
+            return back()->with('error', 'You do not have permission to audit transactions.');
+        }
+
+        $transaction = FinancialTransaction::findOrFail($id);
+
+        if ($transaction->status !== 'pending') {
+            return back()->with('error', 'Only pending transactions can be audited.');
+        }
+
+        $oldStatus = $transaction->status;
+        $transaction->update([
+            'status'     => 'audited',
+            'audited_by' => $user->id,
+            'audited_at' => now(),
+        ]);
+
+        AuditLogger::log('audited', $transaction, "Transaction audited: {$transaction->description}", ['status' => $oldStatus], ['status' => 'audited']);
+
+        return back()->with('success', 'Transaction marked as audited. Awaiting final approval.');
+    }
+
+    // -------------------------------------------------------------------------
+    // Final Approve / Reject (Adviser/Admin)
     // -------------------------------------------------------------------------
 
     public function approve(int $id)
     {
-        if ($response = $this->authorizeFinancialAction('approve')) {
-            return $response;
-        }
+        if ($response = $this->authorizeFinancialAction('approve')) return $response;
+
         $transaction = FinancialTransaction::findOrFail($id);
 
-        if ($transaction->status !== 'pending') {
-            return back()->with('error', 'Only pending transactions can be approved.');
+        if ($transaction->status !== 'audited') {
+            return back()->with('error', 'Transaction must be audited before final approval.');
         }
 
+        $oldStatus = $transaction->status;
         $transaction->update([
             'status'      => 'approved',
             'approved_by' => Auth::id(),
             'approved_at' => now(),
         ]);
 
+        AuditLogger::log('approved', $transaction, "Transaction approved: {$transaction->description}", ['status' => $oldStatus], ['status' => 'approved']);
+
         return back()->with('success', 'Transaction approved successfully.');
     }
 
     public function reject(int $id)
     {
-        if ($response = $this->authorizeFinancialAction('approve')) {
-            return $response;
-        }
+        if ($response = $this->authorizeFinancialAction('approve')) return $response;
+
         $transaction = FinancialTransaction::findOrFail($id);
 
-        if ($transaction->status !== 'pending') {
-            return back()->with('error', 'Only pending transactions can be rejected.');
+        if (in_array($transaction->status, ['approved', 'rejected'])) {
+            return back()->with('error', 'This transaction has already been finalized.');
         }
 
+        $oldStatus = $transaction->status;
         $transaction->update(['status' => 'rejected']);
+
+        AuditLogger::log('rejected', $transaction, "Transaction rejected: {$transaction->description}", ['status' => $oldStatus], ['status' => 'rejected']);
 
         return back()->with('success', 'Transaction rejected.');
     }
@@ -222,14 +278,14 @@ class FinancialController extends Controller
 
     public function destroy(int $id)
     {
-        if ($response = $this->authorizeFinancialAction('delete')) {
-            return $response;
-        }
+        if ($response = $this->authorizeFinancialAction('delete')) return $response;
         $transaction = FinancialTransaction::with('documents')->findOrFail($id);
 
         if ($transaction->status === 'approved') {
             return back()->with('error', 'Approved transactions cannot be deleted.');
         }
+
+        AuditLogger::log('deleted', $transaction, "Transaction: {$transaction->description}", $transaction->toArray(), []);
 
         DB::transaction(function () use ($transaction) {
             foreach ($transaction->documents as $doc) {
@@ -246,21 +302,15 @@ class FinancialController extends Controller
     // Private Helpers
     // -------------------------------------------------------------------------
 
-    /**
-     * Authorize financial action. Returns a redirect response if unauthorized,
-     * or null if authorized.
-     */
     private function authorizeFinancialAction(string $action)
     {
         $user = Auth::user();
 
-        // Block guest completely
         if ($user->email === 'guest@gmail.com') {
             return redirect()->route('dashboard')
                 ->with('error', 'Guest accounts cannot perform financial actions.');
         }
 
-        // Permission mapping
         $permissionMap = [
             'create'  => 'financial.create',
             'edit'    => 'financial.edit',
@@ -274,7 +324,7 @@ class FinancialController extends Controller
             return back()->with('error', "You do not have permission to {$action} financial records.");
         }
 
-        return null; // Authorized
+        return null;
     }
 
     private function validateTransaction(Request $request): array
@@ -309,7 +359,6 @@ class FinancialController extends Controller
         ]);
 
         $document->addVersion($file, $changeNotes ?? 'Receipt uploaded');
-
         $transaction->documents()->attach($document->id);
     }
 }
