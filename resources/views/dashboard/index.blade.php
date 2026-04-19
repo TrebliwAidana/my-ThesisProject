@@ -68,26 +68,30 @@
 
     {{-- Summary Cards (Income, Expense, Balance, Pending) --}}
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div class="bg-white dark:bg-gray-800 rounded-xl border border-gold-200 dark:border-gold-800 p-4 shadow-sm">
+        <div class="bg-white dark:bg-gray-800 rounded-xl border border-gold-200 dark:border-gold-800 p-4 shadow-sm overflow-hidden">
             <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Total Income</p>
-            <p class="text-2xl font-bold text-emerald-600">₱{{ number_format($incomeTotal, 2) }}</p>
+            <p class="text-xl sm:text-2xl md:text-3xl font-bold text-emerald-600 break-all">
+                ₱{{ number_format($incomeTotal, 2) }}
+            </p>
             <p class="text-xs text-gray-400 mt-1">Approved income</p>
         </div>
-        <div class="bg-white dark:bg-gray-800 rounded-xl border border-gold-200 dark:border-gold-800 p-4 shadow-sm">
+        <div class="bg-white dark:bg-gray-800 rounded-xl border border-gold-200 dark:border-gold-800 p-4 shadow-sm overflow-hidden">
             <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Total Expenses</p>
-            <p class="text-2xl font-bold text-red-500">₱{{ number_format($expenseTotal, 2) }}</p>
+            <p class="text-xl sm:text-2xl md:text-3xl font-bold text-red-500 break-all">
+                ₱{{ number_format($expenseTotal, 2) }}
+            </p>
             <p class="text-xs text-gray-400 mt-1">Approved expenses</p>
         </div>
-        <div class="bg-white dark:bg-gray-800 rounded-xl border border-gold-200 dark:border-gold-800 p-4 shadow-sm">
+        <div class="bg-white dark:bg-gray-800 rounded-xl border border-gold-200 dark:border-gold-800 p-4 shadow-sm overflow-hidden">
             <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Balance</p>
-            <p class="text-2xl font-bold {{ $balance >= 0 ? 'text-emerald-600' : 'text-red-600' }}">
+            <p class="text-xl sm:text-2xl md:text-3xl font-bold break-all {{ $balance >= 0 ? 'text-emerald-600' : 'text-red-600' }}">
                 ₱{{ number_format($balance, 2) }}
             </p>
             <p class="text-xs text-gray-400 mt-1">Net balance</p>
         </div>
-        <div class="bg-white dark:bg-gray-800 rounded-xl border border-gold-200 dark:border-gold-800 p-4 shadow-sm">
+        <div class="bg-white dark:bg-gray-800 rounded-xl border border-gold-200 dark:border-gold-800 p-4 shadow-sm overflow-hidden">
             <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Pending</p>
-            <p class="text-2xl font-bold text-amber-500">{{ $pendingTransactions }}</p>
+            <p class="text-xl sm:text-2xl md:text-3xl font-bold text-amber-500 break-all">{{ $pendingTransactions }}</p>
             <p class="text-xs text-gray-400 mt-1">Awaiting action</p>
         </div>
     </div>
@@ -119,60 +123,60 @@
                 </a>
             </div>
         </div>
-        <div class="relative h-64">
+        <div class="relative h-64 min-h-[16rem]">
             <canvas id="financialChart"></canvas>
         </div>
     </div>
 
     {{-- Stats Grid (unchanged, but kept for context) --}}
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        <div class="group bg-white dark:bg-gray-800 rounded-2xl border border-gold-200 dark:border-gold-800 p-6 hover:shadow-lg transition-all duration-300 hover:scale-[1.02]">
+        <div class="group bg-white dark:bg-gray-800 rounded-2xl border border-gold-200 dark:border-gold-800 p-6 hover:shadow-lg transition-all duration-300 hover:scale-[1.02] overflow-hidden">
             <div class="flex items-center justify-between mb-4">
                 <div class="w-12 h-12 bg-primary-50 dark:bg-primary-900/50 rounded-xl flex items-center justify-center">
                     <svg class="w-6 h-6 text-primary-600 dark:text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"></path>
                     </svg>
                 </div>
-                <span class="text-2xl sm:text-3xl font-bold text-gray-800 dark:text-white break-words">{{ number_format($totalMembers) }}</span>
+                <span class="text-xl sm:text-2xl md:text-3xl font-bold text-gray-800 dark:text-white break-all">{{ number_format($totalMembers) }}</span>
             </div>
             <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total Members</p>
             <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">All registered members</p>
         </div>
 
-        <div class="group bg-white dark:bg-gray-800 rounded-2xl border border-gold-200 dark:border-gold-800 p-6 hover:shadow-lg transition-all duration-300 hover:scale-[1.02]">
+        <div class="group bg-white dark:bg-gray-800 rounded-2xl border border-gold-200 dark:border-gold-800 p-6 hover:shadow-lg transition-all duration-300 hover:scale-[1.02] overflow-hidden">
             <div class="flex items-center justify-between mb-4">
                 <div class="w-12 h-12 bg-green-50 dark:bg-green-900/50 rounded-xl flex items-center justify-center">
                     <svg class="w-6 h-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                     </svg>
                 </div>
-                <span class="text-2xl sm:text-3xl font-bold text-gray-800 dark:text-white break-words">{{ number_format($activeMembers) }}</span>
+                <span class="text-xl sm:text-2xl md:text-3xl font-bold text-gray-800 dark:text-white break-all">{{ number_format($activeMembers) }}</span>
             </div>
             <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Active Members</p>
             <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Currently active in organization</p>
         </div>
 
-        <div class="group bg-white dark:bg-gray-800 rounded-2xl border border-gold-200 dark:border-gold-800 p-6 hover:shadow-lg transition-all duration-300 hover:scale-[1.02]">
+        <div class="group bg-white dark:bg-gray-800 rounded-2xl border border-gold-200 dark:border-gold-800 p-6 hover:shadow-lg transition-all duration-300 hover:scale-[1.02] overflow-hidden">
             <div class="flex items-center justify-between mb-4">
                 <div class="w-12 h-12 bg-sky-50 dark:bg-sky-900/50 rounded-xl flex items-center justify-center">
                     <svg class="w-6 h-6 text-sky-600 dark:text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
                     </svg>
                 </div>
-                <span class="text-2xl sm:text-3xl font-bold text-gray-800 dark:text-white break-words">{{ number_format($officersCount) }}</span>
+                <span class="text-xl sm:text-2xl md:text-3xl font-bold text-gray-800 dark:text-white break-all">{{ number_format($officersCount) }}</span>
             </div>
             <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Leaders & Officers</p>
             <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Administrators, Advisers, and Officers</p>
         </div>
 
-        <div class="group bg-white dark:bg-gray-800 rounded-2xl border border-gold-200 dark:border-gold-800 p-6 hover:shadow-lg transition-all duration-300 hover:scale-[1.02]">
+        <div class="group bg-white dark:bg-gray-800 rounded-2xl border border-gold-200 dark:border-gold-800 p-6 hover:shadow-lg transition-all duration-300 hover:scale-[1.02] overflow-hidden">
             <div class="flex items-center justify-between mb-4">
                 <div class="w-12 h-12 bg-gold-50 dark:bg-gold-900/50 rounded-xl flex items-center justify-center">
                     <svg class="w-6 h-6 text-gold-600 dark:text-gold-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path>
                     </svg>
                 </div>
-                <span class="text-2xl sm:text-3xl font-bold text-gray-800 dark:text-white break-words">{{ number_format($newMembersThisMonth) }}</span>
+                <span class="text-xl sm:text-2xl md:text-3xl font-bold text-gray-800 dark:text-white break-all">{{ number_format($newMembersThisMonth) }}</span>
             </div>
             <p class="text-sm font-medium text-gray-600 dark:text-gray-400">New Members</p>
             <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Joined in {{ now()->format('F Y') }}</p>
@@ -265,7 +269,7 @@
                         @if($user->role->abbreviation)<div class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gold-800"><span class="text-sm text-gray-500 dark:text-gray-400">Abbreviation</span><span class="text-sm font-medium text-gray-900 dark:text-white">{{ $user->role->abbreviation }}</span></div>@endif
                         <div class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gold-800"><span class="text-sm text-gray-500 dark:text-gray-400">Position</span><span class="text-sm font-medium text-gray-900 dark:text-white">{{ $user->member?->position ?? $user->position ?? '—' }}</span></div>
                         <div class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gold-800"><span class="text-sm text-gray-500 dark:text-gray-400">Member Since</span><span class="text-sm font-medium text-gray-900 dark:text-white">{{ optional($user->member?->joined_at ?? $user->member?->term_start ?? $user->created_at)->format('M d, Y') ?? '—' }}</span></div>
-                        <div class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gold-800"><span class="text-sm text-gray-500 dark:text-gray-400">Last Login</span><span class="text-sm font-medium text-gray-900 dark:text-white">{{ optional($user->last_login_at)->format('M d, Y H:i') ?? 'Never' }}</span></div>
+                        <div class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gold-800"><span class="text12-sm text-gray-500 dark:text-gray-400">Last Login</span><span class="text-sm font-medium text-gray-900 dark:text-white">{{ optional($user->last_login_at)->format('M d, Y H:i') ?? 'Never' }}</span></div>
                         <div class="flex justify-between items-center py-2"><span class="text-sm text-gray-500 dark:text-gray-400">Last Updated</span><span class="text-sm font-medium text-gray-900 dark:text-white">{{ optional($user->updated_at)->format('M d, Y') }}</span></div>
                     </div>
                 </div>
@@ -355,14 +359,14 @@
 
             {{-- Financial Summary Card --}}
             @if($user->hasPermission('financial.view') && isset($totalIncome))
-            <div class="bg-gradient-to-r from-emerald-600 to-teal-600 dark:from-emerald-800 dark:to-teal-800 rounded-2xl p-6">
+            <div class="bg-gradient-to-r from-emerald-600 to-teal-600 dark:from-emerald-800 dark:to-teal-800 rounded-2xl p-6 overflow-hidden">
                 <div class="flex items-center justify-between">
-                    <div>
+                    <div class="min-w-0 flex-1">
                         <p class="text-emerald-100 text-sm font-medium">Total Income (All Time)</p>
-                        <p class="text-3xl font-bold text-white mt-1 break-words">₱{{ number_format($totalIncome, 2) }}</p>
-                        <p class="text-emerald-100 text-xs mt-2">Total Expenses: ₱{{ number_format($totalExpense, 2) }} | Net: ₱{{ number_format($netBalance, 2) }}</p>
+                        <p class="text-2xl md:text-3xl font-bold text-white mt-1 break-all">₱{{ number_format($totalIncome, 2) }}</p>
+                        <p class="text-emerald-100 text-xs mt-2 break-all">Total Expenses: ₱{{ number_format($totalExpense, 2) }} | Net: ₱{{ number_format($netBalance, 2) }}</p>
                     </div>
-                    <div class="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center">
+                    <div class="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center flex-shrink-0 ml-3">
                         <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                         </svg>

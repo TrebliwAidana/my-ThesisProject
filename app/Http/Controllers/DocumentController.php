@@ -116,7 +116,7 @@ class DocumentController extends Controller
         $validated['category'] = $validated['category_final'] ?? null;
         unset($validated['category_final']);
 
-        DB::transaction(function () use ($validated, $request, $5_user) {
+        DB::transaction(function () use ($validated, $request, $user) {
             $document = Document::create([
                 'title'       => $validated['title'],
                 'description' => $validated['description'] ?? null,
