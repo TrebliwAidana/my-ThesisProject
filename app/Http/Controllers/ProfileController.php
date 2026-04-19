@@ -16,12 +16,32 @@ class ProfileController extends Controller
         $this->middleware('auth.custom');
     }
 
+    // -------------------------------------------------------------------------
+    // Guest restriction helper
+    // -------------------------------------------------------------------------
+
+    /**
+     * Redirect guest users back with a friendly message.
+     */
+    private function blockGuest(string $action = 'perform this action')
+    {
+        if (Auth::user()->email === 'guest@gmail.com') {
+            return redirect()->route('dashboard')
+                ->with('error', "Guest accounts cannot {$action}.");
+        }
+        return null;
+    }
+
+    // -------------------------------------------------------------------------
+    // Index – show profile (blocked for guest)
+    // -------------------------------------------------------------------------
+
     public function index()
     {
-        
-            if (auth()->user()->email === 'guest@gmail.com') {
-        abort(403, 'Guest accounts cannot access profile settings.');
-    }
+        if ($redirect = $this->blockGuest('access profile settings')) {
+            return $redirect;
+        }
+
         $user = Auth::user()->load('role');
 
         $documentsCount = Document::where('owner_id', $user->id)->count();
@@ -30,12 +50,17 @@ class ProfileController extends Controller
         return view('profile.index', compact('user', 'documentsCount', 'transactionsCount'));
     }
 
+    // -------------------------------------------------------------------------
+    // Update Profile – blocked for guest
+    // -------------------------------------------------------------------------
+
     public function updateProfile(Request $request)
     {
-         if (auth()->user()->email === 'guest@gmail.com') {
-            abort(403, 'Guest accounts cannot be modified.');
+        if ($redirect = $this->blockGuest('modify profile')) {
+            return $redirect;
         }
-            $user = Auth::user();
+
+        $user = Auth::user();
 
         $validated = $request->validate([
             'full_name'  => 'required|string|max:255',
@@ -53,7 +78,6 @@ class ProfileController extends Controller
 
         // Handle avatar upload
         if ($request->hasFile('avatar') && $request->file('avatar')->isValid()) {
-            // Delete old avatar if it exists and isn't the default
             if ($user->avatar && !str_starts_with($user->avatar, 'http')) {
                 Storage::disk('public')->delete($user->avatar);
             }
@@ -90,8 +114,16 @@ class ProfileController extends Controller
             ->with('success', '✅ Profile updated successfully!');
     }
 
+    // -------------------------------------------------------------------------
+    // Update Password – blocked for guest
+    // -------------------------------------------------------------------------
+
     public function updatePassword(Request $request)
     {
+        if ($redirect = $this->blockGuest('change password')) {
+            return $redirect;
+        }
+
         $user = Auth::user();
 
         $validated = $request->validate([
@@ -122,11 +154,16 @@ class ProfileController extends Controller
             ->with('password_success', '🔒 Your password has been changed successfully!');
     }
 
+    // -------------------------------------------------------------------------
+    // Update Theme – blocked for guest (but keep JSON response)
+    // -------------------------------------------------------------------------
+
     public function updateTheme(Request $request)
     {
-         if (auth()->user()->email === 'guest@gmail.com') {
-            abort(403, 'Guest accounts cannot be modified.');
+        if ($redirect = $this->blockGuest('change theme')) {
+            return $redirect;
         }
+
         $user = Auth::user();
 
         $validated = $request->validate([
@@ -139,8 +176,16 @@ class ProfileController extends Controller
         return response()->json(['success' => true]);
     }
 
+    // -------------------------------------------------------------------------
+    // Profile Stats – blocked for guest (return JSON error)
+    // -------------------------------------------------------------------------
+
     public function getProfileStats()
     {
+        if (Auth::user()->email === 'guest@gmail.com') {
+            return response()->json(['error' => 'Guest accounts cannot access profile stats.'], 403);
+        }
+
         $user = Auth::user();
 
         $stats = [
