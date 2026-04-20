@@ -44,7 +44,7 @@
                     <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Profile Picture</label>
                     <div class="flex items-center gap-4">
                         @if(auth()->user()->avatar)
-                            <img src="{{url('/secure-avatar/' . basename($user->avatar }}" alt="Avatar" class="w-16 h-16 rounded-full object-cover border-2 border-gold-200">
+                            <img src="{{url('/secure-avatar/' . basename($user->avatar)) }}" alt="Avatar" class="w-16 h-16 rounded-full object-cover border-2 border-gold-200">
                         @else
                             <div class="w-16 h-16 rounded-full bg-gradient-to-br from-gold to-gold-dark flex items-center justify-center text-white text-xl font-bold shadow-md">
                                 {{ strtoupper(substr(auth()->user()->full_name, 0, 2)) }}
