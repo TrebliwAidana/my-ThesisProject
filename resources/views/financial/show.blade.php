@@ -55,7 +55,7 @@
             </div>
             <div>
                 <p class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Category</p>
-                <p class="text-gray-800 dark:text-white">{{ $transaction->17_category ?? '—' }}</p>
+                <p class="text-gray-800 dark:text-white">{{ $transaction->category ?? '—' }}</p>
             </div>
             <div>
                 <p class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Submitted By</p>

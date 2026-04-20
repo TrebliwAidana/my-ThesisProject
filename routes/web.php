@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Http\Request;
 use App\Http\Controllers\LandingController;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 
 
@@ -262,4 +263,14 @@ Route::view('/terms-of-service', 'pages.terms')->name('terms-of-service');
 
 // ── Login for Guest ───────────────────────────────────────────────────
 Route::post('/guest-login', [AuthController::class, 'guestLogin'])->name('guest.login');
+
+// ── Avatar route handling ───────────────────────────────────────────────────
+Route::get('/secure-avatar/{filename}', function ($filename) {
+    $path = 'avatars/' . $filename;
+    if (!Storage::disk('public')->exists($path)) {
+        abort(404);
+    }
+    return response(Storage::disk('public')->get($path))
+        ->header('Content-Type', Storage::disk('public')->mimeType($path));
+})->where('filename', '.*');
 
