@@ -10,8 +10,14 @@ class DocumentCategoryController extends Controller
 {
     public function index()
     {
-        $categories = DocumentCategory::orderBy('name')->paginate(15);
-        return view('admin.document-categories.index', compact('categories'));
+    
+    $categories = DocumentCategory::orderBy('name')->paginate(15);
+    
+    return response()
+        ->view('admin.document-categories.index', compact('categories'))
+        ->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+        ->header('Pragma', 'no-cache');
+
     }
 
     public function create()
@@ -64,12 +70,20 @@ class DocumentCategoryController extends Controller
         return redirect()->route('admin.document-categories.index')
             ->with('success', 'Category updated successfully.');
     }
-
     public function destroy(DocumentCategory $documentCategory)
     {
+    
+        // Check if any documents are using this category
+        if ($documentCategory->documents()->exists()) {
+            $count = $documentCategory->documents()->count();
+            return redirect()->route('admin.document-categories.index')
+                ->with('error', "Cannot delete category '{$documentCategory->name}' because it is used by {$count} document(s). Please reassign or delete those documents first.");
+        }
+
         $documentCategory->delete();
 
         return redirect()->route('admin.document-categories.index')
             ->with('success', 'Category deleted successfully.');
     }
+
 }

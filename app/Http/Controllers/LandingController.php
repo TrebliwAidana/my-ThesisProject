@@ -22,8 +22,8 @@ class LandingController extends Controller
         $totalFunds = FinancialTransaction::income()->approved()->sum('amount');
         $documentsCount = Document::count();
 
-        // Recent public documents (category is a string field, not a relationship)
-        $recentPublicDocs = Document::where('is_public', true)
+        // Recent documents (all documents are public now, so no is_public filter)
+        $recentPublicDocs = Document::with('category', 'owner')
             ->latest()
             ->take(3)
             ->get();

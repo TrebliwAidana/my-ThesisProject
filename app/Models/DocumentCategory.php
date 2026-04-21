@@ -9,7 +9,7 @@ class DocumentCategory extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name', 'description', 'is_active'];
+    protected $fillable = ['name', 'description', 'is_active', 'document_category_id',];
 
     protected $casts = [
         'is_active' => 'boolean',
@@ -18,5 +18,9 @@ class DocumentCategory extends Model
     public function scopeActive($query)
     {
         return $query->where('is_active', true);
+    }
+    public function documents()
+    {
+        return $this->hasMany(Document::class, 'document_category_id');
     }
 }

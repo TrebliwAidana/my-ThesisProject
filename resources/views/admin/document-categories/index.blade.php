@@ -5,6 +5,16 @@
 
 @section('content')
 <div class="bg-white dark:bg-gray-800 rounded-xl border border-gold-200 dark:border-gold-800 overflow-hidden shadow-sm">
+    @if(session('success'))
+        <div class="m-4 p-3 bg-green-100 text-green-700 rounded border border-green-200">
+            {{ session('success') }}
+        </div>
+    @endif
+    @if(session('error'))
+        <div class="m-4 p-3 bg-red-100 text-red-700 rounded border border-red-200">
+            {{ session('error') }}
+        </div>
+    @endif
     <div class="p-4 border-b border-gold-200 dark:border-gold-800 flex justify-between items-center">
         <h2 class="text-lg font-semibold text-gray-800 dark:text-white">Categories</h2>
         <a href="{{ route('admin.document-categories.create') }}"

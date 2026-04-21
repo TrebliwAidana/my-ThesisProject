@@ -18,26 +18,7 @@ class DocumentController extends Controller
     }
 
     // -------------------------------------------------------------------------
-    // Guest restriction helper (redirects with flash message)
-    // -------------------------------------------------------------------------
-
-    /**
-     * Redirect guest users back with a friendly message.
-     *
-     * @param string $action Description of the blocked action.
-     * @return \Illuminate\Http\RedirectResponse|null
-     */
-    private function blockGuest(string $action = 'perform this action')
-    {
-        if (Auth::user()->email === 'guest@gmail.com') {
-            return redirect()->route('dashboard')
-                ->with('error', "Guest accounts cannot {$action}.");
-        }
-        return null;
-    }
-
-    // -------------------------------------------------------------------------
-    // Index – guests can view (policy restricts to public)
+    // Index – all documents are public, no visibility filtering
     // -------------------------------------------------------------------------
 
     public function index(Request $request)
@@ -45,12 +26,12 @@ class DocumentController extends Controller
         $user = Auth::user();
 
         if (!$user->hasPermission('documents.view') && $user->role->level !== 1) {
-            abort(403, 'You are not authorized to view documents.');
+            abort(403);
         }
 
-        $categories = DocumentCategory::active()->pluck('name');
-        $query = Document::with('owner');
+        $query = Document::with(['owner', 'currentVersion', 'category']);
 
+        // Search
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
@@ -59,110 +40,34 @@ class DocumentController extends Controller
             });
         }
 
+        // Category filter (foreign key)
         if ($request->filled('category')) {
-            $query->where('category', $request->category);
-        }
-
-        if ($request->filled('visibility')) {
-            $query->where('is_public', $request->visibility === 'public');
+            $query->where('document_category_id', $request->category);
         }
 
         $documents = $query->latest()->paginate(15)->appends($request->query());
 
-        $publicCount  = Document::where('is_public', true)->count();
-        $privateCount = Document::where('is_public', false)->count();
+        $categories = DocumentCategory::active()->orderBy('name')->pluck('name', 'id');
 
-        return view('documents.index', compact('documents', 'categories', 'publicCount', 'privateCount'));
+        return view('documents.index', compact('documents', 'categories'));
     }
 
     // -------------------------------------------------------------------------
-    // Create / Store – blocked for guests with redirect + flash
-    // -------------------------------------------------------------------------
-
-    public function create()
-    {
-        if ($redirect = $this->blockGuest('upload documents')) {
-            return $redirect;
-        }
-
-        $user = Auth::user();
-        if ($user->role->level !== 1 && !$user->hasPermission('documents.upload')) {
-            abort(403, 'You are not allowed to upload documents.');
-        }
-
-        $categories = DocumentCategory::active()->pluck('name');
-        return view('documents.create', compact('categories'));
-    }
-
-    public function store(Request $request)
-    {
-        if ($redirect = $this->blockGuest('upload documents')) {
-            return $redirect;
-        }
-
-        $user = Auth::user();
-        if ($user->role->level !== 1 && !$user->hasPermission('documents.upload')) {
-            abort(403);
-        }
-
-        $validated = $request->validate([
-            'title'         => 'required|string|max:255',
-            'description'   => 'nullable|string',
-            'category_final'=> 'nullable|string|max:100',
-            'is_public'     => 'boolean',
-            'file'          => 'required|file|max:20480|mimes:pdf,doc,docx,xls,xlsx,ppt,pptx,jpg,jpeg,png,gif,zip',
-        ]);
-
-        $validated['category'] = $validated['category_final'] ?? null;
-        unset($validated['category_final']);
-
-        DB::transaction(function () use ($validated, $request, $user) {
-            $document = Document::create([
-                'title'       => $validated['title'],
-                'description' => $validated['description'] ?? null,
-                'category'    => $validated['category'] ?? null,
-                'is_public'   => $validated['is_public'] ?? false,
-                'owner_id'    => $user->id,
-            ]);
-
-            $document->addVersion($request->file('file'), 'Initial upload');
-
-            AuditLogger::log('created', $document, "Document: {$document->title}", [], $document->toArray());
-        });
-
-        return redirect()->route('documents.index')
-            ->with('success', 'Document uploaded successfully.');
-    }
-
-    // -------------------------------------------------------------------------
-    // Show – policy handles access; guests redirected on private docs
+    // Show – policy handles access (no private check needed)
     // -------------------------------------------------------------------------
 
     public function show(Document $document)
     {
-        try {
-            $this->authorize('view', $document);
-        } catch (\Illuminate\Auth\Access\AuthorizationException $e) {
-            if (Auth::user()->email === 'guest@gmail.com') {
-                return redirect()->route('dashboard')
-                    ->with('error', 'This document is private. Guest accounts can only view public documents.');
-            }
-            throw $e;
-        }
-
+        $this->authorize('view', $document);
         return view('documents.show', compact('document'));
     }
 
     // -------------------------------------------------------------------------
-    // Edit / Update – blocked for guests
+    // Edit / Update – using document_category_id
     // -------------------------------------------------------------------------
 
     public function edit(Document $document)
     {
-        if ($redirect = $this->blockGuest('edit documents')) {
-            return $redirect;
-        }
-
         $user = Auth::user();
         if ($user->role->level !== 1 && !$user->hasPermission('documents.edit')) {
             abort(403);
@@ -171,16 +76,12 @@ class DocumentController extends Controller
             abort(403, 'You can only edit your own documents.');
         }
 
-        $categories = DocumentCategory::active()->pluck('name');
+        $categories = DocumentCategory::active()->orderBy('name')->pluck('name', 'id');
         return view('documents.edit', compact('document', 'categories'));
     }
 
     public function update(Request $request, Document $document)
     {
-        if ($redirect = $this->blockGuest('edit documents')) {
-            return $redirect;
-        }
-
         $user = Auth::user();
         if ($user->role->level !== 1 && !$user->hasPermission('documents.edit')) {
             abort(403);
@@ -192,12 +93,8 @@ class DocumentController extends Controller
         $validated = $request->validate([
             'title'         => 'required|string|max:255',
             'description'   => 'nullable|string',
-            'category_final'=> 'nullable|string|max:100',
-            'is_public'     => 'boolean',
+            'document_category_id' => 'nullable|exists:document_categories,id',
         ]);
-
-        $validated['category'] = $validated['category_final'] ?? null;
-        unset($validated['category_final']);
 
         $oldData = $document->getOriginal();
         $document->update($validated);
@@ -216,15 +113,11 @@ class DocumentController extends Controller
     }
 
     // -------------------------------------------------------------------------
-    // Destroy – blocked for guests
+    // Destroy – permission based
     // -------------------------------------------------------------------------
 
     public function destroy(Document $document)
     {
-        if ($redirect = $this->blockGuest('delete documents')) {
-            return $redirect;
-        }
-
         $user = Auth::user();
         if ($user->role->level !== 1 && !$user->hasPermission('documents.delete')) {
             abort(403);
@@ -242,20 +135,12 @@ class DocumentController extends Controller
     }
 
     // -------------------------------------------------------------------------
-    // Download / Preview – policy handles access; guests redirected
+    // Download / Preview – policy handles access (no visibility restrictions)
     // -------------------------------------------------------------------------
 
     public function download(Document $document)
     {
-        try {
-            $this->authorize('view', $document);
-        } catch (\Illuminate\Auth\Access\AuthorizationException $e) {
-            if (Auth::user()->email === 'guest@gmail.com') {
-                return redirect()->route('dashboard')
-                    ->with('error', 'You do not have permission to download this document.');
-            }
-            throw $e;
-        }
+        $this->authorize('view', $document);
 
         if (!$document->currentVersion) {
             return redirect()->back()->with('error', 'No file available for this document.');
@@ -273,15 +158,7 @@ class DocumentController extends Controller
 
     public function preview(Document $document)
     {
-        try {
-            $this->authorize('view', $document);
-        } catch (\Illuminate\Auth\Access\AuthorizationException $e) {
-            if (Auth::user()->email === 'guest@gmail.com') {
-                return redirect()->route('dashboard')
-                    ->with('error', 'You do not have permission to preview this document.');
-            }
-            throw $e;
-        }
+        $this->authorize('view', $document);
 
         if (!$document->currentVersion) {
             abort(404);
@@ -300,28 +177,32 @@ class DocumentController extends Controller
     }
 
     // -------------------------------------------------------------------------
-    // Trash / Restore / Force Delete – blocked for guests
+    // Trash / Restore / Force Delete – permission based
     // -------------------------------------------------------------------------
 
-    public function trash()
+   public function trash()
     {
-        if ($redirect = $this->blockGuest('access trash')) {
-            return $redirect;
+        if (!Auth::user()->hasPermission('documents.manage') && Auth::user()->role->level !== 1) {
+            abort(403);
         }
-
-        $this->authorize('viewAny', Document::class);
-        $documents = Document::onlyTrashed()->with('owner')->latest()->paginate(15);
+ 
+        // ✅ FIXED: added 'currentVersion' and 'category' to eager loads
+        $documents = Document::onlyTrashed()
+            ->with(['owner', 'currentVersion', 'category'])
+            ->latest('deleted_at')
+            ->paginate(15);
+ 
         return view('documents.trash', compact('documents'));
     }
+ 
 
     public function restore($id)
     {
-        if ($redirect = $this->blockGuest('restore documents')) {
-            return $redirect;
+        if (!Auth::user()->hasPermission('documents.manage') && Auth::user()->role->level !== 1) {
+            abort(403);
         }
 
         $document = Document::onlyTrashed()->findOrFail($id);
-        $this->authorize('restore', $document);
         $document->restore();
 
         AuditLogger::log('restored', $document, "Document: {$document->title}");
@@ -332,12 +213,11 @@ class DocumentController extends Controller
 
     public function forceDelete($id)
     {
-        if ($redirect = $this->blockGuest('permanently delete documents')) {
-            return $redirect;
+        if (!Auth::user()->hasPermission('documents.manage') && Auth::user()->role->level !== 1) {
+            abort(403);
         }
 
         $document = Document::onlyTrashed()->findOrFail($id);
-        $this->authorize('forceDelete', $document);
 
         AuditLogger::log('force_deleted', $document, "Document: {$document->title}", $document->toArray(), []);
 

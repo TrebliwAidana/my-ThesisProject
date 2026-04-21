@@ -14,8 +14,8 @@ class DocumentPolicy
     public function viewAny(User $user): bool
     {
         return $user->hasPermission('documents.view') 
-        || $user->hasPermission('documents.trash')
-        || $user->hasPermission('documents.manage');
+            || $user->hasPermission('documents.trash')
+            || $user->hasPermission('documents.manage');
     }
 
     /**
@@ -23,12 +23,13 @@ class DocumentPolicy
      */
     public function view(?User $user, Document $document): bool
     {
-        // Public documents are visible to everyone
-        if ($document->is_public) {
+        // System administrators (role level 1) can view any document
+        if ($user && $user->role->level === 1) {
             return true;
         }
 
-        // Must be logged in for private documents
+        // If no user (guest), they cannot view any document (since all docs are effectively public now? but we removed is_public)
+        // You may want to allow guests if needed, but we'll keep it restricted.
         if (!$user) {
             return false;
         }
@@ -38,7 +39,10 @@ class DocumentPolicy
             return true;
         }
 
-        // Additional share checks can go here...
+        // Users with 'documents.view_all' permission can view any document
+        if ($user->hasPermission('documents.view_all')) {
+            return true;
+        }
 
         return false;
     }
@@ -56,6 +60,10 @@ class DocumentPolicy
      */
     public function update(User $user, Document $document): bool
     {
+        // System administrators can edit any document
+        if ($user->role->level === 1) {
+            return true;
+        }
         return $user->id === $document->owner_id;
     }
 
@@ -65,7 +73,6 @@ class DocumentPolicy
     public function download(?User $user, Document $document): bool
     {
         return $this->view($user, $document);
-        
     }
 
     /**
@@ -73,8 +80,13 @@ class DocumentPolicy
      */
     public function delete(User $user, Document $document): bool
     {
+        // System administrators can delete any document
+        if ($user->role->level === 1) {
+            return true;
+        }
         return $user->id === $document->owner_id;
     }
+
     public function trash(User $user): bool
     {
         return $user->hasPermission('documents.trash') 

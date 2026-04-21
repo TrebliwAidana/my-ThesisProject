@@ -7,6 +7,9 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
+    <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>@yield('title', 'VSULHS SSLG')</title>
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
@@ -239,7 +242,7 @@
                     'visible' => $canSee(['System Administrator','Supreme Admin','Supreme Officer','Org Admin','Org Officer','Club Adviser'], 'members.view'),
                 ],
                 [
-                    'label'   => 'Documents',
+                    'label'   => 'Aprroved Financial Reports',
                     'route'   => 'documents.index',
                     'icon'    => 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
                     'visible' => $isGuest || $canSee(['System Administrator','Supreme Admin','Supreme Officer','Org Admin','Org Officer','Club Adviser'], 'documents.view'),
@@ -256,11 +259,13 @@
                 'label' => 'Administration',
                 'icon'  => 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z',
                 'submenu' => [
-                    ['label' => 'User Management', 'route' => 'admin.users.index',               'icon' => 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z',                                                                                                                                                                                                                              'visible' => $canSee(['System Administrator','Supreme Admin','Club Adviser'], 'admin.users')],
-                    ['label' => 'Roles',            'route' => 'admin.roles.index',               'icon' => 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z',                                                                                                                                           'visible' => $canSee(['System Administrator'], 'admin.roles')],
-                    ['label' => 'Permissions',      'route' => 'admin.permissions.index',         'icon' => 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z',                                                                                                                                           'visible' => $canSee(['System Administrator'], 'admin.permissions')],
-                    ['label' => 'Audit Logs',       'route' => 'admin.auditlogs.index',           'icon' => 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z',                                                                                                                                                                                                                                                                                               'visible' => $canSee(['System Administrator','Supreme Admin'], 'audit.view')],
-                    ['label' => 'Doc Categories',   'route' => 'admin.document-categories.index', 'icon' => 'M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a2 2 0 012-2h2z',                                                                                                                                                                                                                   'visible' => $canSee(['System Administrator'], 'admin.document-categories')],
+                    ['label' => 'User Management', 'route' => 'admin.users.index',               'icon' => 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z',                                                                                            'visible' => $canSee(['System Administrator',], 'admin.users')],
+                    ['label' => 'Roles',            'route' => 'admin.roles.index',               'icon' => 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z',          'visible' => $canSee(['System Administrator'], 'admin.roles')],
+                    ['label' => 'Permissions',      'route' => 'admin.permissions.index',         'icon' => 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z',          'visible' => $canSee(['System Administrator'], 'admin.permissions')],
+                    ['label' => 'Audit Logs',       'route' => 'admin.auditlogs.index',           'icon' => 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z',                                                                                                                                                             'visible' => $canSee(['System Administrator'], 'audit.view')],
+                    ['label' => 'Backup & Restore',  'route' => 'admin.document-backups.index',   'icon' => '',                                                                                                                                                                                                        'visible' => $canSee(['System Administrator', 'admin.index' ])],
+                    ['label' => 'Doc Categories',   'route' => 'admin.document-categories.index', 'icon' => 'M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a2 2 0 012-2h2z',                                                                                  'visible' => $canSee(['System Administrator'], 'admin.document-categories')],
+                
                 ],
             ];
             $adminMenu['visible'] = !$isGuest && collect($adminMenu['submenu'])->contains('visible', true);

@@ -17,9 +17,8 @@ class Document extends Model
     protected $fillable = [
         'title',
         'description',
-        'category',
+        'document_category_id', 
         'tags',
-        'is_public',
         'owner_id',
         'current_version_id',
     ];
@@ -29,6 +28,12 @@ class Document extends Model
         'tags'      => 'array',
         'deleted_at' => 'datetime',
     ];
+
+    // Relationship to category
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(DocumentCategory::class, 'document_category_id');
+    }
 
     public function owner(): BelongsTo
     {
@@ -94,9 +99,9 @@ class Document extends Model
             $document->financialTransactions()->detach();
         });
     }
+
     public function uploader(): BelongsTo
     {
         return $this->owner();
     }
-
 }

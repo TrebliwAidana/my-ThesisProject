@@ -6,6 +6,7 @@ use App\Http\Controllers\MemberController;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\DocumentVersionController;
 use App\Http\Controllers\Admin\DocumentCategoryController;
+use App\Http\Controllers\Admin\DocumentBackupController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\ProfileController;
@@ -189,9 +190,21 @@ Route::middleware(['auth.custom', 'verified'])->group(function () {
                 Route::get('/',                    [DocumentCategoryController::class, 'index'])->name('index');
                 Route::get('/create',              [DocumentCategoryController::class, 'create'])->name('create');
                 Route::post('/',                   [DocumentCategoryController::class, 'store'])->name('store');
-                Route::get('/{category}/edit',     [DocumentCategoryController::class, 'edit'])->name('edit');
-                Route::put('/{category}',          [DocumentCategoryController::class, 'update'])->name('update');
-                Route::delete('/{category}',       [DocumentCategoryController::class, 'destroy'])->name('destroy');
+                Route::get('/{documentCategory}/edit', [DocumentCategoryController::class, 'edit'])->name('edit');
+                Route::put('/{documentCategory}',      [DocumentCategoryController::class, 'update'])->name('update');
+                Route::delete('/{documentCategory}',   [DocumentCategoryController::class, 'destroy'])->name('destroy');
+            });
+        
+        // ── Document Backups ──────────────────────────────────────────
+        Route::middleware('role:System Administrator')
+            ->prefix('document-backups')
+            ->name('document-backups.')
+            ->group(function () {
+                Route::get('/',                        [DocumentBackupController::class, 'index'])->name('index');
+                Route::post('/create',                 [DocumentBackupController::class, 'create'])->name('create');
+                Route::get('/download/{filename}',     [DocumentBackupController::class, 'download'])->name('download')->where('filename', '.*');
+                Route::post('/restore',                [DocumentBackupController::class, 'restore'])->name('restore');
+                Route::delete('/destroy/{filename}',   [DocumentBackupController::class, 'destroy'])->name('destroy')->where('filename', '.*');
             });
 
         // ── Audit Logs ───────────────────────────────────────────────────────
