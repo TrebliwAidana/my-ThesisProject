@@ -75,7 +75,7 @@ class AdminController extends Controller
         $validated = $request->validate([
             'name'         => ['required', 'string', 'max:100', 'unique:roles,name'],
             'abbreviation' => ['nullable', 'string', 'max:10'],
-            'description'  => ['nullable', 'string', 'max:500'],
+            'desc'  => ['nullable', 'string', 'max:500'],
             'level'        => ['required', 'integer', 'min:1', 'max:10'],
             'is_system'    => ['nullable', 'boolean'],
             'parent_id'    => ['nullable', 'exists:roles,id'],
@@ -90,7 +90,7 @@ class AdminController extends Controller
             $role = Role::create([
                 'name'         => $validated['name'],
                 'abbreviation' => $validated['abbreviation'] ?? null,
-                'description'  => $validated['description'] ?? null,
+                'desc'  => $validated['desc'] ?? null,
                 'level'        => $validated['level'],
                 'is_system'    => $validated['is_system'] ?? false,
                 'parent_id'    => $validated['parent_id'] ?? null,
@@ -125,7 +125,7 @@ class AdminController extends Controller
         if ($role->is_predefined) {
             $validated = $request->validate([
                 'abbreviation' => ['nullable', 'string', 'max:10'],
-                'description'  => ['nullable', 'string', 'max:500'],
+                'desc'  => ['nullable', 'string', 'max:500'],
                 'level'        => ['required', 'integer', 'min:1', 'max:10'],
             ]);
             $role->update($validated);
@@ -139,7 +139,7 @@ class AdminController extends Controller
         $validated = $request->validate([
             'name'         => ['required', 'string', 'max:100', 'unique:roles,name,' . $id],
             'abbreviation' => ['nullable', 'string', 'max:10'],
-            'description'  => ['nullable', 'string', 'max:500'],
+            'desc'  => ['nullable', 'string', 'max:500'],
             'level'        => ['required', 'integer', 'min:1', 'max:10'],
             'is_system'    => ['nullable', 'boolean'],
         ]);
@@ -153,7 +153,7 @@ class AdminController extends Controller
             $role->update([
                 'name'         => $validated['name'],
                 'abbreviation' => $validated['abbreviation'] ?? null,
-                'description'  => $validated['description'] ?? null,
+                'desc'  => $validated['desc'] ?? null,
                 'level'        => $validated['level'],
                 'is_system'    => $validated['is_system'] ?? $role->is_system,
             ]);

@@ -29,20 +29,23 @@ class AuthServiceProvider extends ServiceProvider
     {
         $this->registerPolicies();
 
-        // Guard against running before migrations exist (e.g. during fresh install)
         if (!$this->permissionsTableExists()) {
             return;
         }
 
-        // Register a Gate for every permission slug in the database.
-        // without changing any existing controller logic.
+        // Super-admin bypass — level 1 passes every Gate automatically
+        Gate::before(function ($user, $ability) {
+            if ((int) ($user->role->level ?? 999) === 1) {
+                return true;
+            }
+        });
+
         Permission::all()->each(function (Permission $permission) {
             Gate::define($permission->slug, function ($user) use ($permission) {
                 return $user->hasPermission($permission->slug);
             });
         });
     }
-
     /**
      * Safely check if the permissions table exists before querying it.
      * Prevents crashes during php artisan migrate on a fresh install.

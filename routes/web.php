@@ -79,25 +79,6 @@ Route::middleware(['auth.custom', 'verified'])->group(function () {
             Route::get('documents/{document}/preview', [DocumentController::class, 'preview'])->name('documents.preview');
 
                     
-        // // Temporary closure for version download (bypasses controller autoloading)
-        // Route::get('documents/{document}/versions/{version}/download', function ($documentId, $versionId) {
-        //     $document = \App\Models\Document::findOrFail($documentId);
-        //     $version = \App\Models\DocumentVersion::findOrFail($versionId);
-            
-        //     if ($version->document_id !== $document->id) {
-        //         abort(404);
-        //     }
-            
-        //     // Authorize using policy
-        //     if (!auth()->user() && !$document->is_public) {
-        //         abort(403);
-        //     }
-        //     if (auth()->user() && !auth()->user()->can('view', $document)) {
-        //         abort(403);
-        //     }
-            
-        //     return \Illuminate\Support\Facades\Storage::disk('private')->download($version->file_path, $version->file_name);
-        // })->name('documents.version.download');
         Route::get('documents/{document}/versions/{version}/download', 'App\Http\Controllers\DocumentVersionController@download')
             ->name('documents.version.download');
 
@@ -113,31 +94,26 @@ Route::middleware(['auth.custom', 'verified'])->group(function () {
     // Place this BEFORE the admin group, inside the main verified group
     Route::prefix('financial')->name('financial.')->group(function () {
     
-        // Index & Show
-        Route::get('/',           [FinancialController::class, 'index'])->name('index');
-        Route::get('/{id}',       [FinancialController::class, 'show'])->name('show');
-    
-        // Income
-        Route::get('/income/create',  [FinancialController::class, 'createIncome'])->name('income.create');
-        Route::post('/income',        [FinancialController::class, 'storeIncome'])->name('income.store');
-    
-        // Expense
-        Route::get('/expense/create', [FinancialController::class, 'createExpense'])->name('expense.create');
-        Route::post('/expense',       [FinancialController::class, 'storeExpense'])->name('expense.store');
+    // 1. SPECIFIC ROUTES FIRST (no wildcards)
+     Route::post('/report/preview', [FinancialController::class, 'preview'])->name('report.preview');
+    Route::get('/report', [FinancialController::class, 'reportForm'])->name('report.form');
+   
+    Route::post('/report/generate', [FinancialController::class, 'generateReport'])->name('report.generate');
+    Route::get('/income/create', [FinancialController::class, 'createIncome'])->name('income.create');
+    Route::get('/expense/create', [FinancialController::class, 'createExpense'])->name('expense.create');
 
-        //audit
-        Route::patch('/{id}/audit', [FinancialController::class, 'audit'])->name('audit');
-    
-        // Edit / Update
-        Route::get('/{id}/edit',      [FinancialController::class, 'edit'])->name('edit');
-        Route::put('/{id}',           [FinancialController::class, 'update'])->name('update');
-    
-        // Approve / Reject
-        Route::patch('/{id}/approve', [FinancialController::class, 'approve'])->name('approve');
-        Route::patch('/{id}/reject',  [FinancialController::class, 'reject'])->name('reject');
-    
-        // Delete
-        Route::delete('/{id}',        [FinancialController::class, 'destroy'])->name('destroy');
+    // 2. WILDCARD ROUTES (with {id}) AFTER
+    Route::get('/', [FinancialController::class, 'index'])->name('index');
+    Route::get('/{id}', [FinancialController::class, 'show'])->name('show');
+    Route::get('/{id}/edit', [FinancialController::class, 'edit'])->name('edit');
+    Route::put('/{id}', [FinancialController::class, 'update'])->name('update');
+    Route::delete('/{id}', [FinancialController::class, 'destroy'])->name('destroy');
+
+    // 3. ACTION ROUTES WITH {id} (also after the wildcard)
+    Route::patch('/{id}/audit', [FinancialController::class, 'audit'])->name('audit');
+    Route::patch('/{id}/approve', [FinancialController::class, 'approve'])->name('approve');
+    Route::patch('/{id}/reject', [FinancialController::class, 'reject'])->name('reject');
+
     });
 
     // ── Administration ────────────────────────────────────────────────────────

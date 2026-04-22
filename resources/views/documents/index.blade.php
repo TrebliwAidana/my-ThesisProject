@@ -5,8 +5,8 @@
 @section('content')
 <div class="relative overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-600 to-emerald-700 dark:from-emerald-800 dark:to-emerald-900 p-6 mb-6">
     <div class="relative z-10">
-        <h1 class="text-2xl font-bold text-white">Documents</h1>
-        <p class="text-emerald-100 text-sm mt-1">Manage organizational documents</p>
+        <h1 class="text-2xl font-bold text-white">Financial Documents</h1>
+        <p class="text-emerald-100 text-sm mt-1">Manage Income/Exepense documents</p>
     </div>
     <div class="absolute top-0 right-0 -mt-8 -mr-8 w-64 h-64 bg-white/5 rounded-full blur-3xl"></div>
 </div>

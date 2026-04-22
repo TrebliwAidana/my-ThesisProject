@@ -9,6 +9,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use App\Services\AuditLogger;
+use Barryvdh\DomPDF\Facade\Pdf; 
+use App\Models\User;
 
 class FinancialController extends Controller
 {
@@ -360,5 +362,201 @@ class FinancialController extends Controller
 
         $document->addVersion($file, $changeNotes ?? 'Receipt uploaded');
         $transaction->documents()->attach($document->id);
+    }
+
+    // -------------------------------------------------------------------------
+    // Report Generation Methods
+    // -------------------------------------------------------------------------
+
+    /**
+     * Show the report generation form.
+     */
+    public function reportForm()
+    {
+        $this->checkGuest();
+        if (!auth()->user()->hasPermission('reports.view') && auth()->user()->role->level !== 1) {
+            abort(403, 'You do not have permission to generate financial reports.');
+        }
+        return view('financial.report-form');
+    }
+
+    /**
+     * Generate the PDF financial report.
+     */
+
+    public function generateReport(Request $request)
+    {
+        $this->checkGuest();
+        if (!auth()->user()->hasPermission('reports.view') && auth()->user()->role->level !== 1) {
+            abort(403);
+        }
+
+        $validated = $request->validate([
+            'start_date'     => 'required|date',
+            'end_date'       => 'required|date|after_or_equal:start_date',
+            'organization'   => 'nullable|string|max:255',
+            'previous_cash'  => 'nullable|numeric|min:0',
+        ]);
+
+        $startDate = $validated['start_date'];
+        $endDate   = $validated['end_date'];
+        $orgName   = $validated['organization'] ?? '_________________________';
+        $prevCash  = (float) ($validated['previous_cash'] ?? 0);
+
+        // Get totals from approved transactions within the date range
+        $incomeTotal = FinancialTransaction::where('type', 'income')
+            ->where('status', 'approved')
+            ->whereBetween('transaction_date', [$startDate, $endDate])
+            ->sum('amount');
+
+        $expenseTotal = FinancialTransaction::where('type', 'expense')
+            ->where('status', 'approved')
+            ->whereBetween('transaction_date', [$startDate, $endDate])
+            ->sum('amount');
+
+        $netFromOps = $incomeTotal - $expenseTotal;
+        $netFinal   = $netFromOps + $prevCash;
+
+        // Accounts receivable – customize if needed
+        $receivables = 0;
+
+        // ---- DYNAMIC SIGNATORY NAMES (based on roles) ----
+        $auditor = User::whereHas('role', function($q) {
+            $q->where('name', 'Auditor');
+        })->where('is_active', true)->first();
+
+        $president = User::whereHas('role', function($q) {
+            $q->where('name', 'President');
+        })->where('is_active', true)->first();
+
+        $adviser = User::whereHas('role', function($q) {
+            $q->where('name', 'Club Adviser');
+        })->where('is_active', true)->first();
+
+        $treasurer = User::whereHas('role', function($q) {
+            $q->where('name', 'Treasurer');
+        })->where('is_active', true)->first();
+
+        $guidanceFacilitator = User::whereHas('role', function($q) {
+            $q->where('name', 'Guidance Facilitator');
+        })->where('is_active', true)->first();
+
+        $data = [
+            'org_name'     => $orgName,
+            'start_date'   => $startDate,
+            'end_date'     => $endDate,
+            'income_total' => $incomeTotal,
+            'expense_total'=> $expenseTotal,
+            'net_from_ops' => $netFromOps,
+            'prev_cash'    => $prevCash,
+            'net_final'    => $netFinal,
+            'receivables'  => $receivables,
+            'generated_at' => now(),
+            // Signatory names (fallback to placeholder if not found)
+            'auditor_name' => $auditor ? $auditor->full_name : '_________________________',
+            'president_name' => $president ? $president->full_name : '_________________________',
+            'adviser_name' => $adviser ? $adviser->full_name : '_________________________',
+            'treasurer_name' => $treasurer ? $treasurer->full_name : 'SHEERWINA MAE G. BALOTITE', // fallback hardcoded
+            'guidance_name' => $guidanceFacilitator ? $guidanceFacilitator->full_name : 'NOEMI ELISA L. OQUIAS',
+        ];
+
+        $pdf = Pdf::loadView('financial.report-pdf', $data)
+            ->setPaper('a4', 'portrait')
+            ->setOptions([
+                'defaultFont' => 'sans-serif',
+                'isHtml5ParserEnabled' => true,
+                'isRemoteEnabled' => true,
+                'dpi' => 96,
+                'margin_left' => 15,
+                'margin_right' => 15,
+                'margin_top' => 15,
+                'margin_bottom' => 15,
+            ]);
+
+        return $pdf->download("financial_report_{$startDate}_to_{$endDate}.pdf");
+    }
+
+    public function preview(Request $request)
+    {
+        $this->checkGuest();
+        if (!auth()->user()->hasPermission('reports.view') && auth()->user()->role->level !== 1) {
+            abort(403);
+        }
+
+        $validated = $request->validate([
+            'start_date'    => 'required|date',
+            'end_date'      => 'required|date|after_or_equal:start_date',
+            'organization'  => 'nullable|string|max:255',
+            'previous_cash' => 'nullable|numeric|min:0',
+        ]);
+
+        $startDate = $validated['start_date'];
+        $endDate   = $validated['end_date'];
+        $orgName   = $validated['organization'] ?? '_________________________';
+        $prevCash  = (float) ($validated['previous_cash'] ?? 0);
+
+        $incomeTotal = FinancialTransaction::where('type', 'income')
+            ->where('status', 'approved')
+            ->whereBetween('transaction_date', [$startDate, $endDate])
+            ->sum('amount');
+
+        $expenseTotal = FinancialTransaction::where('type', 'expense')
+            ->where('status', 'approved')
+            ->whereBetween('transaction_date', [$startDate, $endDate])
+            ->sum('amount');
+
+        $netFromOps = $incomeTotal - $expenseTotal;
+        $netFinal   = $netFromOps + $prevCash;
+        $receivables = 0;
+
+        $auditor   = User::whereHas('role', fn($q) => $q->where('name', 'Auditor'))->where('is_active', true)->first();
+        $president = User::whereHas('role', fn($q) => $q->where('name', 'President'))->where('is_active', true)->first();
+        $adviser   = User::whereHas('role', fn($q) => $q->where('name', 'Club Adviser'))->where('is_active', true)->first();
+        $treasurer = User::whereHas('role', fn($q) => $q->where('name', 'Treasurer'))->where('is_active', true)->first();
+        $guidance  = User::whereHas('role', fn($q) => $q->where('name', 'Guidance Facilitator'))->where('is_active', true)->first();
+
+        $data = [
+            'org_name'       => $orgName,
+            'start_date'     => $startDate,
+            'end_date'       => $endDate,
+            'income_total'   => $incomeTotal,
+            'expense_total'  => $expenseTotal,
+            'net_from_ops'   => $netFromOps,
+            'prev_cash'      => $prevCash,
+            'net_final'      => $netFinal,
+            'receivables'    => $receivables,
+            'generated_at'   => now(),
+            'auditor_name'   => $auditor   ? $auditor->full_name   : '_________________________',
+            'president_name' => $president ? $president->full_name : '_________________________',
+            'adviser_name'   => $adviser   ? $adviser->full_name   : '_________________________',
+            'treasurer_name' => $treasurer ? $treasurer->full_name : 'SHEERWINA MAE G. BALOTITE',
+            'guidance_name'  => $guidance  ? $guidance->full_name  : 'NOEMI ELISA L. OQUIAS',
+        ];
+
+        // Stream the PDF inline in the browser (preview) instead of downloading
+        $pdf = Pdf::loadView('financial.report-pdf', $data)
+            ->setPaper('a4', 'portrait')
+            ->setOptions([
+                'defaultFont'        => 'sans-serif',
+                'isHtml5ParserEnabled' => true,
+                'isRemoteEnabled'    => true,
+                'dpi'                => 96,
+                'margin_left'        => 15,
+                'margin_right'       => 15,
+                'margin_top'         => 15,
+                'margin_bottom'      => 15,
+            ]);
+
+        return $pdf->stream("financial_report_preview.pdf");
+    }
+
+    /**
+     * Helper to block guest users.
+     */
+    private function checkGuest()
+    {
+        if (auth()->user()->email === 'guest@gmail.com') {
+            abort(403, 'Guest accounts cannot generate reports.');
+        }
     }
 }

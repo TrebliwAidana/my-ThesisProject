@@ -23,6 +23,9 @@ class PermissionMatrixSeeder extends Seeder
         // Documents – fine‑grained + trash actions
         'documents' => ['view', 'create', 'edit', 'delete', 'trash', 'restore', 'force-delete'],
 
+        // Categories – new module for document categories
+        'categories' => ['view', 'create', 'edit', 'delete'],
+
         // Financial – fine‑grained + audit / approve / review
         'financial' => ['view', 'create', 'edit', 'delete', 'audit', 'approve', 'review'],
 
@@ -34,7 +37,7 @@ class PermissionMatrixSeeder extends Seeder
         'activities'=> ['monitor'],
 
         // Roles – fine‑grained
-        'roles'     => ['view', '17_create', 'edit', 'delete'],
+        'roles'     => ['view', 'create', 'edit', 'delete'],
 
         // Permissions – view + edit (no create/delete needed)
         'permissions' => ['view', 'edit'],
@@ -64,6 +67,12 @@ class PermissionMatrixSeeder extends Seeder
         'documents.trash'        => 'View Trash',
         'documents.restore'      => 'Restore Documents',
         'documents.force-delete' => 'Permanently Delete',
+
+        // Categories
+        'categories.view'   => 'View Document Categories',
+        'categories.create' => 'Create Document Categories',
+        'categories.edit'   => 'Edit Document Categories',
+        'categories.delete' => 'Delete Document Categories',
 
         // Financial
         'financial.view'    => 'View Financial Records',
@@ -140,6 +149,7 @@ class PermissionMatrixSeeder extends Seeder
                 'members.view', 'members.create', 'members.edit', 'members.delete',
                 'documents.view', 'documents.create', 'documents.edit', 'documents.delete',
                 'documents.trash', 'documents.restore', 'documents.force-delete',
+                'categories.view', // allow viewing categories
                 'financial.view', 'financial.create', 'financial.edit', 'financial.delete',
                 'financial.audit', 'financial.approve', 'financial.review',
                 'reports.view', 'reports.generate',
@@ -151,6 +161,7 @@ class PermissionMatrixSeeder extends Seeder
                 'members.view', 'members.create', 'members.edit', 'members.delete',
                 'documents.view', 'documents.create', 'documents.edit', 'documents.delete',
                 'documents.trash', 'documents.restore', 'documents.force-delete',
+                'categories.view', 'categories.create', 'categories.edit', 'categories.delete', // full category management
                 'financial.view', 'financial.create', 'financial.edit', 'financial.delete',
                 'financial.audit', 'financial.approve', 'financial.review',
                 'reports.view', 'reports.generate',
@@ -162,6 +173,7 @@ class PermissionMatrixSeeder extends Seeder
                 'members.view',
                 'documents.view', 'documents.create', 'documents.edit', 'documents.delete',
                 'documents.trash', 'documents.restore',
+                'categories.view', // only view, not edit/delete
                 'financial.view', 'financial.create', 'financial.edit', 'financial.delete',
                 'reports.view', 'reports.generate',
             ],
@@ -169,6 +181,7 @@ class PermissionMatrixSeeder extends Seeder
             'Club Adviser' => [
                 'members.view',
                 'documents.view', 'documents.trash', 'documents.restore',
+                'categories.view', // view categories
                 'financial.view', 'financial.audit', 'financial.approve', 'financial.review',
                 'reports.view',
                 'audit.view',

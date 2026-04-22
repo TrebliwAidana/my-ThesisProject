@@ -60,24 +60,30 @@
             $user = auth()->user();
             $canCreate = $user->hasPermission('financial.create') || $user->role->level === 1;
         @endphp
-        @if($canCreate)
         <div class="flex flex-wrap gap-3 mb-4">
-            <a href="{{ route('financial.income.create') }}"
-               class="inline-flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition w-full sm:w-auto">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
-                </svg>
-                Add Income
+            @if($canCreate)
+                <a href="{{ route('financial.income.create') }}"
+                   class="inline-flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition w-full sm:w-auto">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                    </svg>
+                    Add Income
+                </a>
+                <a href="{{ route('financial.expense.create') }}"
+                   class="inline-flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition w-full sm:w-auto">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                    </svg>
+                    Add Expense
+                </a>
+            @endif
+            @if(auth()->user()->hasPermission('reports.view') || auth()->user()->role->level == 1)
+            <a href="{{ route('financial.report.form') }}"
+            class="inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition w-full sm:w-auto">
+                📊 Generate Report
             </a>
-            <a href="{{ route('financial.expense.create') }}"
-               class="inline-flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition w-full sm:w-auto">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
-                </svg>
-                Add Expense
-            </a>
+@endif
         </div>
-        @endif
 
         {{-- Filters --}}
         <form method="GET" action="{{ route('financial.index') }}" class="flex flex-col sm:flex-row flex-wrap gap-3">
@@ -372,10 +378,18 @@
         {{-- Pagination (Responsive) --}}
         @if($transactions->hasPages())
         <div class="px-5 py-4 border-t border-gray-100 dark:border-gray-700">
-            {{ $transactions->links() }}
+            {{ $transactions->links() }}a
         </div>
         @endif
     </div>
+    <div class="text-xs text-red-500 p-2">
+        Auth ID: {{ auth()->id() }} |
+        Role: {{ auth()->user()->role->name }} |
+        Level: {{ auth()->user()->role->level }} |
+        Can reports.view: {{ auth()->user()->hasPermission('reports.view') ? 'YES' : 'NO' }} |
+        Gate: {{ \Illuminate\Support\Facades\Gate::allows('reports.view') ? 'YES' : 'NO' }}
+    </div>
+    {{ auth()->id() }} vs {{ auth('web')->id() }}
 
 </div>
 @endsection

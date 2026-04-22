@@ -12,10 +12,12 @@ class Role extends Model
         'name',
         'abbreviation',
         'level',
-        'description',          // ✅ dynamic dashboard description
+        'desc',          // ✅ dynamic dashboard description
         'is_predefined',
         'is_visible',
         'allowed_positions',    // stored as JSON (optional)
+        'parent_id',    // ➕ add this
+        'is_system',
     ];
 
     protected $casts = [

@@ -36,11 +36,11 @@ class User extends Authenticatable implements MustVerifyEmail
         'last_login_at',
         'theme',
         'remember_token',
-        'gender', 
+        'gender',
         'phone',
         'birthday',
         'avatar',
-         'email_verified_at',
+        'email_verified_at',
     ];
 
     protected $hidden = [
@@ -52,22 +52,23 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         return [
             'email_verified_at' => 'datetime',
-            'password' => 'hashed',
-            'is_active' => 'boolean',
-            'last_login_at' => 'datetime:Y-m-d H:i:s',
-            'birthday' => 'date',
+            'password'          => 'hashed',
+            'is_active'         => 'boolean',
+            'last_login_at'     => 'datetime:Y-m-d H:i:s',
+            'birthday'          => 'date',
         ];
     }
 
-    /**
-     * Get full name from first and last name
-     */
+    // =========================================================================
+    // ACCESSORS & MUTATORS
+    // =========================================================================
+
     public function getFullNameAttribute($value)
     {
         if ($value) {
             return $value;
         }
-        
+
         if ($this->first_name && $this->last_name) {
             $name = $this->first_name . ' ' . $this->last_name;
             if ($this->middle_name) {
@@ -75,42 +76,47 @@ class User extends Authenticatable implements MustVerifyEmail
             }
             return $name;
         }
-        
+
         return $this->attributes['full_name'] ?? '';
     }
 
-    /**
-     * Set full name and split into first/last
-     */
     public function setFullNameAttribute($value)
     {
         $this->attributes['full_name'] = $value;
-        
+
         $parts = preg_split('/\s+/', trim($value));
         $this->attributes['first_name'] = $parts[0] ?? '';
-        $this->attributes['last_name'] = count($parts) > 1 ? end($parts) : '';
+        $this->attributes['last_name']  = count($parts) > 1 ? end($parts) : '';
         if (count($parts) >= 3) {
             $this->attributes['middle_name'] = $parts[1] ?? null;
         }
     }
 
-    /**
-     * Get user initials
-     */
     public function getInitialsAttribute()
     {
         $firstName = $this->first_name ?? '';
-        $lastName = $this->last_name ?? '';
-        
+        $lastName  = $this->last_name  ?? '';
+
         $initials = '';
-        if ($firstName) {
-            $initials .= strtoupper(substr($firstName, 0, 1));
-        }
-        if ($lastName) {
-            $initials .= strtoupper(substr($lastName, 0, 1));
-        }
-        
+        if ($firstName) $initials .= strtoupper(substr($firstName, 0, 1));
+        if ($lastName)  $initials .= strtoupper(substr($lastName,  0, 1));
+
         return $initials ?: 'U';
+    }
+
+    public function setFirstNameAttribute($value)
+    {
+        $this->attributes['first_name'] = ucwords(strtolower(trim($value)));
+    }
+
+    public function setLastNameAttribute($value)
+    {
+        $this->attributes['last_name'] = ucwords(strtolower(trim($value)));
+    }
+
+    public function setMiddleNameAttribute($value)
+    {
+        $this->attributes['middle_name'] = $value ? ucwords(strtolower(trim($value))) : null;
     }
 
     // =========================================================================
@@ -137,6 +143,25 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasMany(Document::class, 'owner_id');
     }
 
+    public function memberEditLogs()
+    {
+        return $this->hasMany(MemberEditLog::class, 'member_id');
+    }
+
+    public function editsMade()
+    {
+        return $this->hasMany(MemberEditLog::class, 'edited_by');
+    }
+
+    public function positionChangeLogs()
+    {
+        return $this->hasMany(PositionChangeLog::class, 'member_id');
+    }
+
+    // =========================================================================
+    // PERMISSIONS
+    // =========================================================================
+
     public function hasPermission(string $moduleOrSlug, string $action = ''): bool
     {
         $slug = $action
@@ -151,25 +176,22 @@ class User extends Authenticatable implements MustVerifyEmail
 
         if (!$this->role) return false;
 
-        // Level 1 = System Administrator — bypass all checks
-        if (($this->role->level ?? 999) === 1) {
+        // FIX: cast to int before strict comparison to handle DB returning string "1"
+        if ((int) ($this->role->level ?? 999) === 1) {
             return true;
         }
 
         $cacheKey = "user_perms_{$this->id}";
 
-        $permissions = cache()->remember($cacheKey, now()->addMinutes(1), function () {
+        $permissions = cache()->remember($cacheKey, now()->addMinutes(5), function () {
             $perms = $this->role?->load('permissions')->permissions ?? collect();
             return $perms->pluck('slug')->toArray();
         });
 
-        // 1. Direct match — e.g. user has members.view explicitly granted
+        // 1. Direct match
         if (in_array($slug, $permissions)) return true;
 
-        // 2. Manage fallback (Option C) — if the role has members.manage,
-        //    it automatically passes any members.* check.
-        //    This means checking ONE box in the matrix grants full module access.
-        //    Individual permissions still work independently for partial access.
+        // 2. Manage fallback — if role has members.manage, it passes any members.* check
         $parts = explode('.', $slug);
         if (count($parts) === 2) {
             $manageSlug = $parts[0] . '.manage';
@@ -178,6 +200,7 @@ class User extends Authenticatable implements MustVerifyEmail
 
         return false;
     }
+
     public function canDo(string $module, string $action): bool
     {
         return $this->hasPermission($module, $action);
@@ -188,9 +211,6 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasPermission("{$module}.view");
     }
 
-    /**
-     * Check if user has a role by name (unchanged from your original).
-     */
     public function hasRole(string $role): bool
     {
         return $this->role && strcasecmp($this->role->name, $role) === 0;
@@ -204,6 +224,16 @@ class User extends Authenticatable implements MustVerifyEmail
         cache()->forget("user_perms_{$this->id}");
     }
 
+    public function canAccessModule(string $module): bool
+    {
+        if ($this->hasRole('System Administrator') || $this->hasRole('Supreme Admin')) {
+            return true;
+        }
+
+        return $this->permissions()
+            ->whereHas('module', fn($q) => $q->where('name', $module))
+            ->exists();
+    }
 
     // =========================================================================
     // ACCOUNT STATUS HELPERS
@@ -228,13 +258,10 @@ class User extends Authenticatable implements MustVerifyEmail
 
     public function updateLastLogin(): void
     {
-         if ($this->member) {
-        $this->member->last_login_at = now();
-        $this->member->save();
+        if ($this->member) {
+            $this->member->last_login_at = now();
+            $this->member->save();
         }
-        
-        // $this->last_login_at = now();
-        // $this->save();
     }
 
     // =========================================================================
@@ -256,8 +283,18 @@ class User extends Authenticatable implements MustVerifyEmail
         return $query->where('year_level', $yearLevel);
     }
 
+    public function scopeVerified($query)
+    {
+        return $query->whereNotNull('email_verified_at');
+    }
+
+    public function scopeUnverified($query)
+    {
+        return $query->whereNull('email_verified_at');
+    }
+
     // =========================================================================
-    // EMAIL VERIFICATION (MustVerifyEmail interface)
+    // EMAIL VERIFICATION
     // =========================================================================
 
     public function hasVerifiedEmail(): bool
@@ -318,54 +355,6 @@ class User extends Authenticatable implements MustVerifyEmail
                 </span>';
     }
 
-    public function scopeVerified($query)
-    {
-        return $query->whereNotNull('email_verified_at');
-    }
-
-    public function scopeUnverified($query)
-    {
-        return $query->whereNull('email_verified_at');
-    }
-
-    // =========================================================================
-    // BOOT & MUTATORS
-    // =========================================================================
-
-    protected static function boot()
-    {
-        parent::boot();
-        
-        static::creating(function ($user) {
-            if (!isset($user->is_active)) {
-                $user->is_active = true;
-            }
-            
-            if ($user->role_id == 4 && empty($user->password)) {
-                $user->password = bcrypt('password');
-            }
-            
-            if ($user->role_id == 4 && empty($user->email)) {
-                $user->email = \App\Helpers\UserHelper::generateUniqueMemberEmail($user->full_name);
-            }
-        });
-    }
-
-    public function setFirstNameAttribute($value)
-    {
-        $this->attributes['first_name'] = ucwords(strtolower(trim($value)));
-    }
-
-    public function setLastNameAttribute($value)
-    {
-        $this->attributes['last_name'] = ucwords(strtolower(trim($value)));
-    }
-
-    public function setMiddleNameAttribute($value)
-    {
-        $this->attributes['middle_name'] = $value ? ucwords(strtolower(trim($value))) : null;
-    }
-
     // =========================================================================
     // STUDENT CHECK
     // =========================================================================
@@ -382,7 +371,7 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     // =========================================================================
-    // AVATAR URL
+    // AVATAR
     // =========================================================================
 
     public function getAvatarUrlAttribute()
@@ -393,33 +382,25 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     // =========================================================================
-    // LOG RELATIONSHIPS
+    // BOOT
     // =========================================================================
 
-    public function memberEditLogs()
+    protected static function boot()
     {
-        return $this->hasMany(MemberEditLog::class, 'member_id');
-    }
+        parent::boot();
 
-    public function editsMade()
-    {
-        return $this->hasMany(MemberEditLog::class, 'edited_by');
-    }
+        static::creating(function ($user) {
+            if (!isset($user->is_active)) {
+                $user->is_active = true;
+            }
 
-    public function positionChangeLogs()
-    {
-        return $this->hasMany(PositionChangeLog::class, 'member_id');
-    }
-        public function canAccessModule(string $module): bool
-    {
-        // Super admin or system admin can access everything
-        if ($this->hasRole('System Administrator') || $this->hasRole('Supreme Admin')) {
-            return true;
-        }
+            if ($user->role_id == 4 && empty($user->password)) {
+                $user->password = bcrypt('password');
+            }
 
-        // Check if the user has any permission belonging to this module
-        return $this->permissions()
-            ->whereHas('module', fn($q) => $q->where('name', $module))
-            ->exists();
+            if ($user->role_id == 4 && empty($user->email)) {
+                $user->email = \App\Helpers\UserHelper::generateUniqueMemberEmail($user->full_name);
+            }
+        });
     }
-    }
+}
