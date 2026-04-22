@@ -465,7 +465,7 @@ class MemberController extends Controller
             'first_name'  => ['required', 'string', 'max:255'],
             'middle_name' => ['nullable', 'string', 'max:255'],
             'last_name'   => ['required', 'string', 'max:255'],
-            '246_email'   => ['required', 'email', 'ends_with:@gmail.com', 'unique:users,email,' . $user->id],
+            'email'   => ['required', 'email', 'ends_with:@gmail.com', 'unique:users,email,' . $user->id],
             'student_id'  => ['nullable', 'string', 'unique:users,student_id,' . $user->id, function ($attr, $val, $fail) {
                 if (!empty($val) && !preg_match('/^\d{4}-\d{5}$/', $val)) $fail('Student ID must be in format: YYYY-XXXXX');
             }],
