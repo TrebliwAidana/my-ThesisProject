@@ -197,7 +197,7 @@ body {
 
 <div class="center">
     of the <span class="underline">{{ $org_name }}</span><br>
-    <small>Name of Organization/Club</small>
+   {{-- // <small>Name of Organization/Club</small> --}}
 </div>
 
 <div class="center">
@@ -292,7 +292,7 @@ body {
         </td>
         <td width="33%"></td>
         <td width="33%" style="text-align: center; border-bottom: 1px solid #000; padding-bottom: 0; vertical-align: bottom;">
-            <b style="display: block; margin-bottom: 2px;">{{ $guidance_name ?? 'NOEMI ELISA L. OQUIAS' }}</b>
+            <b style="display: block; margin-bottom: 2px;">{{ $guidance_name ?? '_________________________' }}</b>
         </td>
     </tr>
     <tr>
@@ -313,7 +313,7 @@ body {
 
 <div class="center" style="margin-top: 15px;">
     <div style="display: inline-block; border-bottom: 1px solid #000; padding-bottom: 2px; margin-bottom: 2px;">
-        <b>{{ $treasurer_name ?? 'SHEERWINA MAE G. BALOTITE' }}</b>
+        <b>{{ $treasurer_name ?? '_________________________' }}</b>
     </div>
     <br>
     VSUIHS Treasurer

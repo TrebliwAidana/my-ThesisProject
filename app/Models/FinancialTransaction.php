@@ -23,12 +23,17 @@ class FinancialTransaction extends Model
         'notes',
         'approved_by',
         'approved_at',
+        'receivable_id',
+        'is_receivable',
+        'receivable_paid',
     ];
 
     protected $casts = [
         'transaction_date' => 'date',
         'approved_at'      => 'datetime',
         'amount'           => 'decimal:2',
+        'is_receivable'    => 'boolean',
+        'receivable_paid'  => 'boolean',
     ];
 
     // -------------------------------------------------------------------------
@@ -134,6 +139,10 @@ class FinancialTransaction extends Model
     public function scopeAudited($query)
     {
         return $query->where('status', 'audited');
+    }
+    public function receivable(): BelongsTo
+    {
+        return $this->belongsTo(Receivable::class);
     }
 
 }

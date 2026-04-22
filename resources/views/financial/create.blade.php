@@ -8,6 +8,9 @@
     category: '{{ old('category') }}',
     showOtherInput: {{ old('category') && !in_array(old('category'), $type === 'income' ? $incomeCategories : $expenseCategories) ? 'true' : 'false' }},
     otherCategory: '{{ old('category') && !in_array(old('category'), $type === 'income' ? $incomeCategories : $expenseCategories) ? old('category') : '' }}',
+    isReceivable: {{ old('is_receivable', false) ? 'true' : 'false' }},
+    amount: '{{ old('amount') }}',
+    receivableTotal: '{{ old('receivable_total') }}',
     updateCategory() {
         if (this.category === 'Others') {
             this.showOtherInput = true;
@@ -43,7 +46,7 @@
               enctype="multipart/form-data">
             @csrf
 
-            {{-- ========== 1. CATEGORY (now first) ========== --}}
+            {{-- ========== 1. CATEGORY ========== --}}
             <div class="mb-4">
                 <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
                     Category <span class="text-red-500">*</span>
@@ -81,7 +84,6 @@
                     @endforeach
                 </select>
 
-                {{-- Manual input for "Others" --}}
                 <div x-show="showOtherInput" x-transition class="mt-3">
                     <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Specify other category</label>
                     <input type="text" x-model="otherCategory" name="category_other"
@@ -90,7 +92,6 @@
                     <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">This will be saved as the category.</p>
                 </div>
 
-                {{-- Hidden input to submit the final category value --}}
                 <input type="hidden" name="category_final" :value="category === 'Others' ? otherCategory : category">
             </div>
 
@@ -104,18 +105,50 @@
                        class="w-full border border-gold-300 dark:border-gold-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500">
             </div>
 
-            {{-- ========== 3. AMOUNT ========== --}}
-            <div class="mb-4">
-                <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                    Amount (₱) <span class="text-red-500">*</span>
-                </label>
-                <div class="flex">
-                    <span class="inline-flex items-center px-3 rounded-l-lg border border-r-0 border-gold-300 dark:border-gold-600 bg-gray-50 dark:bg-gray-700 text-gray-500 text-sm">₱</span>
-                    <input type="number" name="amount" value="{{ old('amount') }}" required
-                           min="0.01" step="0.01" placeholder="0.00"
-                           class="flex-1 border border-gold-300 dark:border-gold-600 dark:bg-gray-700 dark:text-white rounded-r-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500">
+            {{-- ========== 3. AMOUNT (conditional) ========== --}}
+            @if($type === 'income')
+                {{-- Normal amount field – hidden when receivable is checked --}}
+                <div x-show="!isReceivable" class="mb-4">
+                    <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                        Amount (₱) <span class="text-red-500">*</span>
+                    </label>
+                    <div class="flex">
+                        <span class="inline-flex items-center px-3 rounded-l-lg border border-r-0 border-gold-300 dark:border-gold-600 bg-gray-50 dark:bg-gray-700 text-gray-500 text-sm">₱</span>
+                        <input type="number" name="amount" x-model="amount"
+                               min="0.01" step="0.01" placeholder="0.00"
+                               :required="!isReceivable"
+                               class="flex-1 border border-gold-300 dark:border-gold-600 dark:bg-gray-700 dark:text-white rounded-r-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500">
+                    </div>
                 </div>
-            </div>
+
+                {{-- Receivable amount – shown only when receivable is checked --}}
+                <div x-show="isReceivable" class="mb-4">
+                    <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                        Receivable Amount (₱) <span class="text-red-500">*</span>
+                    </label>
+                    <div class="flex">
+                        <span class="inline-flex items-center px-3 rounded-l-lg border border-r-0 border-gold-300 dark:border-gold-600 bg-gray-50 dark:bg-gray-700 text-gray-500 text-sm">₱</span>
+                        <input type="number" name="receivable_total" x-model="receivableTotal"
+                               min="0.01" step="0.01" placeholder="0.00"
+                               :required="isReceivable"
+                               class="flex-1 border border-gold-300 dark:border-gold-600 dark:bg-gray-700 dark:text-white rounded-r-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500">
+                    </div>
+                    <p class="text-xs text-gray-500 mt-1">The full amount owed (will be used as the income amount once paid).</p>
+                </div>
+            @else
+                {{-- For expenses, always show normal amount --}}
+                <div class="mb-4">
+                    <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                        Amount (₱) <span class="text-red-500">*</span>
+                    </label>
+                    <div class="flex">
+                        <span class="inline-flex items-center px-3 rounded-l-lg border border-r-0 border-gold-300 dark:border-gold-600 bg-gray-50 dark:bg-gray-700 text-gray-500 text-sm">₱</span>
+                        <input type="number" name="amount" value="{{ old('amount') }}" required
+                               min="0.01" step="0.01" placeholder="0.00"
+                               class="flex-1 border border-gold-300 dark:border-gold-600 dark:bg-gray-700 dark:text-white rounded-r-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500">
+                    </div>
+                </div>
+            @endif
 
             {{-- ========== 4. TRANSACTION DATE ========== --}}
             <div class="mb-4">
@@ -135,7 +168,35 @@
                           class="w-full border border-gold-300 dark:border-gold-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500">{{ old('notes') }}</textarea>
             </div>
 
-            {{-- ========== 6. RECEIPT UPLOAD ========== --}}
+            {{-- ========== 6. ACCOUNT RECEIVABLE (only for income) ========== --}}
+            @if($type === 'income')
+            <div class="mb-4 border-t pt-4">
+                <label class="inline-flex items-center cursor-pointer">
+                    <input type="checkbox" name="is_receivable" value="1" x-model="isReceivable"
+                           class="rounded border-gray-300 dark:border-gray-600 text-emerald-600 focus:ring-emerald-500">
+                    <span class="ml-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                        This is an Account Receivable (money not yet received)
+                    </span>
+                </label>
+            </div>
+
+            {{-- Receivable details (shown when checkbox is checked) --}}
+            <div x-show="isReceivable" x-transition class="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg mb-4">
+                <h3 class="font-semibold text-gray-800 dark:text-gray-200 mb-3">Receivable Details</h3>
+                <div class="mb-3">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Customer/Payer Name (optional)</label>
+                    <input type="text" name="customer_name" value="{{ old('customer_name') }}"
+                           class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-800 rounded-lg px-3 py-2 text-sm">
+                </div>
+                <div class="mb-2">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Due Date (optional)</label>
+                    <input type="date" name="due_date" value="{{ old('due_date') }}"
+                           class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-800 rounded-lg px-3 py-2 text-sm">
+                </div>
+            </div>
+            @endif
+
+            {{-- ========== 7. RECEIPT UPLOAD ========== --}}
             <div class="mb-6">
                 <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Receipt / Attachment</label>
                 <input type="file" name="receipt" accept=".jpg,.jpeg,.png,.pdf"

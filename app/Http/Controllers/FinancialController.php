@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\FinancialTransaction;
 use App\Models\Document;
+use App\Models\Receivable;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -116,12 +117,68 @@ class FinancialController extends Controller
     }
 
     // -------------------------------------------------------------------------
-    // Store
+    // Store (Income with optional Receivable)
     // -------------------------------------------------------------------------
 
     public function storeIncome(Request $request)
     {
         if ($response = $this->authorizeFinancialAction('create')) return $response;
+
+        if ($request->boolean('is_receivable')) {
+            $validated = $request->validate([
+                'description'      => 'required|string|max:255',
+                'customer_name'    => 'nullable|string|max:255',
+                'receivable_total' => 'required|numeric|min:0.01',
+                'due_date'         => 'nullable|date',
+                'category_final'   => 'nullable|string|max:100',
+                'notes'            => 'nullable|string|max:1000',
+                'receipt'          => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
+            ]);
+
+            DB::transaction(function () use ($validated, $request) {
+                // 1. Create the income transaction (pending, not yet counted as income)
+                $transaction = FinancialTransaction::create([
+                    'description'      => $validated['description'],
+                    'amount'           => $validated['receivable_total'],
+                    'type'             => 'income',
+                    'status'           => 'pending',           // goes through audit/approval
+                    'transaction_date' => now(),
+                    'user_id'          => Auth::id(),
+                    'category'         => $validated['category_final'] ?? 'Receivable',
+                    'notes'            => $validated['notes'],
+                    'is_receivable'    => true,
+                    'receivable_paid'  => false,
+                ]);
+
+                // 2. Create the receivable record linked to the transaction
+                $receivable = Receivable::create([
+                    'reference_no'           => Receivable::generateReference(),
+                    'customer_name'          => $validated['customer_name'],
+                    'description'            => $validated['description'],
+                    'total_amount'           => $validated['receivable_total'],
+                    'due_date'               => $validated['due_date'],
+                    'status'                 => 'pending',
+                    'created_by'             => Auth::id(),
+                    'income_transaction_id'  => $transaction->id,  // link back
+                ]);
+
+                // 3. Attach receipt if uploaded
+                if ($request->hasFile('receipt')) {
+                    $this->attachReceiptDocument($transaction, $request->file('receipt'), 'Receivable attachment');
+                }
+
+                // 4. Link transaction to receivable
+                $transaction->receivable_id = $receivable->id;
+                $transaction->save();
+
+                AuditLogger::log('created', $receivable, "Receivable created with linked transaction {$transaction->id}", [], $receivable->toArray());
+            });
+
+            return redirect()->route('financial.index')
+                ->with('success', 'Receivable created. The income transaction will be audited and can be marked as paid after approval.');
+        }
+
+        // Normal income (immediate cash)
         return $this->storeTransaction($request, 'income');
     }
 
@@ -301,6 +358,261 @@ class FinancialController extends Controller
     }
 
     // -------------------------------------------------------------------------
+    // Receivables Management
+    // -------------------------------------------------------------------------
+
+    public function receivablesIndex()
+    {
+        $this->checkGuest();
+        if (!auth()->user()->hasPermission('financial.view') && auth()->user()->role->level !== 1) {
+            abort(403);
+        }
+
+        $receivables = Receivable::with(['payments', 'creator'])
+            ->orderByRaw("FIELD(status, 'overdue', 'pending', 'partial', 'paid')")
+            ->orderBy('due_date')
+            ->paginate(20);
+
+        $totalOutstanding = Receivable::whereIn('status', ['pending', 'partial', 'overdue'])
+            ->sum(DB::raw('total_amount - paid_amount'));
+
+        return view('financial.receivables', compact('receivables', 'totalOutstanding'));
+    }
+
+    public function receivableShow(Receivable $receivable)
+    {
+        $this->checkGuest();
+        if (!auth()->user()->hasPermission('financial.view') && auth()->user()->role->level !== 1) {
+            abort(403);
+        }
+        $receivable->load(['payments', 'creator', 'incomeTransaction']);
+        return view('financial.receivable-show', compact('receivable'));
+    }
+
+    public function markReceivablePaid(Receivable $receivable)
+    {
+        $this->checkGuest();
+        if (!auth()->user()->hasPermission('financial.approve') && auth()->user()->role->level !== 1) {
+            return back()->with('error', 'Permission denied.');
+        }
+
+        $transaction = $receivable->incomeTransaction;
+        if (!$transaction) {
+            return back()->with('error', 'Linked transaction not found.');
+        }
+
+        if ($transaction->status !== 'approved') {
+            return back()->with('error', 'Transaction must be approved before marking as paid.');
+        }
+
+        if ($transaction->receivable_paid) {
+            return back()->with('info', 'This receivable is already marked as paid.');
+        }
+
+        DB::transaction(function () use ($receivable, $transaction) {
+            $transaction->update(['receivable_paid' => true]);
+            $receivable->update(['status' => 'paid']);
+            AuditLogger::log('updated', $receivable, "Receivable {$receivable->reference_no} marked as paid", [], ['status' => 'paid']);
+        });
+
+        return redirect()->route('financial.receivables')
+            ->with('success', 'Receivable marked as paid. Amount now included in income.');
+    }
+
+    public function recordReceivablePayment(Request $request, Receivable $receivable)
+    {
+        // This method is kept for backward compatibility but not used in Option A.
+        // In Option A, we don't use partial payments – we mark the whole receivable as paid.
+        // If you still want to allow partial payments, uncomment the logic below.
+        return back()->with('error', 'Partial payments are not supported in this version. Use "Mark as Paid" instead.');
+    }
+
+    // -------------------------------------------------------------------------
+    // Report Generation (with correct receivable handling)
+    // -------------------------------------------------------------------------
+
+    public function reportForm()
+    {
+        $this->checkGuest();
+        if (!auth()->user()->hasPermission('reports.view') && auth()->user()->role->level !== 1) {
+            abort(403, 'You do not have permission to generate financial reports.');
+        }
+        return view('financial.report-form');
+    }
+
+    public function generateReport(Request $request)
+    {
+        $this->checkGuest();
+        if (!auth()->user()->hasPermission('reports.view') && auth()->user()->role->level !== 1) {
+            abort(403);
+        }
+
+        $validated = $request->validate([
+            'start_date'     => 'required|date',
+            'end_date'       => 'required|date|after_or_equal:start_date',
+            'organization'   => 'nullable|string|max:255',
+            'previous_cash'  => 'nullable|numeric|min:0',
+        ]);
+
+        $startDate = $validated['start_date'];
+        $endDate   = $validated['end_date'];
+        $orgName   = $validated['organization'] ?? '_________________________';
+        $prevCash  = (float) ($validated['previous_cash'] ?? 0);
+
+        // INCOME: approved, and either not a receivable OR a receivable that has been paid
+        $incomeTotal = FinancialTransaction::where('type', 'income')
+            ->where('status', 'approved')
+            ->where(function ($q) {
+                $q->where('is_receivable', false)
+                  ->orWhere('receivable_paid', true);
+            })
+            ->whereBetween('transaction_date', [$startDate, $endDate])
+            ->sum('amount');
+
+        // EXPENSES: all approved expenses
+        $expenseTotal = FinancialTransaction::where('type', 'expense')
+            ->where('status', 'approved')
+            ->whereBetween('transaction_date', [$startDate, $endDate])
+            ->sum('amount');
+
+        $netFromOps = $incomeTotal - $expenseTotal;
+        $netFinal   = $netFromOps + $prevCash;
+
+        // OUTSTANDING RECEIVABLES: approved, receivable, not yet paid
+        $receivablesTotal = FinancialTransaction::where('type', 'income')
+            ->where('status', 'approved')
+            ->where('is_receivable', true)
+            ->where('receivable_paid', false)
+            ->whereBetween('transaction_date', [$startDate, $endDate])
+            ->sum('amount');
+
+        // Signatory names
+        $auditor   = User::whereHas('role', fn($q) => $q->where('name', 'Auditor'))->where('is_active', true)->first();
+        $president = User::whereHas('role', fn($q) => $q->where('name', 'President'))->where('is_active', true)->first();
+        $adviser   = User::whereHas('role', fn($q) => $q->where('name', 'Club Adviser'))->where('is_active', true)->first();
+        $treasurer = User::whereHas('role', fn($q) => $q->where('name', 'Treasurer'))->where('is_active', true)->first();
+        $guidance  = User::whereHas('role', fn($q) => $q->where('name', 'Guidance Facilitator'))->where('is_active', true)->first();
+
+        $data = [
+            'org_name'        => $orgName,
+            'start_date'      => $startDate,
+            'end_date'        => $endDate,
+            'income_total'    => $incomeTotal,
+            'expense_total'   => $expenseTotal,
+            'net_from_ops'    => $netFromOps,
+            'prev_cash'       => $prevCash,
+            'net_final'       => $netFinal,
+            'receivables'     => $receivablesTotal,
+            'generated_at'    => now(),
+            'auditor_name'    => $auditor   ? $auditor->full_name   : '_________________________',
+            'president_name'  => $president ? $president->full_name : '_________________________',
+            'adviser_name'    => $adviser   ? $adviser->full_name   : '_________________________',
+            'treasurer_name'  => $treasurer ? $treasurer->full_name : 'SHEERWINA MAE G. BALOTITE',
+            'guidance_name'   => $guidance  ? $guidance->full_name  : 'NOEMI ELISA L. OQUIAS',
+        ];
+
+        $pdf = Pdf::loadView('financial.report-pdf', $data)
+            ->setPaper('a4', 'portrait')
+            ->setOptions([
+                'defaultFont'          => 'sans-serif',
+                'isHtml5ParserEnabled' => true,
+                'isRemoteEnabled'      => true,
+                'dpi'                  => 96,
+                'margin_left'          => 15,
+                'margin_right'         => 15,
+                'margin_top'           => 15,
+                'margin_bottom'        => 15,
+            ]);
+
+        return $pdf->download("financial_report_{$startDate}_to_{$endDate}.pdf");
+    }
+
+    public function preview(Request $request)
+    {
+        $this->checkGuest();
+        if (!auth()->user()->hasPermission('reports.view') && auth()->user()->role->level !== 1) {
+            abort(403);
+        }
+
+        $validated = $request->validate([
+            'start_date'    => 'required|date',
+            'end_date'      => 'required|date|after_or_equal:start_date',
+            'organization'  => 'nullable|string|max:255',
+            'previous_cash' => 'nullable|numeric|min:0',
+        ]);
+
+        $startDate = $validated['start_date'];
+        $endDate   = $validated['end_date'];
+        $orgName   = $validated['organization'] ?? '_________________________';
+        $prevCash  = (float) ($validated['previous_cash'] ?? 0);
+
+        // INCOME: approved, and either not a receivable OR a receivable that has been paid
+        $incomeTotal = FinancialTransaction::where('type', 'income')
+            ->where('status', 'approved')
+            ->where(function ($q) {
+                $q->where('is_receivable', false)
+                  ->orWhere('receivable_paid', true);
+            })
+            ->whereBetween('transaction_date', [$startDate, $endDate])
+            ->sum('amount');
+
+        $expenseTotal = FinancialTransaction::where('type', 'expense')
+            ->where('status', 'approved')
+            ->whereBetween('transaction_date', [$startDate, $endDate])
+            ->sum('amount');
+
+        $netFromOps = $incomeTotal - $expenseTotal;
+        $netFinal   = $netFromOps + $prevCash;
+
+        // OUTSTANDING RECEIVABLES
+        $receivablesTotal = FinancialTransaction::where('type', 'income')
+            ->where('status', 'approved')
+            ->where('is_receivable', true)
+            ->where('receivable_paid', false)
+            ->whereBetween('transaction_date', [$startDate, $endDate])
+            ->sum('amount');
+
+        $auditor   = User::whereHas('role', fn($q) => $q->where('name', 'Auditor'))->where('is_active', true)->first();
+        $president = User::whereHas('role', fn($q) => $q->where('name', 'President'))->where('is_active', true)->first();
+        $adviser   = User::whereHas('role', fn($q) => $q->where('name', 'Club Adviser'))->where('is_active', true)->first();
+        $treasurer = User::whereHas('role', fn($q) => $q->where('name', 'Treasurer'))->where('is_active', true)->first();
+        $guidance  = User::whereHas('role', fn($q) => $q->where('name', 'Guidance Facilitator'))->where('is_active', true)->first();
+
+        $data = [
+            'org_name'        => $orgName,
+            'start_date'      => $startDate,
+            'end_date'        => $endDate,
+            'income_total'    => $incomeTotal,
+            'expense_total'   => $expenseTotal,
+            'net_from_ops'    => $netFromOps,
+            'prev_cash'       => $prevCash,
+            'net_final'       => $netFinal,
+            'receivables'     => $receivablesTotal,
+            'generated_at'    => now(),
+            'auditor_name'    => $auditor   ? $auditor->full_name   : '_________________________',
+            'president_name'  => $president ? $president->full_name : '_________________________',
+            'adviser_name'    => $adviser   ? $adviser->full_name   : '_________________________',
+            'treasurer_name'  => $treasurer ? $treasurer->full_name : '_________________________',
+            'guidance_name'   => $guidance  ? $guidance->full_name  : '_________________________',
+        ];
+
+        $pdf = Pdf::loadView('financial.report-pdf', $data)
+            ->setPaper('a4', 'portrait')
+            ->setOptions([
+                'defaultFont'          => 'sans-serif',
+                'isHtml5ParserEnabled' => true,
+                'isRemoteEnabled'      => true,
+                'dpi'                  => 96,
+                'margin_left'          => 15,
+                'margin_right'         => 15,
+                'margin_top'           => 15,
+                'margin_bottom'        => 15,
+            ]);
+
+        return $pdf->stream("financial_report_preview.pdf");
+    }
+
+    // -------------------------------------------------------------------------
     // Private Helpers
     // -------------------------------------------------------------------------
 
@@ -364,195 +676,6 @@ class FinancialController extends Controller
         $transaction->documents()->attach($document->id);
     }
 
-    // -------------------------------------------------------------------------
-    // Report Generation Methods
-    // -------------------------------------------------------------------------
-
-    /**
-     * Show the report generation form.
-     */
-    public function reportForm()
-    {
-        $this->checkGuest();
-        if (!auth()->user()->hasPermission('reports.view') && auth()->user()->role->level !== 1) {
-            abort(403, 'You do not have permission to generate financial reports.');
-        }
-        return view('financial.report-form');
-    }
-
-    /**
-     * Generate the PDF financial report.
-     */
-
-    public function generateReport(Request $request)
-    {
-        $this->checkGuest();
-        if (!auth()->user()->hasPermission('reports.view') && auth()->user()->role->level !== 1) {
-            abort(403);
-        }
-
-        $validated = $request->validate([
-            'start_date'     => 'required|date',
-            'end_date'       => 'required|date|after_or_equal:start_date',
-            'organization'   => 'nullable|string|max:255',
-            'previous_cash'  => 'nullable|numeric|min:0',
-        ]);
-
-        $startDate = $validated['start_date'];
-        $endDate   = $validated['end_date'];
-        $orgName   = $validated['organization'] ?? '_________________________';
-        $prevCash  = (float) ($validated['previous_cash'] ?? 0);
-
-        // Get totals from approved transactions within the date range
-        $incomeTotal = FinancialTransaction::where('type', 'income')
-            ->where('status', 'approved')
-            ->whereBetween('transaction_date', [$startDate, $endDate])
-            ->sum('amount');
-
-        $expenseTotal = FinancialTransaction::where('type', 'expense')
-            ->where('status', 'approved')
-            ->whereBetween('transaction_date', [$startDate, $endDate])
-            ->sum('amount');
-
-        $netFromOps = $incomeTotal - $expenseTotal;
-        $netFinal   = $netFromOps + $prevCash;
-
-        // Accounts receivable – customize if needed
-        $receivables = 0;
-
-        // ---- DYNAMIC SIGNATORY NAMES (based on roles) ----
-        $auditor = User::whereHas('role', function($q) {
-            $q->where('name', 'Auditor');
-        })->where('is_active', true)->first();
-
-        $president = User::whereHas('role', function($q) {
-            $q->where('name', 'President');
-        })->where('is_active', true)->first();
-
-        $adviser = User::whereHas('role', function($q) {
-            $q->where('name', 'Club Adviser');
-        })->where('is_active', true)->first();
-
-        $treasurer = User::whereHas('role', function($q) {
-            $q->where('name', 'Treasurer');
-        })->where('is_active', true)->first();
-
-        $guidanceFacilitator = User::whereHas('role', function($q) {
-            $q->where('name', 'Guidance Facilitator');
-        })->where('is_active', true)->first();
-
-        $data = [
-            'org_name'     => $orgName,
-            'start_date'   => $startDate,
-            'end_date'     => $endDate,
-            'income_total' => $incomeTotal,
-            'expense_total'=> $expenseTotal,
-            'net_from_ops' => $netFromOps,
-            'prev_cash'    => $prevCash,
-            'net_final'    => $netFinal,
-            'receivables'  => $receivables,
-            'generated_at' => now(),
-            // Signatory names (fallback to placeholder if not found)
-            'auditor_name' => $auditor ? $auditor->full_name : '_________________________',
-            'president_name' => $president ? $president->full_name : '_________________________',
-            'adviser_name' => $adviser ? $adviser->full_name : '_________________________',
-            'treasurer_name' => $treasurer ? $treasurer->full_name : 'SHEERWINA MAE G. BALOTITE', // fallback hardcoded
-            'guidance_name' => $guidanceFacilitator ? $guidanceFacilitator->full_name : 'NOEMI ELISA L. OQUIAS',
-        ];
-
-        $pdf = Pdf::loadView('financial.report-pdf', $data)
-            ->setPaper('a4', 'portrait')
-            ->setOptions([
-                'defaultFont' => 'sans-serif',
-                'isHtml5ParserEnabled' => true,
-                'isRemoteEnabled' => true,
-                'dpi' => 96,
-                'margin_left' => 15,
-                'margin_right' => 15,
-                'margin_top' => 15,
-                'margin_bottom' => 15,
-            ]);
-
-        return $pdf->download("financial_report_{$startDate}_to_{$endDate}.pdf");
-    }
-
-    public function preview(Request $request)
-    {
-        $this->checkGuest();
-        if (!auth()->user()->hasPermission('reports.view') && auth()->user()->role->level !== 1) {
-            abort(403);
-        }
-
-        $validated = $request->validate([
-            'start_date'    => 'required|date',
-            'end_date'      => 'required|date|after_or_equal:start_date',
-            'organization'  => 'nullable|string|max:255',
-            'previous_cash' => 'nullable|numeric|min:0',
-        ]);
-
-        $startDate = $validated['start_date'];
-        $endDate   = $validated['end_date'];
-        $orgName   = $validated['organization'] ?? '_________________________';
-        $prevCash  = (float) ($validated['previous_cash'] ?? 0);
-
-        $incomeTotal = FinancialTransaction::where('type', 'income')
-            ->where('status', 'approved')
-            ->whereBetween('transaction_date', [$startDate, $endDate])
-            ->sum('amount');
-
-        $expenseTotal = FinancialTransaction::where('type', 'expense')
-            ->where('status', 'approved')
-            ->whereBetween('transaction_date', [$startDate, $endDate])
-            ->sum('amount');
-
-        $netFromOps = $incomeTotal - $expenseTotal;
-        $netFinal   = $netFromOps + $prevCash;
-        $receivables = 0;
-
-        $auditor   = User::whereHas('role', fn($q) => $q->where('name', 'Auditor'))->where('is_active', true)->first();
-        $president = User::whereHas('role', fn($q) => $q->where('name', 'President'))->where('is_active', true)->first();
-        $adviser   = User::whereHas('role', fn($q) => $q->where('name', 'Club Adviser'))->where('is_active', true)->first();
-        $treasurer = User::whereHas('role', fn($q) => $q->where('name', 'Treasurer'))->where('is_active', true)->first();
-        $guidance  = User::whereHas('role', fn($q) => $q->where('name', 'Guidance Facilitator'))->where('is_active', true)->first();
-
-        $data = [
-            'org_name'       => $orgName,
-            'start_date'     => $startDate,
-            'end_date'       => $endDate,
-            'income_total'   => $incomeTotal,
-            'expense_total'  => $expenseTotal,
-            'net_from_ops'   => $netFromOps,
-            'prev_cash'      => $prevCash,
-            'net_final'      => $netFinal,
-            'receivables'    => $receivables,
-            'generated_at'   => now(),
-            'auditor_name'   => $auditor   ? $auditor->full_name   : '_________________________',
-            'president_name' => $president ? $president->full_name : '_________________________',
-            'adviser_name'   => $adviser   ? $adviser->full_name   : '_________________________',
-            'treasurer_name' => $treasurer ? $treasurer->full_name : 'SHEERWINA MAE G. BALOTITE',
-            'guidance_name'  => $guidance  ? $guidance->full_name  : 'NOEMI ELISA L. OQUIAS',
-        ];
-
-        // Stream the PDF inline in the browser (preview) instead of downloading
-        $pdf = Pdf::loadView('financial.report-pdf', $data)
-            ->setPaper('a4', 'portrait')
-            ->setOptions([
-                'defaultFont'        => 'sans-serif',
-                'isHtml5ParserEnabled' => true,
-                'isRemoteEnabled'    => true,
-                'dpi'                => 96,
-                'margin_left'        => 15,
-                'margin_right'       => 15,
-                'margin_top'         => 15,
-                'margin_bottom'      => 15,
-            ]);
-
-        return $pdf->stream("financial_report_preview.pdf");
-    }
-
-    /**
-     * Helper to block guest users.
-     */
     private function checkGuest()
     {
         if (auth()->user()->email === 'guest@gmail.com') {
