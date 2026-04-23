@@ -73,7 +73,7 @@
             <p class="text-xl sm:text-2xl md:text-3xl font-bold text-emerald-600 break-all">
                 ₱{{ number_format($incomeTotal, 2) }}
             </p>
-            <p class="text-xs text-gray-400 mt-1">Approved Oten</p>
+            <p class="text-xs text-gray-400 mt-1">Approved</p>
         </div>
         <div class="bg-white dark:bg-gray-800 rounded-xl border border-gold-200 dark:border-gold-800 p-4 shadow-sm overflow-hidden">
             <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Total Expenses</p>
