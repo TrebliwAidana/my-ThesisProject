@@ -18,12 +18,12 @@
 
     <div class="p-4 border-b border-gold-200 dark:border-gold-800 flex justify-between items-center">
         <h2 class="text-lg font-semibold text-gray-800 dark:text-white">Categories</h2>
-        @can('categories.create')
+        @if(Auth::user()->role->level === 1 || Auth::user()->hasPermission('categories.create'))
             <a href="{{ route('admin.document-categories.create') }}"
                class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm">
                 + New Category
             </a>
-        @endcan
+        @endif
     </div>
 
     <div class="overflow-x-auto">
@@ -48,15 +48,15 @@
                     </td>
                     <td class="px-5 py-3 text-right">
                         <div class="flex items-center justify-end gap-2">
-                            @can('categories.edit')
+                            @if(Auth::user()->role->level === 1 || Auth::user()->hasPermission('categories.edit'))
                                 <a href="{{ route('admin.document-categories.edit', $cat) }}" class="text-blue-600 hover:underline text-xs">Edit</a>
-                            @endcan
-                            @can('categories.delete')
+                            @endif
+                            @if(Auth::user()->role->level === 1 || Auth::user()->hasPermission('categories.delete'))
                                 <form method="POST" action="{{ route('admin.document-categories.destroy', $cat) }}" onsubmit="return confirm('Delete this category?')" class="inline">
                                     @csrf @method('DELETE')
                                     <button type="submit" class="text-red-600 hover:underline text-xs">Delete</button>
                                 </form>
-                            @endcan
+                            @endif
                         </div>
                     </td>
                 </tr>

@@ -92,33 +92,33 @@ Route::middleware(['auth.custom', 'verified'])->group(function () {
 
     // ── Financial Records ────────────────────────────────────────────────────
     Route::prefix('financial')->name('financial.')->group(function () {
-        // 1. SPECIFIC ROUTES (no {id} wildcard)
+        // 1. SPECIFIC ROUTES
         Route::post('/report/preview', [FinancialController::class, 'preview'])->name('report.preview');
         Route::get('/report', [FinancialController::class, 'reportForm'])->name('report.form');
         Route::post('/report/generate', [FinancialController::class, 'generateReport'])->name('report.generate');
         
-        // Create forms (GET)
         Route::get('/income/create', [FinancialController::class, 'createIncome'])->name('income.create');
         Route::get('/expense/create', [FinancialController::class, 'createExpense'])->name('expense.create');
-        
-        // Store routes (POST) – these must be defined
         Route::post('/income', [FinancialController::class, 'storeIncome'])->name('income.store');
         Route::post('/expense', [FinancialController::class, 'storeExpense'])->name('expense.store');
 
-        // 2. ACCOUNT RECEIVABLE ROUTES (specific, no {id})
         Route::get('/receivables', [FinancialController::class, 'receivablesIndex'])->name('receivables');
         Route::get('/receivable/{receivable}', [FinancialController::class, 'receivableShow'])->name('receivable.show');
         Route::post('/receivable/{receivable}/pay', [FinancialController::class, 'recordReceivablePayment'])->name('receivable.pay');
         Route::patch('/receivable/{receivable}/mark-paid', [FinancialController::class, 'markReceivablePaid'])->name('receivable.mark-paid');
 
-        // 3. WILDCARD ROUTES (with {id}) – these must come AFTER specific routes
+        // TRASH & SOFT-DELETE (specific)
+        Route::get('/trash', [FinancialController::class, 'trash'])->name('trash');
+        Route::patch('/{id}/restore', [FinancialController::class, 'restore'])->name('restore');
+        Route::delete('/{id}/force-delete', [FinancialController::class, 'forceDelete'])->name('force-delete');
+
+        // 3. WILDCARD ROUTES (keep at the end)
         Route::get('/', [FinancialController::class, 'index'])->name('index');
         Route::get('/{id}', [FinancialController::class, 'show'])->name('show');
         Route::get('/{id}/edit', [FinancialController::class, 'edit'])->name('edit');
         Route::put('/{id}', [FinancialController::class, 'update'])->name('update');
         Route::delete('/{id}', [FinancialController::class, 'destroy'])->name('destroy');
 
-        // 4. ACTION ROUTES WITH {id}
         Route::patch('/{id}/audit', [FinancialController::class, 'audit'])->name('audit');
         Route::patch('/{id}/approve', [FinancialController::class, 'approve'])->name('approve');
         Route::patch('/{id}/reject', [FinancialController::class, 'reject'])->name('reject');

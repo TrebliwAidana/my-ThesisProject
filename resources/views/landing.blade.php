@@ -660,7 +660,24 @@
         .dark .field input { background: rgba(255,255,255,.06); border-color: rgba(255,255,255,.1); color: #e2efe8; }
         .field input:focus { border-color: var(--emerald); box-shadow: 0 0 0 3px rgba(5,150,105,.1); background: #fff; }
         .dark .field input:focus { border-color: #1DB384; box-shadow: 0 0 0 3px rgba(29,179,132,.15); background: rgba(255,255,255,.08); }
-        .pw-toggle { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--slate); padding: 4px; display: flex; align-items: center; transition: color .15s; }
+        .pw-toggle { 
+            position: absolute; 
+            right: 8px; 
+            top: 50%; 
+            transform: translateY(-50%); 
+            background: none; 
+            border: none; 
+            cursor: pointer; 
+            color: var(--slate); 
+            padding: 4px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center;
+            width: 20px;
+            height: 20px;
+            flex-shrink: 0;
+            transition: color .15s; 
+        }
         .pw-toggle:hover { color: var(--ink); }
         .pw-toggle svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 1.8; }
         .form-opts { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; font-size: 12px; }
@@ -724,6 +741,15 @@
             .mobile-dark-row { gap: 8px; }
             .mobile-dark-row span { white-space: nowrap; }
         }
+
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+                scroll-behavior: auto !important;
+            }
+        }
     </style>
 </head>
 <body>
@@ -734,7 +760,9 @@
 <nav class="nav" aria-label="Main navigation">
     <a href="#" class="nav-brand" aria-label="VSULHS SSLG Home">
         <div class="nav-crest">
-            <img src="{{ asset('images/vsulhs_logo.png') }}" alt="VSULHS Logo">
+            <img src="{{ asset('images/vsulhs_logo.png') }}" alt="VSULHS Logo"
+                loading="lazy"
+                decoding="async">
         </div>
         <span class="nav-wordmark">VSULHS SSLG</span>
     </a>
@@ -804,7 +832,7 @@
             </div>
             {{-- Trust badge --}}
             <div class="hero-trust" aria-label="Protected under Philippine Data Privacy Act">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6-4h12a2 2 0 002-2v-4a2 2 0 00-2-2H6a2 2 0 00-2 2v4a2 2 0 002 2zm10-2V9a2 2 0 00-2-2H8a2 2 0 00-2 2v4"/></svg>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-2V9a2 2 0 00-2-2H8a2 2 0 00-2 2v4"/></svg>
                 Protected under RA 10173 · Data Privacy Act of 2012
             </div>
         </div>

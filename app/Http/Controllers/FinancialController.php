@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use App\Services\AuditLogger;
-use Barryvdh\DomPDF\Facade\Pdf; 
+use Barryvdh\DomPDF\Facade\Pdf;
 use App\Models\User;
 
 class FinancialController extends Controller
@@ -39,8 +39,18 @@ class FinancialController extends Controller
             abort(403, 'You do not have permission to view financial records.');
         }
 
-        $query = FinancialTransaction::with(['user', 'approver', 'auditor'])->latest('transaction_date');
+        $query = FinancialTransaction::with(['user', 'approver', 'auditor'])
+                    ->latest('transaction_date');
 
+        // ---- NEW: Hide approved transactions unless explicitly requested ----
+        $showApproved = $request->boolean('show_approved');   // false by default
+
+        if (!$showApproved) {
+            $query->where('status', '!=', 'approved');
+        }
+        // --------------------------------------------------------------------
+
+        // Apply optional filters (they can be combined with the show_approved flag)
         if ($request->filled('type')) {
             $query->where('type', $request->type);
         }
@@ -62,6 +72,7 @@ class FinancialController extends Controller
 
         $transactions = $query->paginate(15)->appends($request->except('page'));
 
+        // Financial totals always include approved transactions (regardless of the filter)
         $incomeTotal   = FinancialTransaction::income()->approved()->sum('amount');
         $expenseTotal  = FinancialTransaction::expense()->approved()->sum('amount');
         $balance       = $incomeTotal - $expenseTotal;
@@ -75,7 +86,7 @@ class FinancialController extends Controller
 
         return view('financial.index', compact(
             'transactions', 'incomeTotal', 'expenseTotal', 'balance',
-            'pendingCount', 'auditedCount', 'categories'
+            'pendingCount', 'auditedCount', 'categories', 'showApproved'
         ));
     }
 
@@ -295,22 +306,38 @@ class FinancialController extends Controller
     {
         if ($response = $this->authorizeFinancialAction('approve')) return $response;
 
-        $transaction = FinancialTransaction::findOrFail($id);
+        $transaction = FinancialTransaction::with([
+            'user', 'auditor', 'documents', 'receivable'
+        ])->findOrFail($id);
 
         if ($transaction->status !== 'audited') {
             return back()->with('error', 'Transaction must be audited before final approval.');
         }
 
         $oldStatus = $transaction->status;
-        $transaction->update([
-            'status'      => 'approved',
-            'approved_by' => Auth::id(),
-            'approved_at' => now(),
-        ]);
 
-        AuditLogger::log('approved', $transaction, "Transaction approved: {$transaction->description}", ['status' => $oldStatus], ['status' => 'approved']);
+        DB::transaction(function () use ($transaction, $oldStatus) {
+            $transaction->update([
+                'status'      => 'approved',
+                'approved_by' => Auth::id(),
+                'approved_at' => now(),
+            ]);
 
-        return back()->with('success', 'Transaction approved successfully.');
+            // Reload so approved_at / approved_by are available in the PDF
+            $transaction->refresh();
+
+            $this->saveApprovedTransactionAsDocument($transaction);
+
+            AuditLogger::log(
+                'approved',
+                $transaction,
+                "Transaction approved: {$transaction->description}",
+                ['status' => $oldStatus],
+                ['status' => 'approved']
+            );
+        });
+
+        return back()->with('success', 'Transaction approved and saved to Documents successfully.');
     }
 
     public function reject(int $id)
@@ -340,21 +367,22 @@ class FinancialController extends Controller
         if ($response = $this->authorizeFinancialAction('delete')) return $response;
         $transaction = FinancialTransaction::with('documents')->findOrFail($id);
 
-        if ($transaction->status === 'approved') {
-            return back()->with('error', 'Approved transactions cannot be deleted.');
-        }
+        // ❌ Remove this block:
+        // if ($transaction->status === 'approved') {
+        //     return back()->with('error', 'Approved transactions cannot be deleted.');
+        // }
 
         AuditLogger::log('deleted', $transaction, "Transaction: {$transaction->description}", $transaction->toArray(), []);
 
         DB::transaction(function () use ($transaction) {
             foreach ($transaction->documents as $doc) {
-                $doc->delete();
+                $doc->delete();   // soft‑delete each attached document
             }
-            $transaction->delete();
+            $transaction->delete();   // soft‑delete the transaction
         });
 
         return redirect()->route('financial.index')
-            ->with('success', 'Transaction deleted successfully.');
+            ->with('success', 'Transaction deleted. It will now appear in the Trash.');
     }
 
     // -------------------------------------------------------------------------
@@ -674,6 +702,179 @@ class FinancialController extends Controller
 
         $document->addVersion($file, $changeNotes ?? 'Receipt uploaded');
         $transaction->documents()->attach($document->id);
+    }
+
+    // -------------------------------------------------------------------------
+    // Auto-Document Helpers (called on approval)
+    // -------------------------------------------------------------------------
+
+    /**
+     * Generates a PDF approval slip and saves it into the Documents module,
+     * then attaches it to the transaction via the morphToMany pivot.
+     */
+    private function saveApprovedTransactionAsDocument(FinancialTransaction $transaction): void
+    {
+        // Determine document type label
+        $isReceivable  = (bool) $transaction->is_receivable;
+        $typeLabel     = $isReceivable ? 'Receivable' : ucfirst($transaction->type);
+        $categoryName  = "Approved {$typeLabel}"; // matches seeded DocumentCategory names
+
+        // Resolve the DocumentCategory — fail gracefully if not seeded yet
+        $documentCategory = \App\Models\DocumentCategory::where('name', $categoryName)->first();
+
+        // Build a descriptive title
+        $dateFormatted = $transaction->transaction_date->format('Y-m-d');
+        $title = "{$categoryName}: {$transaction->description} [{$dateFormatted}]";
+
+        // Render to PDF
+        $pdf      = $this->buildTransactionApprovalPdf($transaction, $typeLabel, $isReceivable);
+        $filename = "transaction_{$transaction->id}_{$transaction->type}_approved.pdf";
+        $pdfBytes = $pdf->output();
+
+        // Write to a temp path — addVersion() needs an UploadedFile instance
+        $tempDir  = storage_path('app/temp/financial');
+        if (!is_dir($tempDir)) {
+            mkdir($tempDir, 0755, true);
+        }
+        $tempPath = "{$tempDir}/{$filename}";
+        file_put_contents($tempPath, $pdfBytes);
+
+        try {
+            // Create the Document record with correct fillable fields
+            $document = Document::create([
+                'title'                => $title,
+                'description'          => "Auto-generated approval slip for {$typeLabel} #{$transaction->id}. "
+                                        . "Amount: ₱" . number_format($transaction->amount, 2) . ". "
+                                        . "Approved by: " . (Auth::user()->full_name ?? Auth::user()->name)
+                                        . " on " . now()->format('F j, Y g:i A') . ".",
+                'document_category_id' => $documentCategory?->id,  // null-safe; nullable FK
+                'tags'                 => [$transaction->type, $transaction->category ?? 'financial', 'auto-generated'],
+                'owner_id'             => Auth::id(),
+            ]);
+
+            // addVersion() expects a real UploadedFile
+            // The 5th argument `true` marks it as "already moved" (test mode), skipping the move
+            $uploadedFile = new \Illuminate\Http\UploadedFile(
+                $tempPath,
+                $filename,
+                'application/pdf',
+                null,
+                true   // test = true → treats the file as already in place, won't try to move it
+            );
+
+            $document->addVersion(
+                $uploadedFile,
+                "Auto-saved on approval — {$typeLabel} transaction #{$transaction->id}"
+            );
+
+            // Link document → transaction via the morphToMany pivot (attachments table)
+            $transaction->documents()->attach($document->id);
+
+            AuditLogger::log(
+                'created',
+                $document,
+                "Approval document auto-saved for {$typeLabel} transaction #{$transaction->id}",
+                [],
+                ['document_id' => $document->id, 'transaction_id' => $transaction->id]
+            );
+
+        } finally {
+            // Always clean up the temp file, even if something above threw
+            if (file_exists($tempPath)) {
+                @unlink($tempPath);
+            }
+        }
+    }
+
+    /**
+     * Builds and returns the DomPDF instance for the approval slip.
+     * Blade view: resources/views/financial/approval-slip-pdf.blade.php
+     */
+    private function buildTransactionApprovalPdf(
+        FinancialTransaction $transaction,
+        string $typeLabel,
+        bool $isReceivable
+    ): \Barryvdh\DomPDF\PDF {
+        $transaction->loadMissing(['user', 'approver', 'auditor', 'receivable']);
+
+        return Pdf::loadView('financial.approval-slip-pdf', [
+            'transaction'   => $transaction,
+            'type_label'    => $typeLabel,
+            'is_receivable' => $isReceivable,
+            'approved_by'   => Auth::user(),
+            'generated_at'  => now(),
+        ])
+        ->setPaper('a4', 'portrait')
+        ->setOptions([
+            'defaultFont'          => 'sans-serif',
+            'isHtml5ParserEnabled' => true,
+            'isRemoteEnabled'      => true,
+            'dpi'                  => 96,
+            'margin_left'          => 20,
+            'margin_right'         => 20,
+            'margin_top'           => 20,
+            'margin_bottom'        => 20,
+        ]);
+    }
+    // -------------------------------------------------------------------------
+    // Trash / Restore / Force Delete – permission based
+    // -------------------------------------------------------------------------
+
+    public function trash()
+    {
+        $user = Auth::user();
+        if ($user->role->level !== 1 && !$user->hasPermission('financial.manage')) {
+            abort(403, 'You do not have permission to manage financial trash.');
+        }
+
+        $transactions = FinancialTransaction::onlyTrashed()
+            ->with(['user', 'approver', 'auditor', 'documents'])
+            ->latest('deleted_at')
+            ->paginate(15);
+
+        return view('financial.trash', compact('transactions'));
+    }
+
+    public function restore($id)
+    {
+        $user = Auth::user();
+        if ($user->role->level !== 1 && !$user->hasPermission('financial.manage')) {
+            abort(403, 'You do not have permission to restore transactions.');
+        }
+
+        $transaction = FinancialTransaction::onlyTrashed()->findOrFail($id);
+
+        // Restore the transaction (soft-delete undone)
+        $transaction->restore();
+
+        AuditLogger::log('restored', $transaction, "Financial transaction restored: {$transaction->description}");
+
+        return redirect()->route('financial.trash')
+            ->with('success', 'Transaction restored successfully.');
+    }
+
+    public function forceDelete($id)
+    {
+        $user = Auth::user();
+        if ($user->role->level !== 1 && !$user->hasPermission('financial.manage')) {
+            abort(403, 'You do not have permission to permanently delete transactions.');
+        }
+
+        $transaction = FinancialTransaction::onlyTrashed()->with('documents')->findOrFail($id);
+
+        // Permanently delete attached documents first
+        foreach ($transaction->documents as $doc) {
+            $doc->forceDelete();   // This will remove the file (if you have file cleanup logic)
+        }
+
+        // Detach any remaining pivot records? Not needed if documents are force-deleted.
+
+        AuditLogger::log('force_deleted', $transaction, "Financial transaction permanently deleted: {$transaction->description}", $transaction->toArray(), []);
+
+        $transaction->forceDelete();
+
+        return redirect()->route('financial.trash')
+            ->with('success', 'Transaction permanently deleted.');
     }
 
     private function checkGuest()

@@ -4,19 +4,19 @@
 @section('page-title', 'Document Trash')
 
 @section('content')
-{{-- Page Header --}}
-<div class="relative overflow-hidden rounded-2xl bg-gradient-to-r from-red-600 to-red-700 dark:from-red-800 dark:to-red-900 p-6 mb-6">
+{{-- Page Header (Emerald gradient) --}}
+<div class="relative overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-600 to-emerald-700 dark:from-emerald-800 dark:to-emerald-900 p-6 mb-6">
     <div class="relative z-10">
         <h1 class="text-2xl font-bold text-white">Document Trash</h1>
-        <p class="text-red-100 text-sm mt-1">Soft-deleted documents pending permanent removal</p>
+        <p class="text-emerald-100 text-sm mt-1">Soft-deleted documents pending permanent removal</p>
     </div>
     <div class="absolute top-0 right-0 -mt-8 -mr-8 w-64 h-64 bg-white/5 rounded-full blur-3xl"></div>
 </div>
 
-<div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm">
+<div class="bg-white dark:bg-gray-800 rounded-xl border border-gold-200 dark:border-gold-800 overflow-hidden shadow-sm">
     <div class="overflow-x-auto">
         <table class="w-full text-sm">
-            <thead class="bg-red-600 dark:bg-red-800 text-white">
+            <thead class="bg-emerald-600 dark:bg-emerald-700 text-white">
                 <tr>
                     <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider">Title</th>
                     <th class="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider">Category</th>
@@ -67,7 +67,7 @@
                     <td class="px-5 py-3">
                         @if($doc->category)
                         <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300">
-                            {{ $doc->category->name }}  {{-- ✅ FIXED: was $doc->category --}}
+                            {{ $doc->category->name ?? $doc->category }}
                         </span>
                         @else
                         <span class="text-gray-400">—</span>
@@ -89,7 +89,7 @@
                                 @csrf
                                 @method('PATCH')
                                 <button type="submit"
-                                    class="inline-flex items-center gap-1 text-xs bg-emerald-100 hover:bg-emerald-200 dark:bg-emerald-900/40 dark:hover:bg-emerald-900/70 text-emerald-700 dark:text-emerald-300 font-medium px-2.5 py-1 rounded-lg transition">
+                                    class="inline-flex items-center gap-1 text-xs bg-emerald-100 hover:bg-gold-500 hover:text-white dark:bg-emerald-900/40 dark:hover:bg-gold-600 text-emerald-700 dark:text-emerald-300 font-medium px-2.5 py-1 rounded-lg transition">
                                     <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
                                     </svg>
@@ -121,7 +121,7 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                             </svg>
                             <p class="text-gray-500 dark:text-gray-400">Trash is empty.</p>
-                            <a href="{{ route('documents.index') }}" class="text-emerald-600 hover:underline text-sm">Back to Documents</a>
+                            <a href="{{ route('documents.index') }}" class="text-emerald-600 hover:text-gold-500 dark:text-emerald-400 dark:hover:text-gold-400 transition text-sm">Back to Documents</a>
                         </div>
                     </td>
                 </tr>
@@ -131,10 +131,9 @@
     </div>
 
     @if($documents->hasPages())
-    <div class="px-5 py-3 border-t border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+    <div class="px-5 py-3 border-t border-gold-200 dark:border-gold-800 bg-gray-50 dark:bg-gray-800/50">
         {{ $documents->links() }}
     </div>
     @endif
 </div>
-
 @endsection

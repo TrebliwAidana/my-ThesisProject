@@ -94,9 +94,20 @@
                     📋 Receivables
                 </a>
             @endif
+
+            {{-- Trash button (restricted to financial.manage or level 1) --}}
+            @if(Auth::user()->role->level === 1 || Auth::user()->hasPermission('financial.manage'))
+                <a href="{{ route('financial.trash') }}"
+                   class="inline-flex items-center gap-1.5 bg-gray-600 hover:bg-gray-700 text-white text-sm font-semibold px-3 py-2 rounded-lg transition">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                    </svg>
+                    Trash
+                </a>
+            @endif
         </div>
 
-        {{-- Filters (unchanged) --}}
+        {{-- Filters --}}
         <form method="GET" action="{{ route('financial.index') }}" class="flex flex-col sm:flex-row flex-wrap gap-3">
             <div class="flex-1 min-w-[180px]">
                 <input type="text" name="search" value="{{ request('search') }}" placeholder="Search description..."
@@ -135,6 +146,15 @@
                            class="w-32 border border-gold-300 dark:border-gold-600 dark:bg-gray-700 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500">
                 </div>
 
+                {{-- NEW: Show Approved checkbox --}}
+                <label class="inline-flex items-center cursor-pointer text-sm text-gray-700 dark:text-gray-300">
+                    <input type="checkbox" name="show_approved" value="1"
+                           {{ request('show_approved') ? 'checked' : '' }}
+                           onchange="this.form.submit()"
+                           class="rounded border-gray-300 dark:border-gray-600 text-emerald-600 focus:ring-emerald-500">
+                    <span class="ml-2">Show approved</span>
+                </label>
+
                 <button type="submit" class="bg-gold-500 hover:bg-gold-600 text-white text-sm font-semibold px-4 py-2 rounded-lg transition whitespace-nowrap">
                     Filter
                 </button>
@@ -145,7 +165,7 @@
         </form>
     </div>
 
-    {{-- Transactions: Desktop Table + Mobile Cards (unchanged) --}}
+    {{-- Transactions: Desktop Table + Mobile Cards --}}
     <div class="bg-white dark:bg-gray-800 rounded-2xl shadow border border-gold-200 dark:border-gold-800 overflow-hidden">
         {{-- Desktop Table (Hidden on mobile) --}}
         <div class="hidden md:block overflow-x-auto">
@@ -169,7 +189,8 @@
                     @php
                         $user = auth()->user();
                         $canEdit = ($user->hasPermission('financial.edit') || $user->role->level === 1) && $tx->status === 'pending';
-                        $canDelete = ($user->hasPermission('financial.delete') || $user->role->level === 1) && $tx->status === 'pending';
+                        // REMOVED the 'pending' status requirement – now any status can be deleted
+                        $canDelete = ($user->hasPermission('financial.delete') || $user->role->level === 1);
                         $canAudit = ($user->hasPermission('financial.audit') || $user->role->level === 1) && $tx->status === 'pending';
                         $canApprove = ($user->hasPermission('financial.approve') || $user->role->level === 1) && $tx->status === 'audited';
                         $canReject = $canApprove;
@@ -249,7 +270,14 @@
 
                                 @if($canDelete)
                                     <form method="POST" action="{{ route('financial.destroy', $tx->id) }}"
-                                          class="inline" onsubmit="return confirm('Delete this transaction?')">
+                                          class="inline"
+                                          onsubmit="return confirm(
+                                              @if($tx->status === 'approved')
+                                                  'This is an APPROVED transaction. Deleting it will also delete its auto‑generated approval document. Continue?'
+                                              @else
+                                                  'Delete this transaction?'
+                                              @endif
+                                          )">
                                         @csrf @method('DELETE')
                                         <button type="submit" class="text-xs text-gray-400 hover:text-red-600 font-medium">Delete</button>
                                     </form>
@@ -274,7 +302,8 @@
             @php
                 $user = auth()->user();
                 $canEdit = ($user->hasPermission('financial.edit') || $user->role->level === 1) && $tx->status === 'pending';
-                $canDelete = ($user->hasPermission('financial.delete') || $user->role->level === 1) && $tx->status === 'pending';
+                // REMOVED the 'pending' status requirement – now any status can be deleted
+                $canDelete = ($user->hasPermission('financial.delete') || $user->role->level === 1);
                 $canAudit = ($user->hasPermission('financial.audit') || $user->role->level === 1) && $tx->status === 'pending';
                 $canApprove = ($user->hasPermission('financial.approve') || $user->role->level === 1) && $tx->status === 'audited';
                 $canReject = $canApprove;
@@ -372,7 +401,14 @@
 
                     @if($canDelete)
                         <form method="POST" action="{{ route('financial.destroy', $tx->id) }}"
-                              class="inline" onsubmit="return confirm('Delete this transaction?')">
+                              class="inline"
+                              onsubmit="return confirm(
+                                  @if($tx->status === 'approved')
+                                      'This is an APPROVED transaction. Deleting it will also delete its auto‑generated approval document. Continue?'
+                                  @else
+                                      'Delete this transaction?'
+                                  @endif
+                              )">
                             @csrf @method('DELETE')
                             <button type="submit" class="text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-3 py-1 rounded-full font-medium">Delete</button>
                         </form>
@@ -393,14 +429,6 @@
         </div>
         @endif
     </div>
-    {{-- <div class="text-xs text-red-500 p-2">
-        Auth ID: {{ auth()->id() }} |
-        Role: {{ auth()->user()->role->name }} |
-        Level: {{ auth()->user()->role->level }} |
-        Can reports.view: {{ auth()->user()->hasPermission('reports.view') ? 'YES' : 'NO' }} |
-        Gate: {{ \Illuminate\Support\Facades\Gate::allows('reports.view') ? 'YES' : 'NO' }}
-    </div>
-    {{ auth()->id() }} vs {{ auth('web')->id() }} --}}
 
 </div>
 @endsection

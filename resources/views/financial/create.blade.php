@@ -4,22 +4,51 @@
 @section('page-title', 'Add ' . ucfirst($type))
 
 @section('content')
-<div class="max-w-2xl mx-auto" x-data="{
-    category: '{{ old('category') }}',
-    showOtherInput: {{ old('category') && !in_array(old('category'), $type === 'income' ? $incomeCategories : $expenseCategories) ? 'true' : 'false' }},
-    otherCategory: '{{ old('category') && !in_array(old('category'), $type === 'income' ? $incomeCategories : $expenseCategories) ? old('category') : '' }}',
-    isReceivable: {{ old('is_receivable', false) ? 'true' : 'false' }},
-    amount: '{{ old('amount') }}',
-    receivableTotal: '{{ old('receivable_total') }}',
+
+{{-- Define category arrays BEFORE they are used in x-data --}}
+@php
+    $incomeCategories = [
+        'Membership & Contributions',
+        'Fundraising Activities',
+        'Sales & Services',
+        'School / Institutional Support',
+        'Others'
+    ];
+    $expenseCategories = [
+        'Administrative Expenses',
+        'Event Expenses',
+        'Food & Hospitality',
+        'Procurement / Materials',
+        'Transportation & Logistics',
+        'Marketing & Promotion',
+        'Honorarium & Fees',
+        'School-Related Payments',
+        'Others'
+    ];
+@endphp
+
+<div class="max-w-2xl mx-auto" x-data='{
+    category: @json(old('category', '')),
+    showOtherInput: @json(
+        old('category') && !in_array(old('category'), $type === 'income' ? $incomeCategories : $expenseCategories)
+    ),
+    otherCategory: @json(
+        old('category') && !in_array(old('category'), $type === 'income' ? $incomeCategories : $expenseCategories)
+            ? old('category')
+            : ''
+    ),
+    isReceivable: @json(old('is_receivable', false)),
+    amount: @json(old('amount', '')),
+    receivableTotal: @json(old('receivable_total', '')),
     updateCategory() {
-        if (this.category === 'Others') {
+        if (this.category === "Others") {
             this.showOtherInput = true;
         } else {
             this.showOtherInput = false;
-            this.otherCategory = '';
+            this.otherCategory = "";
         }
     }
-}" x-init="updateCategory()">
+}' x-init="updateCategory()">
     <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gold-200 dark:border-gold-800 p-6">
 
         @if($errors->any())
@@ -53,24 +82,7 @@
                 </label>
 
                 @php
-                    $incomeCategories = [
-                        'Membership & Contributions',
-                        'Fundraising Activities',
-                        'Sales & Services',
-                        'School / Institutional Support',
-                        'Others'
-                    ];
-                    $expenseCategories = [
-                        'Administrative Expenses',
-                        'Event Expenses',
-                        'Food & Hospitality',
-                        'Procurement / Materials',
-                        'Transportation & Logistics',
-                        'Marketing & Promotion',
-                        'Honorarium & Fees',
-                        'School-Related Payments',
-                        'Others'
-                    ];
+                    // Now just set the categories list – arrays already defined above
                     $categories = $type === 'income' ? $incomeCategories : $expenseCategories;
                 @endphp
 
