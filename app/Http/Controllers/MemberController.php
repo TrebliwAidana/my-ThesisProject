@@ -34,13 +34,7 @@ class MemberController extends Controller
     {
         $user = Auth::user();
 
-        $map = [
-            'SysAdmin' => ['all'],
-            'SA'       => ['all'],
-            'CA'       => ['OA', 'OO', 'OM'],
-            'OA'       => ['OM'],
-            'OO'       => ['OM'],
-        ];
+        $map = config('roles.hierarchy');
 
         if (in_array($user->role->abbreviation, ['SysAdmin', 'SA'])) {
             return Role::where('is_visible', true)->get();
@@ -83,34 +77,15 @@ class MemberController extends Controller
             return $role->allowed_positions;
         }
 
-        // 2. Fallback to hardcoded mappings (for predefined roles)
-        $byAbbrev = [
-            'SysAdmin' => [],
-            'SA'       => ['SSLG President', 'SSLG Adviser', 'Student Affairs Head'],
-            'SO'       => ['SSLG Secretary', 'SSLG Treasurer', 'SSLG PIO'],
-            'CA'       => ['Club Adviser'],
-            'OA'       => ['Organization President', 'Organization Vice President'],
-            'OO'       => ['Organization Secretary', 'Organization Treasurer', 'Organization Auditor', 'Organization PIO'],
-            'OM'       => ['Organization Member'],
-            'G'        => ['Guest'],
-        ];
-
-        if ($role->abbreviation && isset($byAbbrev[$role->abbreviation])) {
-            return $byAbbrev[$role->abbreviation];
+        // 2. Fallback to config-based positions
+        $positions = config('roles.positions', []);
+        
+        // Try by role name first
+        if (isset($positions[$role->name])) {
+            return $positions[$role->name];
         }
 
-        $byName = [
-            'System Administrator' => [],
-            'Supreme Admin'        => ['SSLG President', 'SSLG Adviser', 'Student Affairs Head'],
-            'Supreme Officer'      => ['SSLG Secretary', 'SSLG Treasurer', 'SSLG PIO'],
-            'Club Adviser'         => ['Club Adviser'],
-            'Org Admin'            => ['Organization President', 'Organization Vice President'],
-            'Org Officer'          => ['Organization Secretary', 'Organization Treasurer', 'Organization Auditor', 'Organization PIO'],
-            'Org Member'           => ['Regular Member'],
-            'Guest'                => ['Guest'],
-        ];
-
-        return $byName[$role->name] ?? [];
+        return [];
     }
 
     private function getPositionMapping(): array
@@ -162,7 +137,7 @@ class MemberController extends Controller
             abort(403, 'You are not authorized to view members.');
         }
 
-        $query = User::with('role');
+        $query = User::with(['role:id,name,abbreviation,level']);
 
         if ($request->filled('search')) {
             $search = $request->search;
@@ -296,6 +271,9 @@ class MemberController extends Controller
         if (!$selectedRole->is_visible) {
             return back()->withErrors(['role_id' => 'The selected role is not available.'])->withInput();
         }
+
+        // Policy-based authorization for role assignment
+        $this->authorize('assignRole', [User::class, $selectedRole]);
 
         $allowedRoleIds = $this->getAllowedRolesForCurrentUser()->pluck('id')->toArray();
         if (!in_array($selectedRole->id, $allowedRoleIds)) {

@@ -39,8 +39,11 @@ class FinancialController extends Controller
             abort(403, 'You do not have permission to view financial records.');
         }
 
-        $query = FinancialTransaction::with(['user', 'approver', 'auditor'])
-                    ->latest('transaction_date');
+        $query = FinancialTransaction::with([
+            'user:id,full_name,email',
+            'approver:id,full_name,email',
+            'auditor:id,full_name,email'
+        ])->latest('transaction_date');
 
         // ---- NEW: Hide approved transactions unless explicitly requested ----
         $showApproved = $request->boolean('show_approved');   // false by default
@@ -82,6 +85,7 @@ class FinancialController extends Controller
         $categories = FinancialTransaction::select('category')
             ->distinct()
             ->whereNotNull('category')
+            ->orderBy('category')
             ->pluck('category');
 
         return view('financial.index', compact(
