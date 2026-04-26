@@ -2,79 +2,87 @@
 
 namespace App\Http\Middleware;
 
-use App\Models\FinancialTransaction;
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Symfony\Component\HttpFoundation\Response;
 
+/**
+ * RoleMiddleware
+ *
+ * Usage in routes:
+ *   Route::middleware('role:System Administrator,Club Adviser')
+ *
+ * Role names in this app (must match DB exactly):
+ *   System Administrator  — full access
+ *   Club Adviser          — management, no admin panel
+ *   Treasurer             — financial + members
+ *   Auditor               — financial + members (read/audit)
+ *   Guest                 — documents + financial (read-only)
+ *
+ * How it works:
+ *   1. Named role check  — pass if $user->role->name is in the allowed list.
+ *   2. Permission fallback — if the role is not in the list, check whether
+ *      the user has a permission slug that grants access to this route prefix.
+ *      This lets fine-grained per-user overrides work without touching the
+ *      route definitions.
+ *   3. Denied — redirect to dashboard with an error toast (no raw 403 page).
+ */
 class RoleMiddleware
 {
     /**
-     * Maps route name prefixes to the permission slug required to access them.
-     * If a user's role is not in the allowed list, we check this map as a
-     * fallback — granting access if they have the corresponding permission.
+     * Maps route-name prefixes → the permission slug required for fallback access.
+     *
+     * Only define prefixes that need a permission fallback. Routes without an
+     * entry here are either open-to-all or rely solely on the named-role check.
+     *
+     * FIX: was 'FinancialTransaction.' (wrong — never matched financial.* routes)
+     *      Corrected to 'financial.' to match actual route names.
      */
     protected array $routePermissionMap = [
-        'members.'   => 'members.view',
-        'documents.' => 'documents.view',
-        'FinancialTransaction.' => 'financial_transactions.view',
-        'reports.'   => 'reports.view',
-        'admin.users.'   => 'admin.users',
-        'admin.roles.'   => 'admin.roles',
-        'admin.permissions.' => 'admin.permissions',
-        'audit.'     => 'admin.audit',
-        'settings.'  => 'admin.users',
+        'members.'                   => 'members.view',
+        'documents.'                 => 'documents.view',
+        'financial.'                 => 'financial_transactions.view',  // FIX: was 'FinancialTransaction.'
+        'reports.'                   => 'reports.view',
+        'admin.users.'               => 'admin.users',
+        'admin.roles.'               => 'admin.roles',
+        'admin.permissions.'         => 'admin.permissions',
+        'admin.auditlogs.'           => 'admin.audit',
+        'admin.document-categories.' => 'admin.document-categories',
+        'admin.document-backups.'    => 'admin.document-categories',
+        'admin.financial-categories.'=> 'financial_categories.manage',
     ];
 
-    public function handle(Request $request, Closure $next, ...$allowed): Response
+    public function handle(Request $request, Closure $next, string ...$roles): mixed
     {
-        if (!Auth::check()) {
-            return redirect()->route('login')->with('error', 'You must be logged in to access this page.');
+        // FIX: use $request->user() consistently — respects the active guard.
+        //      Removed Auth facade (was mixed with $request->user() inconsistently).
+        $user = $request->user();
+
+        // FIX: redirect to 'landing' directly — 'login' route just bounces to landing anyway.
+        if (! $user) {
+            return redirect()->route('landing')
+                ->with('error', 'You must be logged in to access this page.');
         }
 
-        $user = Auth::user();
-
-        if (!$user->role) {
-            abort(403, 'User role not assigned. Please contact administrator.');
+        // FIX: redirect to dashboard with toast instead of raw abort(403).
+        if (! $user->role) {
+            return redirect()->route('dashboard')
+                ->with('error', 'Your account has no role assigned. Please contact the administrator.');
         }
 
-        // No restrictions on this route — allow through immediately
-        if (empty($allowed)) {
+        // No role restriction on this route — allow through immediately.
+        if (empty($roles)) {
             return $next($request);
         }
 
-        // ── Check 1: Role name / level (existing behaviour, unchanged) ────────
-        $allowedLevels = [];
-        $allowedRoles  = [];
-
-        foreach ($allowed as $item) {
-            if (is_numeric($item)) {
-                $allowedLevels[] = (int) $item;
-            } else {
-                $allowedRoles[] = $item;
-            }
-        }
-
-        if (!empty($allowedRoles)) {
-            foreach ($allowedRoles as $roleName) {
-                if ($user->hasRole($roleName)) {
-                    return $next($request);
-                }
-            }
-        }
-
-        if (!empty($allowedLevels)) {
-            if ((int) $user->role->level <= max($allowedLevels)) {
-                return $next($request);
-            }
+        // ── Check 1: Named role ───────────────────────────────────────────────
+        // Pass immediately if the user's role name is in the allowed list.
+        if (in_array($user->role->name, $roles, true)) {
+            return $next($request);
         }
 
         // ── Check 2: Permission-based fallback ────────────────────────────────
-        // If the user's role is not in the allowed list, check whether they
-        // have a permission that grants access to this route. This means an
-        // Org Member with 'members.view' can access /members even though
-        // 'Org Member' is not in the route's role list.
+        // Allows fine-grained per-user overrides: a role not in the named list
+        // can still get through if they hold the relevant permission slug.
         $routeName = $request->route()?->getName() ?? '';
 
         foreach ($this->routePermissionMap as $prefix => $permissionSlug) {
@@ -82,11 +90,14 @@ class RoleMiddleware
                 if ($user->hasPermission($permissionSlug)) {
                     return $next($request);
                 }
-                // Matched a prefix but no permission — stop checking
+                // Matched the prefix but no permission — stop checking further.
                 break;
             }
         }
 
-        abort(403, 'Unauthorized. You do not have permission to perform this action.');
+        // ── Denied ────────────────────────────────────────────────────────────
+        // FIX: redirect with toast instead of abort(403) raw error page.
+        return redirect()->route('dashboard')
+            ->with('error', 'You do not have permission to access that page.');
     }
 }
