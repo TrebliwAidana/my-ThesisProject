@@ -6,28 +6,14 @@ return [
     |--------------------------------------------------------------------------
     | Default Filesystem Disk
     |--------------------------------------------------------------------------
-    |
-    | Here you may specify the default filesystem disk that should be used
-    | by the framework. The "local" disk, as well as a variety of cloud
-    | based disks are available to your application for file storage.
-    |
     */
-
     'default' => env('FILESYSTEM_DISK', 'local'),
 
     /*
     |--------------------------------------------------------------------------
     | Filesystem Disks
     |--------------------------------------------------------------------------
-    |
-    | Below you may configure as many filesystem disks as necessary, and you
-    | may even configure multiple disks for the same driver. Examples for
-    | most supported storage drivers are configured here for reference.
-    |
-    | Supported drivers: "local", "ftp", "sftp", "s3"
-    |
     */
-
     'disks' => [
 
         'local' => [
@@ -53,44 +39,23 @@ return [
             'throw'  => false,
         ],
 
-        // 's3' => [
-        //     'driver' => 's3',
-        //     'key' => env('AWS_ACCESS_KEY_ID'),
-        //     'secret' => env('AWS_SECRET_ACCESS_KEY'),
-        //     'region' => env('AWS_DEFAULT_REGION'),
-        //     'bucket' => env('AWS_BUCKET'),
-        //     'url' => env('AWS_URL'),
-        //     'endpoint' => env('AWS_ENDPOINT'),
-        //     'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', false),
-        //     'throw' => false,
-        //     'report' => false,
-            
-        // ],
         's3' => [
-                    'driver' => 's3',
-                    'key' => env('tid_gvKbyihXGosKPLuuiLpUd_OgiPjmeKKKyVfuRJaMAGA_noSAJi'),
-                    'secret' => env('tsec_FjU5eCHNu0SYpBtaT6rGOJY+gcXcfHsHd+TUX3pM-dbiwY5dcmxUsPRjxJbnW3Sfq6W7sT'),
-                    'region' => 'auto', 
-                    'bucket' => env('RAILWAY_BUCKET'),
-                    'url' => env('https://t3.storageapi.dev'),
-                    'endpoint' => env('RAILWAY_ENDPOINT', 'https://storage.railway.app'),
-                    'use_path_style_endpoint' => false,            
-                    'throw' => true,
-                ],
-
+            'driver' => 's3',
+            'key' => env('RAILWAY_ACCESS_KEY_ID'),
+            'secret' => env('RAILWAY_SECRET_ACCESS_KEY'),
+            'region' => 'auto',
+            'bucket' => env('RAILWAY_BUCKET'),
+            'endpoint' => env('RAILWAY_ENDPOINT', 'https://storage.railway.app'),
+            'use_path_style_endpoint' => false,
+            'throw' => true,
+        ],
     ],
 
     /*
     |--------------------------------------------------------------------------
     | Symbolic Links
     |--------------------------------------------------------------------------
-    |
-    | Here you may configure the symbolic links that will be created when the
-    | `storage:link` Artisan command is executed. The array keys should be
-    | the locations of the links and the values should be their targets.
-    |
     */
-
     'links' => [
         public_path('storage') => storage_path('app/public'),
     ],
