@@ -40,10 +40,6 @@ use Illuminate\Support\Facades\Storage;
 |--------------------------------------------------------------------------
 */
 
-// Shorthand role lists used across multiple route groups
-const ROLES_ALL_EXCEPT_GUEST = 'System Administrator,Club Adviser,Treasurer,Auditor';
-const ROLES_ADMIN_ONLY        = 'System Administrator';
-
 // ── Root redirect ─────────────────────────────────────────────────────────────
 Route::get('/', [LandingController::class, 'index'])->name('landing');
 
@@ -82,7 +78,7 @@ Route::middleware(['auth.custom', 'verified'])->group(function () {
     // MEMBERS — All roles EXCEPT Guest
     // Attempting access as Guest → redirected to dashboard with error toast
     // ──────────────────────────────────────────────────────────────────────────
-    Route::middleware('role:' . ROLES_ALL_EXCEPT_GUEST)
+    Route::middleware('role:System Administrator,Club Adviser,Treasurer,Auditor')
         ->prefix('members')
         ->name('members.')
         ->group(function () {
@@ -169,7 +165,7 @@ Route::middleware(['auth.custom', 'verified'])->group(function () {
     // ADMINISTRATION — System Administrator only
     // All sub-modules share the same top-level middleware.
     // ──────────────────────────────────────────────────────────────────────────
-    Route::middleware('role:' . ROLES_ADMIN_ONLY)
+    Route::middleware('role:System Administrator')
         ->prefix('admin')
         ->name('admin.')
         ->group(function () {
@@ -249,7 +245,7 @@ Route::middleware(['auth.custom', 'verified'])->group(function () {
     // ──────────────────────────────────────────────────────────────────────────
     // PROFILE — All roles EXCEPT Guest
     // ──────────────────────────────────────────────────────────────────────────
-    Route::middleware('role:' . ROLES_ALL_EXCEPT_GUEST)
+    Route::middleware('role:System Administrator,Club Adviser,Treasurer,Auditor')
         ->prefix('profile')
         ->name('profile.')
         ->group(function () {
