@@ -165,7 +165,7 @@ function receivableForm() {
         loadingCategories: true,
 
         init() {
-            fetch('{{ route('api.financial-categories.list') }}?type=income')
+            fetch('{{ route('api.financial-categories.list') }}?type=receivable')
                 .then(r => r.json())
                 .then(data => { this.categories = data; this.loadingCategories = false; })
                 .catch(() => { this.loadingCategories = false; });

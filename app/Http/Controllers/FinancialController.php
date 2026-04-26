@@ -105,7 +105,7 @@ class FinancialController extends Controller
         }
 
         $transaction = FinancialTransaction::with([
-            'user', 'approver', 'auditor', 'documents', 'receivable',
+            'user', 'approver', 'auditor', 'documents',
         ])->findOrFail($id);
 
         return view('financial.show', compact('transaction'));
@@ -462,22 +462,31 @@ class FinancialController extends Controller
         $orgName   = $validated['organization'] ?? '_________________________';
         $prevCash  = (float) ($validated['previous_cash'] ?? 0);
 
+        // Approved cash income only
         $incomeTotal = FinancialTransaction::where('type', 'income')
             ->where('status', 'approved')
-            ->where(fn($q) => $q->where('is_receivable', false)->orWhere('receivable_paid', true))
             ->whereBetween('transaction_date', [$startDate, $endDate])
             ->sum('amount');
+
+        // Paid receivables count as collected income
+        $receivablePaidTotal = FinancialTransaction::where('type', 'receivable')
+            ->where('status', 'paid')
+            ->whereBetween('transaction_date', [$startDate, $endDate])
+            ->sum('amount');
+
+        $incomeTotal += $receivablePaidTotal;
 
         $expenseTotal = FinancialTransaction::where('type', 'expense')
             ->where('status', 'approved')
             ->whereBetween('transaction_date', [$startDate, $endDate])
             ->sum('amount');
 
-        $netFromOps       = $incomeTotal - $expenseTotal;
-        $netFinal         = $netFromOps + $prevCash;
-        $receivablesTotal = FinancialTransaction::where('type', 'income')
+        $netFromOps = $incomeTotal - $expenseTotal;
+        $netFinal   = $netFromOps + $prevCash;
+
+        // Outstanding receivables — approved but not yet paid
+        $receivablesTotal = FinancialTransaction::where('type', 'receivable')
             ->where('status', 'approved')
-            ->where('is_receivable', true)->where('receivable_paid', false)
             ->whereBetween('transaction_date', [$startDate, $endDate])
             ->sum('amount');
 

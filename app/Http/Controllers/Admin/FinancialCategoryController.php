@@ -87,12 +87,12 @@ class FinancialCategoryController extends Controller
 
         $validated = $request->validate([
             'name'        => ['required', 'string', 'max:100', 'unique:financial_categories,name'],
-            'type'        => ['required', 'in:income,expense,receivable'],
+            'type'        => ['required', 'in:income,expense,receivable,both'],
             'description' => ['nullable', 'string', 'max:255'],
         ]);
 
         $validated['created_by'] = Auth::id();
-        $validated['is_active']  = true; // always active when created
+        $validated['is_active']  = true;
 
         $category = FinancialCategory::create($validated);
 
@@ -122,7 +122,7 @@ class FinancialCategoryController extends Controller
 
         $validated = $request->validate([
             'name'        => ['required', 'string', 'max:100', "unique:financial_categories,name,{$financialCategory->id}"],
-            'type'        => ['required', 'in:income,expense,both'],
+            'type'        => ['required', 'in:income,expense,receivable,both'],  // ← receivable added
             'description' => ['nullable', 'string', 'max:255'],
         ]);
 
@@ -136,7 +136,7 @@ class FinancialCategoryController extends Controller
     }
 
     // -------------------------------------------------------------------------
-    // Toggle Active (quick action)
+    // Toggle Active
     // -------------------------------------------------------------------------
 
     public function toggleActive(FinancialCategory $financialCategory)
@@ -200,7 +200,7 @@ class FinancialCategoryController extends Controller
     }
 
     // -------------------------------------------------------------------------
-    // API endpoint – used by transaction create/edit form dropdowns
+    // API endpoint — used by transaction create/edit form dropdowns
     // -------------------------------------------------------------------------
 
     public function apiList(Request $request)

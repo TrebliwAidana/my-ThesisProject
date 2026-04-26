@@ -6,14 +6,6 @@
 @section('content')
 <div class="max-w-2xl mx-auto space-y-4">
 
-    {{-- Flash --}}
-    @if(session('success'))
-        <div class="p-4 bg-green-100 border border-green-300 text-green-800 rounded-xl text-sm">✅ {{ session('success') }}</div>
-    @endif
-    @if(session('error'))
-        <div class="p-4 bg-red-100 border border-red-300 text-red-800 rounded-xl text-sm">❌ {{ session('error') }}</div>
-    @endif
-
     <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gold-200 dark:border-gold-800 p-6 space-y-5">
 
         {{-- Header --}}

@@ -218,7 +218,7 @@ trait FinancialHelperTrait
         string $typeLabel,
         bool $isReceivable
     ): \Barryvdh\DomPDF\PDF {
-        $transaction->loadMissing(['user', 'approver', 'auditor', 'receivable']);
+        $transaction->loadMissing(['user', 'approver', 'auditor']);
 
         return Pdf::loadView('financial.approval-slip-pdf', [
             'transaction'   => $transaction,

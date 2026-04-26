@@ -139,11 +139,9 @@ Route::middleware(['auth.custom', 'verified'])->group(function () {
         Route::get('/expense/create',   [ExpenseController::class, 'create'])->name('expense.create');
         Route::post('/expense',         [ExpenseController::class, 'store'])->name('expense.store');
 
-        // Receivables
-        Route::get('/receivables',                         [ReceivableController::class, 'index'])->name('receivables');
-        Route::get('/receivable/{receivable}',             [ReceivableController::class, 'show'])->name('receivable.show');
-        Route::post('/receivable/{receivable}/pay',        [ReceivableController::class, 'recordPayment'])->name('receivable.pay');
-        Route::patch('/receivable/{receivable}/mark-paid', [ReceivableController::class, 'markPaid'])->name('receivable.mark-paid');
+        // Receivable — standalone entity, no old receivables list routes
+        Route::get('/receivable/create',   [ReceivableController::class, 'create'])->name('receivable.create');
+        Route::post('/receivable',         [ReceivableController::class, 'store'])->name('receivable.store');
 
         // Trash
         Route::get('/trash',                [FinancialController::class, 'trash'])->name('trash');
@@ -151,14 +149,15 @@ Route::middleware(['auth.custom', 'verified'])->group(function () {
         Route::delete('/{id}/force-delete', [FinancialController::class, 'forceDelete'])->name('force-delete');
 
         // Core CRUD — wildcard routes must stay last
-        Route::get('/',               [FinancialController::class, 'index'])->name('index');
-        Route::get('/{id}',           [FinancialController::class, 'show'])->name('show');
-        Route::get('/{id}/edit',      [FinancialController::class, 'edit'])->name('edit');
-        Route::put('/{id}',           [FinancialController::class, 'update'])->name('update');
-        Route::delete('/{id}',        [FinancialController::class, 'destroy'])->name('destroy');
-        Route::patch('/{id}/audit',   [FinancialController::class, 'audit'])->name('audit');
-        Route::patch('/{id}/approve', [FinancialController::class, 'approve'])->name('approve');
-        Route::patch('/{id}/reject',  [FinancialController::class, 'reject'])->name('reject');
+        Route::get('/',                    [FinancialController::class, 'index'])->name('index');
+        Route::get('/{id}',                [FinancialController::class, 'show'])->name('show');
+        Route::get('/{id}/edit',           [FinancialController::class, 'edit'])->name('edit');
+        Route::put('/{id}',                [FinancialController::class, 'update'])->name('update');
+        Route::delete('/{id}',             [FinancialController::class, 'destroy'])->name('destroy');
+        Route::patch('/{id}/audit',        [FinancialController::class, 'audit'])->name('audit');
+        Route::patch('/{id}/approve',      [FinancialController::class, 'approve'])->name('approve');
+        Route::patch('/{id}/reject',       [FinancialController::class, 'reject'])->name('reject');
+        Route::patch('/{id}/mark-as-paid', [FinancialController::class, 'markAsPaid'])->name('mark-as-paid');
     });
 
     // ──────────────────────────────────────────────────────────────────────────

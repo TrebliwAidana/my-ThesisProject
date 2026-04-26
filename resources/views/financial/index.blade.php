@@ -6,14 +6,6 @@
 @section('content')
 <div class="space-y-6">
 
-    {{-- Flash Messages --}}
-    @if(session('success'))
-        <div class="p-4 bg-green-100 border border-green-300 text-green-800 rounded-xl text-sm">✅ {{ session('success') }}</div>
-    @endif
-    @if(session('error'))
-        <div class="p-4 bg-red-100 border border-red-300 text-red-800 rounded-xl text-sm">❌ {{ session('error') }}</div>
-    @endif
-
     {{-- Summary Cards --}}
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         {{-- Balance --}}
