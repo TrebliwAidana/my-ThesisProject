@@ -13,9 +13,9 @@ class FinancialTransaction extends Model
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
-        'type',
+        'type',             // income | expense | receivable
         'user_id',
-        'status',
+        'status',           // pending | audited | approved | rejected | paid (receivable only)
         'description',
         'amount',
         'category',
@@ -23,8 +23,11 @@ class FinancialTransaction extends Model
         'notes',
         'approved_by',
         'approved_at',
-        'audited_by',       // ← added
-        'audited_at',       // ← added
+        'audited_by',
+        'audited_at',
+        'customer_name',    // receivable only
+        'due_date',         // receivable only
+        // legacy columns kept for backward compatibility — no longer used in new flow
         'receivable_id',
         'is_receivable',
         'receivable_paid',
@@ -33,7 +36,8 @@ class FinancialTransaction extends Model
     protected $casts = [
         'transaction_date' => 'date',
         'approved_at'      => 'datetime',
-        'audited_at'       => 'datetime',  // ← added
+        'audited_at'       => 'datetime',
+        'due_date'         => 'date',
         'amount'           => 'decimal:2',
         'is_receivable'    => 'boolean',
         'receivable_paid'  => 'boolean',
@@ -56,11 +60,6 @@ class FinancialTransaction extends Model
         return $this->belongsTo(User::class, 'audited_by');
     }
 
-    public function receivable(): BelongsTo
-    {
-        return $this->belongsTo(Receivable::class);
-    }
-
     public function documents(): MorphToMany
     {
         return $this->morphToMany(Document::class, 'attachable', 'attachments')
@@ -69,12 +68,46 @@ class FinancialTransaction extends Model
 
     // ── Scopes ─────────────────────────────────────────────────────────────
 
-    public function scopeIncome($query)   { return $query->where('type', 'income'); }
-    public function scopeExpense($query)  { return $query->where('type', 'expense'); }
-    public function scopePending($query)  { return $query->where('status', 'pending'); }
-    public function scopeAudited($query)  { return $query->where('status', 'audited'); }
-    public function scopeApproved($query) { return $query->where('status', 'approved'); }
-    public function scopeRejected($query) { return $query->where('status', 'rejected'); }
+    public function scopeIncome($query)
+    {
+        // Strict income only — excludes receivables
+        return $query->where('type', 'income');
+    }
+
+    public function scopeExpense($query)
+    {
+        return $query->where('type', 'expense');
+    }
+
+    public function scopeReceivable($query)
+    {
+        return $query->where('type', 'receivable');
+    }
+
+    public function scopePending($query)
+    {
+        return $query->where('status', 'pending');
+    }
+
+    public function scopeAudited($query)
+    {
+        return $query->where('status', 'audited');
+    }
+
+    public function scopeApproved($query)
+    {
+        return $query->where('status', 'approved');
+    }
+
+    public function scopeRejected($query)
+    {
+        return $query->where('status', 'rejected');
+    }
+
+    public function scopePaid($query)
+    {
+        return $query->where('status', 'paid');
+    }
 
     // ── Accessors ──────────────────────────────────────────────────────────
 
@@ -91,6 +124,19 @@ class FinancialTransaction extends Model
     public function hasReceipt(): bool
     {
         return $this->documents()->exists();
+    }
+
+    public function isReceivable(): bool
+    {
+        return $this->type === 'receivable';
+    }
+
+    public function isOverdue(): bool
+    {
+        return $this->type === 'receivable'
+            && $this->due_date
+            && $this->due_date->isPast()
+            && $this->status !== 'paid';
     }
 
     // ── Boot ───────────────────────────────────────────────────────────────

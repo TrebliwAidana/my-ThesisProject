@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Financial;
 
 use App\Http\Controllers\Controller;
 use App\Models\FinancialTransaction;
-use App\Models\Receivable;
 use App\Services\AuditLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -19,116 +18,68 @@ class ReceivableController extends Controller
         $this->middleware('auth.custom');
     }
 
-    // ── Index ──────────────────────────────────────────────────────────────
+    // ── Create ─────────────────────────────────────────────────────────────
 
-    public function index()
+    public function create()
     {
-        $this->checkGuest();
+        if ($response = $this->authorizeFinancialAction('create')) return $response;
 
-        if (!auth()->user()->hasPermission('financial.view') && auth()->user()->role->level !== 1) {
-            abort(403);
-        }
-
-        $receivables = Receivable::with(['payments', 'creator'])
-            ->orderByRaw("FIELD(status, 'overdue', 'pending', 'partial', 'paid')")
-            ->orderBy('due_date')
-            ->paginate(20);
-
-        $totalOutstanding = Receivable::whereIn('status', ['pending', 'partial', 'overdue'])
-            ->sum(DB::raw('total_amount - paid_amount'));
-
-        return view('financial.receivables.index', compact('receivables', 'totalOutstanding'));
+        return view('financial.receivables.create');
     }
 
-    // ── Show ───────────────────────────────────────────────────────────────
+    // ── Store ──────────────────────────────────────────────────────────────
 
-    public function show(Receivable $receivable)
+    public function store(Request $request)
     {
-        $this->checkGuest();
+        if ($response = $this->authorizeFinancialAction('create')) return $response;
 
-        if (!auth()->user()->hasPermission('financial.view') && auth()->user()->role->level !== 1) {
-            abort(403);
-        }
+        $validated = $request->validate([
+            'description'      => ['required', 'string', 'max:255'],
+            'amount'           => ['required', 'numeric', 'min:0.01', 'max:9999999.99'],
+            'customer_name'    => ['required', 'string', 'max:255'],
+            'due_date'         => ['nullable', 'date', 'after_or_equal:today'],
+            'category_final'   => ['nullable', 'string', 'max:100'],
+            'transaction_date' => ['required', 'date', 'before_or_equal:today'],
+            'notes'            => ['nullable', 'string', 'max:1000'],
+            'receipt'          => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
+        ], [
+            'amount.min'                       => 'Amount must be greater than zero.',
+            'due_date.after_or_equal'          => 'Due date cannot be in the past.',
+            'transaction_date.before_or_equal' => 'Transaction date cannot be in the future.',
+            'receipt.max'                      => 'Receipt file must not exceed 5MB.',
+        ]);
 
-        $receivable->load(['payments', 'creator', 'incomeTransaction.documents.latestVersion']);
-
-        return view('financial.receivables.show', compact('receivable'));
-    }
-
-    // ── Mark as Paid ───────────────────────────────────────────────────────
-
-    public function markPaid(Receivable $receivable)
-    {
-        $this->checkGuest();
-
-        if (!auth()->user()->hasPermission('financial.approve') && auth()->user()->role->level !== 1) {
-            return back()->with('error', 'Permission denied.');
-        }
-
-        if ($receivable->status === 'paid') {
-            return back()->with('info', 'This receivable is already marked as paid.');
-        }
-
-        // Load the ORIGINAL income transaction before we do anything
-        $receivable->load('incomeTransaction');
-        $originalTransaction = $receivable->incomeTransaction;
-
-        DB::transaction(function () use ($receivable, $originalTransaction) {
-            // 1. Create a new approved income transaction recording the cash collected
-            $collectionTransaction = FinancialTransaction::create([
-                'description'      => $receivable->description . ' (receivable collected)',
-                'amount'           => $receivable->total_amount,
-                'type'             => 'income',
-                'status'           => 'approved',
-                'transaction_date' => now()->toDateString(),
-                'user_id'          => $receivable->created_by,
-                'approved_by'      => Auth::id(),
-                'approved_at'      => now(),
-                'is_receivable'    => true,
-                'receivable_paid'  => true,
-                'category'         => $receivable->category ?? null,
-                'notes'            => "Collected from: {$receivable->customer_name}. Ref: {$receivable->reference_no}",
+        DB::transaction(function () use ($validated, $request) {
+            $transaction = FinancialTransaction::create([
+                'type'             => 'receivable',
+                'status'           => 'pending',
+                'user_id'          => Auth::id(),
+                'description'      => $validated['description'],
+                'amount'           => $validated['amount'],
+                'customer_name'    => $validated['customer_name'],
+                'due_date'         => $validated['due_date'] ?? null,
+                'category'         => $validated['category_final'] ?? null,
+                'transaction_date' => $validated['transaction_date'],
+                'notes'            => $validated['notes'] ?? null,
             ]);
 
-            // 2. Mark the receivable paid.
-            //    Do NOT overwrite income_transaction_id — that still points to the
-            //    original income entry so the show page link stays intact.
-            //    Mark receivable_paid on the original transaction instead.
-            $receivable->update([
-                'status'   => 'paid',
-                'paid_at'  => now(),
-                'paid_by'  => Auth::id(),
-            ]);
-
-            // 3. Flag the original income transaction as receivable paid
-            if ($originalTransaction) {
-                $originalTransaction->update(['receivable_paid' => true]);
+            if ($request->hasFile('receipt')) {
+                $this->attachReceiptDocument(
+                    $transaction,
+                    $request->file('receipt'),
+                    'Receipt uploaded'
+                );
             }
 
-            // 4. Generate and attach the receivable paid slip to the
-            //    collection transaction so it shows on the receivable show page
-            //    via incomeTransaction.documents (original) or separately findable.
-            //    We attach it to the ORIGINAL transaction so the show page
-            //    (which loads incomeTransaction = original) can display it.
-            $receivable->refresh();
-            $this->saveApprovedReceivableAsDocument($receivable, $originalTransaction ?? $collectionTransaction);
-
             AuditLogger::log(
-                'updated', $receivable,
-                "Receivable {$receivable->reference_no} manually marked as paid — collection transaction #{$collectionTransaction->id} created"
+                'created', $transaction,
+                "Receivable created: {$transaction->description} — Customer: {$transaction->customer_name}",
+                [],
+                $transaction->toArray()
             );
         });
 
-        return redirect()->route('financial.receivable.show', $receivable)
-            ->with('success', 'Receivable marked as paid. The approval slip is now visible below.');
-    }
-    
-
-    // ── Record Partial Payment ─────────────────────────────────────────────
-
-    public function recordPayment(Request $request, Receivable $receivable)
-    {
-        // Partial payments are not supported — kept for route compatibility
-        return back()->with('error', 'Partial payments are not supported. Use "Mark as Paid" instead.');
+        return redirect()->route('financial.index')
+            ->with('success', 'Receivable recorded successfully and is pending audit.');
     }
 }

@@ -43,7 +43,17 @@ class FinancialController extends Controller
 
         $showApproved = $request->boolean('show_approved');
         if (!$showApproved) {
-            $query->where('status', '!=', 'approved');
+            // For receivables: hide only when 'paid' (equivalent of approved+collected)
+            // For income/expense: hide when 'approved'
+            $query->where(function ($q) {
+                $q->where(function ($inner) {
+                    $inner->where('type', 'receivable')
+                          ->where('status', '!=', 'paid');
+                })->orWhere(function ($inner) {
+                    $inner->whereIn('type', ['income', 'expense'])
+                          ->where('status', '!=', 'approved');
+                });
+            });
         }
 
         if ($request->filled('type'))      $query->where('type', $request->type);
@@ -55,9 +65,17 @@ class FinancialController extends Controller
 
         $transactions = $query->paginate(15)->appends($request->except('page'));
 
-        $incomeTotal  = FinancialTransaction::income()->approved()->sum('amount');
+        // Income total: approved income transactions only
+        $incomeTotal = FinancialTransaction::income()->approved()->sum('amount');
+
+        // Receivables total: only paid receivables count toward income
+        $receivablePaidTotal = FinancialTransaction::receivable()->paid()->sum('amount');
+
+        // Combined income displayed on the card
+        $totalIncome  = $incomeTotal + $receivablePaidTotal;
         $expenseTotal = FinancialTransaction::expense()->approved()->sum('amount');
-        $balance      = $incomeTotal - $expenseTotal;
+        $balance      = $totalIncome - $expenseTotal;
+
         $pendingCount = FinancialTransaction::pending()->count();
         $auditedCount = FinancialTransaction::audited()->count();
 
@@ -66,7 +84,8 @@ class FinancialController extends Controller
 
         return view('financial.index', compact(
             'transactions', 'incomeTotal', 'expenseTotal', 'balance',
-            'pendingCount', 'auditedCount', 'categories', 'showApproved'
+            'pendingCount', 'auditedCount', 'categories', 'showApproved',
+            'receivablePaidTotal', 'totalIncome'
         ));
     }
 
@@ -188,9 +207,8 @@ class FinancialController extends Controller
     {
         if ($response = $this->authorizeFinancialAction('approve')) return $response;
 
-        $transaction = FinancialTransaction::with([
-            'user', 'auditor', 'documents', 'receivable',
-        ])->findOrFail($id);
+        $transaction = FinancialTransaction::with(['user', 'auditor', 'documents'])
+            ->findOrFail($id);
 
         if ($transaction->status !== 'audited') {
             return back()->with('error', 'Transaction must be audited before final approval.');
@@ -199,7 +217,6 @@ class FinancialController extends Controller
         $oldStatus = $transaction->status;
 
         DB::transaction(function () use ($transaction, $oldStatus) {
-            // 1. Approve the transaction
             $transaction->update([
                 'status'      => 'approved',
                 'approved_by' => Auth::id(),
@@ -207,12 +224,11 @@ class FinancialController extends Controller
             ]);
             $transaction->refresh();
 
-            // 2. Save the approval document
-            $this->saveApprovedTransactionAsDocument($transaction);
-
-            // NOTE: Linked receivables are NOT auto-paid on approval.
-            // The receivable must be manually verified and marked as paid
-            // from the Receivable show page once the customer actually settles.
+            // Income and expense: save approval PDF immediately to Documents
+            // Receivable: NOT saved to Documents yet — only happens on Mark as Paid
+            if ($transaction->type !== 'receivable') {
+                $this->saveApprovedTransactionAsDocument($transaction);
+            }
 
             AuditLogger::log(
                 'approved', $transaction,
@@ -222,10 +238,9 @@ class FinancialController extends Controller
             );
         });
 
-        $msg = 'Transaction approved and saved to Documents successfully.';
-        if ($transaction->receivable_id) {
-            $msg .= ' The linked receivable remains open — go to Receivables to mark it as paid once the customer settles.';
-        }
+        $msg = $transaction->type === 'receivable'
+            ? 'Receivable approved. Click "Mark as Paid" on the detail page once the customer settles — that will add it to income and save the document.'
+            : 'Transaction approved and saved to Documents successfully.';
 
         return back()->with('success', $msg);
     }
@@ -238,7 +253,7 @@ class FinancialController extends Controller
 
         $transaction = FinancialTransaction::findOrFail($id);
 
-        if (in_array($transaction->status, ['approved', 'rejected'])) {
+        if (in_array($transaction->status, ['approved', 'paid', 'rejected'])) {
             return back()->with('error', 'This transaction has already been finalized.');
         }
 
@@ -253,6 +268,45 @@ class FinancialController extends Controller
         );
 
         return back()->with('success', 'Transaction rejected.');
+    }
+
+    // ── Mark as Paid (receivables only) ────────────────────────────────────
+
+    public function markAsPaid(int $id)
+    {
+        if ($response = $this->authorizeFinancialAction('approve')) return $response;
+
+        $transaction = FinancialTransaction::with(['user', 'approver', 'auditor', 'documents'])
+            ->findOrFail($id);
+
+        if ($transaction->type !== 'receivable') {
+            return back()->with('error', 'Only receivables can be marked as paid.');
+        }
+
+        if ($transaction->status !== 'approved') {
+            return back()->with('error', 'Receivable must be approved before it can be marked as paid.');
+        }
+
+        DB::transaction(function () use ($transaction) {
+            $transaction->update([
+                'status'      => 'paid',
+                'approved_by' => Auth::id(), // person who confirmed payment
+                'approved_at' => now(),
+            ]);
+            $transaction->refresh();
+
+            // NOW save the approval PDF and add to Documents
+            $this->saveApprovedTransactionAsDocument($transaction);
+
+            AuditLogger::log(
+                'paid', $transaction,
+                "Receivable marked as paid: {$transaction->description} — Customer: {$transaction->customer_name}",
+                ['status' => 'approved'],
+                ['status' => 'paid']
+            );
+        });
+
+        return back()->with('success', 'Receivable marked as paid. Amount added to total income and approval slip saved to Documents.');
     }
 
     // ── Destroy ────────────────────────────────────────────────────────────

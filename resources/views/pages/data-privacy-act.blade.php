@@ -36,14 +36,55 @@
 
     {{-- Main Content --}}
     <div class="max-w-4xl mx-auto px-4 sm:px-6 py-12 md:py-16">
+
         {{-- Compliance Callout --}}
         <div class="pub-callout flex items-start gap-4 bg-emerald-50 dark:bg-emerald-900/20 border-l-4 border-emerald-600 dark:border-emerald-400 rounded-r-lg p-5 mb-10">
             <svg class="w-5 h-5 text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
             </svg>
             <p class="text-sm text-gray-700 dark:text-gray-300">
-                This notice is issued in compliance with <strong>Republic Act No. 10173</strong>, the Data Privacy Act of 2012, and its Implementing Rules and Regulations. Last updated: <strong>{{ date('F Y') }}</strong>.
+                This notice is issued in compliance with
+                <a href="https://www.privacy.gov.ph/data-privacy-act/"
+                   target="_blank"
+                   rel="noopener noreferrer"
+                   class="inline-flex items-center gap-1 font-semibold text-emerald-700 dark:text-emerald-400 hover:underline underline-offset-2">
+                    Republic Act No. 10173
+                    <svg class="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                    </svg>
+                </a>,
+                the Data Privacy Act of 2012, and its
+                <a href="https://www.privacy.gov.ph/implementing-rules-and-regulations/"
+                   target="_blank"
+                   rel="noopener noreferrer"
+                   class="inline-flex items-center gap-1 font-semibold text-emerald-700 dark:text-emerald-400 hover:underline underline-offset-2">
+                    Implementing Rules and Regulations
+                    <svg class="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                    </svg>
+                </a>.
+                Last updated: <strong>{{ date('F Y') }}</strong>.
             </p>
+        </div>
+
+        {{-- NPC reference banner --}}
+        <div class="flex items-center gap-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl px-5 py-3.5 mb-10 text-sm text-blue-800 dark:text-blue-300">
+            <svg class="w-4 h-4 flex-shrink-0 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <span>
+                This portal's data practices are aligned with guidelines issued by the
+                <a href="https://www.privacy.gov.ph/"
+                   target="_blank"
+                   rel="noopener noreferrer"
+                   class="inline-flex items-center gap-1 font-semibold text-blue-700 dark:text-blue-400 hover:underline underline-offset-2">
+                    National Privacy Commission (NPC)
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                    </svg>
+                </a>
+                of the Philippines.
+            </span>
         </div>
 
         {{-- Identity --}}
@@ -55,7 +96,17 @@
             The <strong>VSULHS Supreme Student Learner Government (SSLG)</strong> is the official student governing body of the Visayas State University Laboratory High School, Baybay City, Leyte, Philippines. This portal is the official digital management system used by verified SSLG members to manage financial records, documents, and membership information.
         </p>
         <p class="text-gray-700 dark:text-gray-300 mb-10">
-            For the purposes of the Data Privacy Act of 2012, the VSULHS SSLG acts as the <strong>Personal Information Controller (PIC)</strong> for data collected through this portal.
+            For the purposes of the
+            <a href="https://www.privacy.gov.ph/data-privacy-act/"
+               target="_blank"
+               rel="noopener noreferrer"
+               class="inline-flex items-center gap-0.5 font-medium text-emerald-600 dark:text-emerald-400 hover:underline underline-offset-2">
+                Data Privacy Act of 2012
+                <svg class="w-3 h-3 ml-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                </svg>
+            </a>,
+            the VSULHS SSLG acts as the <strong>Personal Information Controller (PIC)</strong> for data collected through this portal.
         </p>
 
         {{-- Collection --}}
@@ -157,7 +208,17 @@
         </div>
         <h2 class="font-serif text-3xl font-bold text-gray-900 dark:text-white mb-4">Your Rights Under RA 10173</h2>
         <p class="text-gray-700 dark:text-gray-300 mb-4">
-            As a data subject under the Data Privacy Act of 2012, you have the following rights:
+            As a data subject under the
+            <a href="https://www.privacy.gov.ph/data-privacy-act/"
+               target="_blank"
+               rel="noopener noreferrer"
+               class="inline-flex items-center gap-0.5 font-medium text-emerald-600 dark:text-emerald-400 hover:underline underline-offset-2">
+                Data Privacy Act of 2012
+                <svg class="w-3 h-3 ml-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                </svg>
+            </a>,
+            you have the following rights:
         </p>
         <ul class="list-disc list-inside space-y-2 text-gray-700 dark:text-gray-300 mb-4 ml-4">
             <li><strong>Right to be informed</strong> — You have the right to know what personal data is being collected and how it is used</li>
@@ -168,8 +229,22 @@
             <li><strong>Right to data portability</strong> — You may request a copy of your data in a structured, commonly used format</li>
             <li><strong>Right to damages</strong> — You may claim compensation if you suffer damage due to inaccurate, incomplete, or unlawfully processed data</li>
         </ul>
+        <p class="text-gray-700 dark:text-gray-300 mb-4">
+            To exercise any of these rights, contact us at
+            <a href="mailto:sslg@vsulhs.edu.ph" class="font-medium text-emerald-600 dark:text-emerald-400 hover:underline underline-offset-2">sslg@vsulhs.edu.ph</a>.
+        </p>
         <p class="text-gray-700 dark:text-gray-300 mb-10">
-            To exercise any of these rights, contact us at <a href="mailto:sslg@vsulhs.edu.ph" class="text-emerald-600 dark:text-emerald-400 hover:underline">sslg@vsulhs.edu.ph</a>.
+            You may also file a complaint directly with the
+            <a href="https://www.privacy.gov.ph/complaints-assistance/"
+               target="_blank"
+               rel="noopener noreferrer"
+               class="inline-flex items-center gap-0.5 font-medium text-emerald-600 dark:text-emerald-400 hover:underline underline-offset-2">
+                National Privacy Commission
+                <svg class="w-3 h-3 ml-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                </svg>
+            </a>
+            if you believe your rights as a data subject have been violated.
         </p>
 
         {{-- Security --}}
@@ -194,13 +269,77 @@
         <p class="text-gray-700 dark:text-gray-300 mb-4">
             We may update this Data Privacy Notice from time to time to reflect changes in the system or applicable law. The date at the top of this page indicates when it was last revised. Continued use of the portal after changes are posted constitutes your acceptance of the updated notice.
         </p>
-        <p class="text-gray-700 dark:text-gray-300">
-            For questions or concerns about this notice or our data practices, contact <a href="mailto:sslg@vsulhs.edu.ph" class="text-emerald-600 dark:text-emerald-400 hover:underline">sslg@vsulhs.edu.ph</a>.
+        <p class="text-gray-700 dark:text-gray-300 mb-10">
+            For questions or concerns about this notice or our data practices, contact
+            <a href="mailto:sslg@vsulhs.edu.ph" class="font-medium text-emerald-600 dark:text-emerald-400 hover:underline underline-offset-2">sslg@vsulhs.edu.ph</a>.
         </p>
+
+        {{-- Official References Footer --}}
+        <div class="mt-4 border-t border-gray-200 dark:border-gray-700 pt-8">
+            <p class="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-4">Official References</p>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <a href="https://www.privacy.gov.ph/data-privacy-act/"
+                   target="_blank"
+                   rel="noopener noreferrer"
+                   class="flex items-start gap-3 p-4 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-emerald-400 dark:hover:border-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition group">
+                    <svg class="w-5 h-5 text-emerald-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    </svg>
+                    <div>
+                        <p class="text-xs font-semibold text-gray-800 dark:text-gray-200 group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition">Republic Act No. 10173</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Data Privacy Act of 2012</p>
+                        <p class="text-xs text-emerald-600 dark:text-emerald-500 mt-1 flex items-center gap-1">
+                            privacy.gov.ph
+                            <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                            </svg>
+                        </p>
+                    </div>
+                </a>
+
+                <a href="https://www.privacy.gov.ph/implementing-rules-and-regulations/"
+                   target="_blank"
+                   rel="noopener noreferrer"
+                   class="flex items-start gap-3 p-4 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-emerald-400 dark:hover:border-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition group">
+                    <svg class="w-5 h-5 text-emerald-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10l4 4v10a2 2 0 01-2 2z"/>
+                    </svg>
+                    <div>
+                        <p class="text-xs font-semibold text-gray-800 dark:text-gray-200 group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition">IRR of RA 10173</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Implementing Rules & Regulations</p>
+                        <p class="text-xs text-emerald-600 dark:text-emerald-500 mt-1 flex items-center gap-1">
+                            privacy.gov.ph
+                            <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                            </svg>
+                        </p>
+                    </div>
+                </a>
+
+                <a href="https://www.privacy.gov.ph/"
+                   target="_blank"
+                   rel="noopener noreferrer"
+                   class="flex items-start gap-3 p-4 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-emerald-400 dark:hover:border-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition group">
+                    <svg class="w-5 h-5 text-emerald-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <div>
+                        <p class="text-xs font-semibold text-gray-800 dark:text-gray-200 group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition">National Privacy Commission</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Official NPC website</p>
+                        <p class="text-xs text-emerald-600 dark:text-emerald-500 mt-1 flex items-center gap-1">
+                            privacy.gov.ph
+                            <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                            </svg>
+                        </p>
+                    </div>
+                </a>
+            </div>
+        </div>
+
     </div>
 </div>
 
-{{-- Minimal inline style to support pub-table and callout if not already defined --}}
 <style>
     .pub-callout {
         transition: all 0.2s ease;

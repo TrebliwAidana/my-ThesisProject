@@ -104,16 +104,17 @@ trait FinancialHelperTrait
      */
     protected function saveApprovedTransactionAsDocument(FinancialTransaction $transaction): void
     {
-        $isReceivable = (bool) $transaction->is_receivable;
+        // For receivables the status is 'paid', for income/expense it is 'approved'
+        $isReceivable = $transaction->type === 'receivable';
         $typeLabel    = $isReceivable ? 'Receivable' : ucfirst($transaction->type);
-        $categoryName = "Approved {$typeLabel}";
+        $categoryName = $isReceivable ? 'Approved Receivable' : "Approved {$typeLabel}";
 
         $documentCategory = DocumentCategory::where('name', $categoryName)->first();
         $dateFormatted    = $transaction->transaction_date->format('Y-m-d');
         $title            = "{$categoryName}: {$transaction->description} [{$dateFormatted}]";
+        $filename         = "transaction_{$transaction->id}_{$transaction->type}_paid.pdf";
 
-        $pdf      = $this->buildTransactionApprovalPdf($transaction, $typeLabel, $isReceivable);
-        $filename = "transaction_{$transaction->id}_{$transaction->type}_approved.pdf";
+        $pdf = $this->buildTransactionApprovalPdf($transaction, $typeLabel, $isReceivable);
 
         $this->writePdfToDocument($pdf, $filename, $title, $transaction, $typeLabel, $documentCategory);
     }

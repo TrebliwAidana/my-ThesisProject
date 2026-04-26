@@ -35,9 +35,9 @@
                     <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Applies To <span class="text-red-500">*</span></label>
                     <select name="type" required
                             class="w-full border border-gold-300 dark:border-gold-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent">
-                        <option value="both"    {{ old('type') === 'both'    ? 'selected' : '' }}>Both (Income & Expense)</option>
-                        <option value="income"  {{ old('type') === 'income'  ? 'selected' : '' }}>Income only</option>
-                        <option value="expense" {{ old('type') === 'expense' ? 'selected' : '' }}>Expense only</option>
+                        <option value="income"  {{ old('type') === 'income'  ? 'selected' : '' }}>Income</option>
+                        <option value="expense" {{ old('type') === 'expense' ? 'selected' : '' }}>Expense</option>
+                        <option value="receivable" {{ old('type') === 'receivable' ? 'selected' : '' }}>Receivable</option>
                     </select>
                     @error('type')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
                 </div>

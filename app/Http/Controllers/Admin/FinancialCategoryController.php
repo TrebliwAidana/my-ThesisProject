@@ -87,7 +87,7 @@ class FinancialCategoryController extends Controller
 
         $validated = $request->validate([
             'name'        => ['required', 'string', 'max:100', 'unique:financial_categories,name'],
-            'type'        => ['required', 'in:income,expense,both'],
+            'type'        => ['required', 'in:income,expense,receivable'],
             'description' => ['nullable', 'string', 'max:255'],
         ]);
 
