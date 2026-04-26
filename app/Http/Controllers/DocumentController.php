@@ -29,7 +29,7 @@ class DocumentController extends Controller
         if ($request->filled('search')) {
             $query->where(function ($q) use ($request) {
                 $q->where('title', 'like', '%' . $request->search . '%')
-                ->orWhere('description', 'like', '%' . $request->search . '%');
+                  ->orWhere('description', 'like', '%' . $request->search . '%');
             });
         }
 
@@ -45,7 +45,7 @@ class DocumentController extends Controller
             } elseif ($request->source === 'manual') {
                 $query->where(function ($q) {
                     $q->whereNull('tags')
-                    ->orWhereRaw("JSON_SEARCH(tags, 'one', 'auto-generated') IS NULL");
+                      ->orWhereRaw("JSON_SEARCH(tags, 'one', 'auto-generated') IS NULL");
                 });
             }
         }
@@ -78,7 +78,7 @@ class DocumentController extends Controller
     }
 
     // -------------------------------------------------------------------------
-    // Show – policy handles access (no private check needed)
+    // Show – policy handles access
     // -------------------------------------------------------------------------
 
     public function show(Document $document)
@@ -88,7 +88,75 @@ class DocumentController extends Controller
     }
 
     // -------------------------------------------------------------------------
-    // Edit / Update – using document_category_id
+    // Create – no category for manual uploads
+    // -------------------------------------------------------------------------
+
+    public function create()
+    {
+        $user = Auth::user();
+        if ($user->role->level !== 1 && !$user->hasPermission('documents.create')) {
+            abort(403);
+        }
+
+        // No categories passed – manual uploads have document_category_id = null
+        return view('documents.create');
+    }
+
+    // -------------------------------------------------------------------------
+    // Store – handles manual file upload, no category
+    // -------------------------------------------------------------------------
+
+    public function store(Request $request)
+    {
+        $user = Auth::user();
+        if ($user->role->level !== 1 && !$user->hasPermission('documents.create')) {
+            abort(403);
+        }
+
+        $validated = $request->validate([
+            'title'        => 'required|string|max:255',
+            'description'  => 'nullable|string',
+            'tags'         => 'nullable|string|max:255',       // comma-separated
+            'change_notes' => 'nullable|string',
+            'file'         => 'required|file|max:10240|mimes:pdf,doc,docx,xls,xlsx,ppt,pptx,jpg,jpeg,png,gif,zip',
+        ]);
+
+        // Convert comma-separated tags to array
+        $tagsArray = [];
+        if (!empty($validated['tags'])) {
+            $tagsArray = array_map('trim', explode(',', $validated['tags']));
+        }
+
+        // Create document with no category (document_category_id = null)
+        $document = Document::create([
+            'title'                => $validated['title'],
+            'description'          => $validated['description'] ?? null,
+            'document_category_id' => null,                 // manual uploads have no category
+            'tags'                 => $tagsArray,
+            'owner_id'             => $user->id,
+            'current_version_id'   => null,                 // will be set after version is added
+        ]);
+
+        // Add the first version (the file)
+        $version = $document->addVersion(
+            $request->file('file'),
+            $validated['change_notes'] ?? 'Initial upload'
+        );
+
+        // Ensure the document points to the current version
+        if (!$document->current_version_id && $version) {
+            $document->current_version_id = $version->id;
+            $document->saveQuietly();
+        }
+
+        AuditLogger::log('created', $document, "Document: {$document->title}");
+
+        return redirect()->route('documents.index')
+            ->with('success', 'Document uploaded successfully.');
+    }
+
+    // -------------------------------------------------------------------------
+    // Edit / Update – using document_category_id (only for existing categories)
     // -------------------------------------------------------------------------
 
     public function edit(Document $document)
@@ -101,6 +169,8 @@ class DocumentController extends Controller
             abort(403, 'You can only edit your own documents.');
         }
 
+        // Only fetch categories if the document already has one (auto-generated documents)
+        // For manual uploads, the category dropdown is empty anyway.
         $categories = DocumentCategory::active()->orderBy('name')->pluck('name', 'id');
         return view('documents.edit', compact('document', 'categories'));
     }
@@ -160,7 +230,7 @@ class DocumentController extends Controller
     }
 
     // -------------------------------------------------------------------------
-    // Download / Preview – policy handles access (no visibility restrictions)
+    // Download / Preview – policy handles access
     // -------------------------------------------------------------------------
 
     public function download(Document $document)
@@ -205,13 +275,12 @@ class DocumentController extends Controller
     // Trash / Restore / Force Delete – permission based
     // -------------------------------------------------------------------------
 
-   public function trash()
+    public function trash()
     {
         if (!Auth::user()->hasPermission('documents.manage') && Auth::user()->role->level !== 1) {
             abort(403);
         }
  
-        // ✅ FIXED: added 'currentVersion' and 'category' to eager loads
         $documents = Document::onlyTrashed()
             ->with(['owner', 'currentVersion', 'category'])
             ->latest('deleted_at')
@@ -219,7 +288,6 @@ class DocumentController extends Controller
  
         return view('documents.trash', compact('documents'));
     }
- 
 
     public function restore($id)
     {

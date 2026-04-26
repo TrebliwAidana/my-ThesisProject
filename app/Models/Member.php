@@ -28,14 +28,11 @@ class Member extends Model
     ];
 
     public const VALID_POSITIONS = [
-        1 => [],
-        2 => ['SSLG President', 'SSLG Adviser', 'Student Affairs Head'],
-        3 => ['SSLG Secretary', 'SSLG Treasurer', 'SSLG PIO'],
-        4 => ['Organization President', 'Organization Vice President'],
-        5 => ['Organization Secretary', 'Organization Treasurer', 'Organization Auditor', 'Organization PIO'],
-        6 => ['Club Adviser'],
-        7 => ['Regular Member'],
-        8 => ['Guest'],
+        1 => ['System Administrator'],
+        2 => ['Club Adviser'],
+        3 => ['Treasurer'],
+        4 => ['Auditor'],
+        5 => ['Guest'],
 
     ];
 
@@ -138,12 +135,15 @@ class Member extends Model
                 'manage_all', 'edit_members', 'delete_members', 'change_positions',
                 'view_financial_transactions', 'approve_financial_transactions', 'manage_settings',
             ],
-            'Supreme Admin'   => ['manage_all', 'edit_members', 'change_positions', 'view_financial_transactions', 'approve_financial_transactions'],
-            'Club Adviser'    => ['edit_members', 'change_positions', 'view_financial_transactions', 'approve_financial_transactions'],
-            'Org Admin'       => ['edit_members', 'view_financial_transactions'],
-            'Supreme Officer' => ['view_financial_transactions', 'submit_financial_transactions'],
-            'Org Officer'     => ['view_financial_transactions', 'submit_financial_transactions'],
-            'Org Member'      => ['view_own_profile'],
+            'Club Adviser' => [
+                'edit_members', 'change_positions', 'view_financial_transactions', 'approve_financial_transactions',
+            ],
+            'Treasurer' => [
+                'edit_members', 'change_positions', 'view_financial_transactions', 'submit_financial_transactions',
+            ],
+            'Auditor' => [
+                'edit_members', 'view_financial_transactions',
+            ],
         ];
 
         return in_array($permission, $rolePermissions[$role->name] ?? []);

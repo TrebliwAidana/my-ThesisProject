@@ -24,7 +24,6 @@ class Document extends Model
     ];
 
     protected $casts = [
-        'is_public' => 'boolean',
         'tags'      => 'array',
         'deleted_at' => 'datetime',
     ];

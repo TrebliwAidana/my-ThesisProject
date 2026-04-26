@@ -168,65 +168,6 @@
                     </div>
                 </div>
             @endif
-
-            {{-- Documents / Approval Slip ────────────────────────────────── --}}
-            @php
-                $paymentDocs = $receivable->incomeTransaction?->documents ?? collect();
-            @endphp
-            @if($paymentDocs->isNotEmpty())
-                <div class="mt-6 pt-6 border-t border-gray-100 dark:border-gray-700">
-                    <h3 class="text-lg font-semibold mb-3 text-gray-800 dark:text-white">
-                        📎 Payment Documents
-                        @if($receivable->status === 'paid')
-                            <span class="ml-2 text-xs font-normal text-emerald-600">
-                                — Paid {{ $receivable->paid_at ? \Carbon\Carbon::parse($receivable->paid_at)->format('F d, Y h:i A') : '' }}
-                            </span>
-                        @endif
-                    </h3>
-                    <div class="space-y-3">
-                        @foreach($paymentDocs as $doc)
-                            @php $version = $doc->latestVersion; @endphp
-                            <div class="flex items-center justify-between bg-gray-50 dark:bg-gray-700/30 rounded-lg px-4 py-3">
-                                <div class="flex items-center gap-3 min-w-0">
-                                    <span class="text-2xl shrink-0">📄</span>
-                                    <div class="min-w-0">
-                                        <p class="text-sm font-medium text-gray-800 dark:text-white truncate">{{ $doc->title }}</p>
-                                        @if($doc->description)
-                                            <p class="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5">{{ $doc->description }}</p>
-                                        @endif
-                                        <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
-                                            Saved {{ $doc->created_at->format('F d, Y h:i A') }}
-                                        </p>
-                                    </div>
-                                </div>
-                                <div class="flex items-center gap-2 shrink-0 ml-4">
-                                    @if($version)
-                                        <a href="{{ route('documents.version.download', [$doc, $version]) }}"
-                                           class="inline-flex items-center gap-1 text-xs bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 hover:bg-blue-100 px-3 py-1.5 rounded-lg font-medium transition">
-                                            ⬇ Download
-                                        </a>
-                                        <a href="{{ route('documents.preview', $doc) }}" target="_blank"
-                                           class="inline-flex items-center gap-1 text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 px-3 py-1.5 rounded-lg font-medium transition">
-                                            👁 Preview
-                                        </a>
-                                    @else
-                                        <span class="text-xs text-gray-400 italic">No file version found</span>
-                                    @endif
-                                </div>
-                            </div>
-                        @endforeach
-                    </div>
-                </div>
-            @elseif($receivable->status === 'paid')
-                <div class="mt-6 pt-6 border-t border-gray-100 dark:border-gray-700">
-                    <h3 class="text-lg font-semibold mb-3 text-gray-800 dark:text-white">📎 Payment Documents</h3>
-                    <div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
-                        <p class="text-sm text-amber-700 dark:text-amber-400">
-                            ⚠️ This receivable is paid but no documents were found. The approval slip may have failed to save.
-                        </p>
-                    </div>
-                </div>
-            @endif
         </div>
     </div>
 </div>

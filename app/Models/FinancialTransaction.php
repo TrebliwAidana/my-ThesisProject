@@ -23,6 +23,8 @@ class FinancialTransaction extends Model
         'notes',
         'approved_by',
         'approved_at',
+        'audited_by',       // ← added
+        'audited_at',       // ← added
         'receivable_id',
         'is_receivable',
         'receivable_paid',
@@ -31,14 +33,13 @@ class FinancialTransaction extends Model
     protected $casts = [
         'transaction_date' => 'date',
         'approved_at'      => 'datetime',
+        'audited_at'       => 'datetime',  // ← added
         'amount'           => 'decimal:2',
         'is_receivable'    => 'boolean',
         'receivable_paid'  => 'boolean',
     ];
 
-    // -------------------------------------------------------------------------
-    // Relationships
-    // -------------------------------------------------------------------------
+    // ── Relationships ──────────────────────────────────────────────────────
 
     public function user(): BelongsTo
     {
@@ -50,99 +51,55 @@ class FinancialTransaction extends Model
         return $this->belongsTo(User::class, 'approved_by');
     }
 
-    /**
-     * Polymorphic relationship to documents via attachments table.
-     */
+    public function auditor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'audited_by');
+    }
+
+    public function receivable(): BelongsTo
+    {
+        return $this->belongsTo(Receivable::class);
+    }
+
     public function documents(): MorphToMany
     {
         return $this->morphToMany(Document::class, 'attachable', 'attachments')
                     ->withTimestamps();
     }
 
-    // -------------------------------------------------------------------------
-    // Scopes
-    // -------------------------------------------------------------------------
+    // ── Scopes ─────────────────────────────────────────────────────────────
 
-    public function scopeIncome($query)
-    {
-        return $query->where('type', 'income');
-    }
+    public function scopeIncome($query)   { return $query->where('type', 'income'); }
+    public function scopeExpense($query)  { return $query->where('type', 'expense'); }
+    public function scopePending($query)  { return $query->where('status', 'pending'); }
+    public function scopeAudited($query)  { return $query->where('status', 'audited'); }
+    public function scopeApproved($query) { return $query->where('status', 'approved'); }
+    public function scopeRejected($query) { return $query->where('status', 'rejected'); }
 
-    public function scopeExpense($query)
-    {
-        return $query->where('type', 'expense');
-    }
+    // ── Accessors ──────────────────────────────────────────────────────────
 
-    public function scopePending($query)
-    {
-        return $query->where('status', 'pending');
-    }
-
-    public function scopeApproved($query)
-    {
-        return $query->where('status', 'approved');
-    }
-
-    public function scopeRejected($query)
-    {
-        return $query->where('status', 'rejected');
-    }
-
-    // -------------------------------------------------------------------------
-    // Accessors & Helpers
-    // -------------------------------------------------------------------------
-
-    /**
-     * Format amount with currency symbol.
-     */
     public function getFormattedAmountAttribute(): string
     {
         return '₱' . number_format($this->amount, 2);
     }
 
-    /**
-     * Get the primary receipt document (first attached).
-     */
     public function getReceiptAttribute(): ?Document
     {
         return $this->documents->first();
     }
 
-    /**
-     * Check if transaction has a receipt attached.
-     */
     public function hasReceipt(): bool
     {
         return $this->documents()->exists();
     }
 
-    // -------------------------------------------------------------------------
-    // Boot
-    // -------------------------------------------------------------------------
+    // ── Boot ───────────────────────────────────────────────────────────────
 
     protected static function booted()
     {
         static::deleting(function ($transaction) {
-            // When transaction is force‑deleted, detach documents but don't delete them
-            // (documents may be linked to other records)
-            if (! $transaction->isForceDeleting()) {
-                return;
-            }
-
+            if (!$transaction->isForceDeleting()) return;
             $transaction->documents()->detach();
         });
     }
-    public function auditor()
-    {
-        return $this->belongsTo(User::class, 'audited_by');
-    }
-    public function scopeAudited($query)
-    {
-        return $query->where('status', 'audited');
-    }
-    public function receivable(): BelongsTo
-    {
-        return $this->belongsTo(Receivable::class);
-    }
-
 }

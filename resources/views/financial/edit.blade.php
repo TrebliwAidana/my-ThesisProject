@@ -55,12 +55,64 @@
                 </div>
             </div>
 
-            {{-- Category --}}
-            <div class="mb-4">
+            {{-- Category — dynamic dropdown scoped to the transaction's type --}}
+            <div class="mb-4"
+                 x-data="{
+                     category: @json(old('category_final', $transaction->category ?? '')),
+                     categories: [],
+                     loading: true,
+                     init() {
+                         fetch('{{ route('api.financial-categories.list') }}?type={{ $transaction->type }}')
+                             .then(r => r.json())
+                             .then(data => {
+                                 this.categories = data;
+                                 this.loading = false;
+                             })
+                             .catch(() => {
+                                 this.loading = false;
+                             });
+                     }
+                 }"
+                 x-init="init()">
                 <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Category</label>
-                <input type="text" name="category"
-                       value="{{ old('category', $transaction->category) }}"
-                       class="w-full border border-gold-300 dark:border-gold-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500">
+
+                <template x-if="loading">
+                    <div class="w-full border border-gold-300 dark:border-gold-600 rounded-lg px-4 py-2 text-sm text-gray-400 bg-gray-50 dark:bg-gray-700 animate-pulse">
+                        Loading categories…
+                    </div>
+                </template>
+
+                <template x-if="!loading">
+                    <div>
+                        <select
+                            name="category_final"
+                            x-model="category"
+                            class="w-full border border-gold-300 dark:border-gold-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500"
+                        >
+                            <option value="">— No category —</option>
+                            <template x-for="cat in categories" :key="cat.id">
+                                <option
+                                    :value="cat.name"
+                                    x-text="cat.name"
+                                    :selected="cat.name === category"
+                                ></option>
+                            </template>
+                            {{-- Graceful fallback: if saved category no longer exists in DB --}}
+                            <template x-if="category && !categories.find(c => c.name === category)">
+                                <option :value="category" x-text="category + ' (archived)'" selected></option>
+                            </template>
+                        </select>
+
+                        <template x-if="categories.length === 0">
+                            <p class="text-xs text-amber-600 mt-1">
+                                No active categories found for this transaction type.
+                                @can('financial_categories.manage')
+                                    <a href="{{ route('admin.financial-categories.index') }}" class="underline font-semibold">Manage categories.</a>
+                                @endcan
+                            </p>
+                        </template>
+                    </div>
+                </template>
             </div>
 
             {{-- Transaction Date --}}
@@ -85,11 +137,14 @@
             <div class="mb-6">
                 <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Receipt / Attachment</label>
 
-                @if($transaction->receipt_path)
+                @if($transaction->documents->isNotEmpty())
                     <div class="mb-2 flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
                         <span>📎 Current file:</span>
-                        <a href="{{ Storage::url($transaction->receipt_path) }}" target="_blank"
-                           class="text-blue-600 hover:underline">View receipt</a>
+                        @php $doc = $transaction->documents->first(); @endphp
+                        @if($doc && $doc->latestVersion)
+                            <a href="{{ Storage::url($doc->latestVersion->path) }}" target="_blank"
+                               class="text-blue-600 hover:underline">View receipt</a>
+                        @endif
                         <span class="text-xs text-gray-400">(Upload a new file to replace it)</span>
                     </div>
                 @endif

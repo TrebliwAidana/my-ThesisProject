@@ -135,12 +135,9 @@ class Role extends Model
         // Optional fallback for predefined roles that lack a description
         $fallbacks = [
             'System Administrator' => 'Full system control – manage users, roles, finances, documents, and settings.',
-            'Supreme Admin'        => 'Oversee all organization activities, approve financial transactions, and manage key members.',
-            'Supreme Officer'      => 'Record financial transactions, upload documents, and manage member records.',
-            'Org Admin'            => 'Manage your organization’s members, financial records, and documents.',
-            'Org Officer'          => 'Submit financial transactions, upload documents, and view member lists.',
             'Club Adviser'         => 'Guide the organization, approve financial requests, and oversee activities.',
-            'Org Member'           => 'View your profile, documents, and financial summaries.',
+            'Treasurer'            => 'Record financial transactions, upload documents, and manage member records.',
+            'Auditor'              => 'Review and approve financial transactions, upload documents, and view member lists.',
             'Guest'                => 'Limited access – can only view public information.',
         ];
 

@@ -7,12 +7,16 @@ use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\DocumentVersionController;
 use App\Http\Controllers\Admin\DocumentCategoryController;
 use App\Http\Controllers\Admin\DocumentBackupController;
+use App\Http\Controllers\Admin\FinancialCategoryController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\EmailVerificationController;
-use App\Http\Controllers\FinancialController; 
+use App\Http\Controllers\FinancialController;
+use App\Http\Controllers\Financial\IncomeController;
+use App\Http\Controllers\Financial\ExpenseController;
+use App\Http\Controllers\Financial\ReceivableController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Hash;
@@ -21,18 +25,14 @@ use App\Http\Controllers\LandingController;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 
-
-
 // ── Root redirect ─────────────────────────────────────────────────────────────
 Route::get('/', [LandingController::class, 'index'])->name('landing');
 
 // ── Guest ─────────────────────────────────────────────────────────────────────
 Route::middleware('guest')->group(function () {
-    // Redirect the dedicated login page to the landing page (which contains the login modal)
     Route::get('/login', function () {
         return redirect()->route('landing');
     })->name('login');
-    // Keep the POST route for login form submissions from the landing modal
     Route::post('/login', [AuthController::class, 'login'])->name('login.post');
 });
 
@@ -51,6 +51,11 @@ Route::middleware(['auth.custom', 'verified'])->group(function () {
 
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
+    // Public API for populating dropdowns
+    Route::get('/api/financial-categories', [FinancialCategoryController::class, 'apiList'])
+        ->middleware('auth.custom')
+        ->name('api.financial-categories.list');
+
     // ── Members ───────────────────────────────────────────────────────────────
     Route::middleware('role:System Administrator,Supreme Admin,Supreme Officer,Club Adviser,Org Admin,Org Officer')
         ->prefix('members')
@@ -68,7 +73,6 @@ Route::middleware(['auth.custom', 'verified'])->group(function () {
             Route::get('/{id}/position-history-data', [MemberController::class, 'getPositionHistoryData'])->name('position-history-data');
             Route::post('/{id}/deactivate',           [MemberController::class, 'deactivate'])->name('deactivate');
             Route::post('/{id}/activate',             [MemberController::class, 'activate'])->name('activate');
-
         });
 
     // ── Documents ─────────────────────────────────────────────────────────────
@@ -76,52 +80,53 @@ Route::middleware(['auth.custom', 'verified'])->group(function () {
         ->group(function () {
             Route::resource('documents', DocumentController::class);
             Route::get('documents/{document}/download', [DocumentController::class, 'download'])->name('documents.download');
-            Route::get('documents/{document}/preview', [DocumentController::class, 'preview'])->name('documents.preview');
+            Route::get('documents/{document}/preview',  [DocumentController::class, 'preview'])->name('documents.preview');
 
-                    
-        Route::get('documents/{document}/versions/{version}/download', 'App\Http\Controllers\DocumentVersionController@download')
-            ->name('documents.version.download');
+            Route::get('documents/{document}/versions/{version}/download', 'App\Http\Controllers\DocumentVersionController@download')
+                ->name('documents.version.download');
 
-     
-            
             // Trash routes
-            Route::get('documents-trash', [DocumentController::class, 'trash'])->name('documents.trash');
-            Route::patch('documents-trash/{id}/restore', [DocumentController::class, 'restore'])->name('documents.restore');
-            Route::delete('documents-trash/{id}/force', [DocumentController::class, 'forceDelete'])->name('documents.force-delete');
+            Route::get('documents-trash',                    [DocumentController::class, 'trash'])->name('documents.trash');
+            Route::patch('documents-trash/{id}/restore',     [DocumentController::class, 'restore'])->name('documents.restore');
+            Route::delete('documents-trash/{id}/force',      [DocumentController::class, 'forceDelete'])->name('documents.force-delete');
         });
 
-    // ── Financial Records ────────────────────────────────────────────────────
+    // ── Financial Records ─────────────────────────────────────────────────────
     Route::prefix('financial')->name('financial.')->group(function () {
-        // 1. SPECIFIC ROUTES
-        Route::post('/report/preview', [FinancialController::class, 'preview'])->name('report.preview');
-        Route::get('/report', [FinancialController::class, 'reportForm'])->name('report.form');
-        Route::post('/report/generate', [FinancialController::class, 'generateReport'])->name('report.generate');
-        
-        Route::get('/income/create', [FinancialController::class, 'createIncome'])->name('income.create');
-        Route::get('/expense/create', [FinancialController::class, 'createExpense'])->name('expense.create');
-        Route::post('/income', [FinancialController::class, 'storeIncome'])->name('income.store');
-        Route::post('/expense', [FinancialController::class, 'storeExpense'])->name('expense.store');
 
-        Route::get('/receivables', [FinancialController::class, 'receivablesIndex'])->name('receivables');
-        Route::get('/receivable/{receivable}', [FinancialController::class, 'receivableShow'])->name('receivable.show');
-        Route::post('/receivable/{receivable}/pay', [FinancialController::class, 'recordReceivablePayment'])->name('receivable.pay');
-        Route::patch('/receivable/{receivable}/mark-paid', [FinancialController::class, 'markReceivablePaid'])->name('receivable.mark-paid');
+        // ── Reports ─────────────────────────────────────────────────────────
+        Route::post('/report/preview',    [FinancialController::class, 'preview'])->name('report.preview');
+        Route::get('/report',             [FinancialController::class, 'reportForm'])->name('report.form');
+        Route::post('/report/generate',   [FinancialController::class, 'generateReport'])->name('report.generate');
 
-        // TRASH & SOFT-DELETE (specific)
-        Route::get('/trash', [FinancialController::class, 'trash'])->name('trash');
-        Route::patch('/{id}/restore', [FinancialController::class, 'restore'])->name('restore');
+        // ── Income (IncomeController) ────────────────────────────────────────
+        Route::get('/income/create',      [IncomeController::class, 'create'])->name('income.create');
+        Route::post('/income',            [IncomeController::class, 'store'])->name('income.store');
+
+        // ── Expense (ExpenseController) ──────────────────────────────────────
+        Route::get('/expense/create',     [ExpenseController::class, 'create'])->name('expense.create');
+        Route::post('/expense',           [ExpenseController::class, 'store'])->name('expense.store');
+
+        // ── Receivables (ReceivableController) ──────────────────────────────
+        Route::get('/receivables',                              [ReceivableController::class, 'index'])->name('receivables');
+        Route::get('/receivable/{receivable}',                  [ReceivableController::class, 'show'])->name('receivable.show');
+        Route::post('/receivable/{receivable}/pay',             [ReceivableController::class, 'recordPayment'])->name('receivable.pay');
+        Route::patch('/receivable/{receivable}/mark-paid',      [ReceivableController::class, 'markPaid'])->name('receivable.mark-paid');
+
+        // ── Trash (FinancialController) ──────────────────────────────────────
+        Route::get('/trash',              [FinancialController::class, 'trash'])->name('trash');
+        Route::patch('/{id}/restore',     [FinancialController::class, 'restore'])->name('restore');
         Route::delete('/{id}/force-delete', [FinancialController::class, 'forceDelete'])->name('force-delete');
 
-        // 3. WILDCARD ROUTES (keep at the end)
-        Route::get('/', [FinancialController::class, 'index'])->name('index');
-        Route::get('/{id}', [FinancialController::class, 'show'])->name('show');
-        Route::get('/{id}/edit', [FinancialController::class, 'edit'])->name('edit');
-        Route::put('/{id}', [FinancialController::class, 'update'])->name('update');
-        Route::delete('/{id}', [FinancialController::class, 'destroy'])->name('destroy');
-
-        Route::patch('/{id}/audit', [FinancialController::class, 'audit'])->name('audit');
-        Route::patch('/{id}/approve', [FinancialController::class, 'approve'])->name('approve');
-        Route::patch('/{id}/reject', [FinancialController::class, 'reject'])->name('reject');
+        // ── Core CRUD & actions (FinancialController) — keep wildcards last ──
+        Route::get('/',                   [FinancialController::class, 'index'])->name('index');
+        Route::get('/{id}',               [FinancialController::class, 'show'])->name('show');
+        Route::get('/{id}/edit',          [FinancialController::class, 'edit'])->name('edit');
+        Route::put('/{id}',               [FinancialController::class, 'update'])->name('update');
+        Route::delete('/{id}',            [FinancialController::class, 'destroy'])->name('destroy');
+        Route::patch('/{id}/audit',       [FinancialController::class, 'audit'])->name('audit');
+        Route::patch('/{id}/approve',     [FinancialController::class, 'approve'])->name('approve');
+        Route::patch('/{id}/reject',      [FinancialController::class, 'reject'])->name('reject');
     });
 
     // ── Administration ────────────────────────────────────────────────────────
@@ -154,7 +159,7 @@ Route::middleware(['auth.custom', 'verified'])->group(function () {
                 Route::get('/{id}/edit', [AdminController::class, 'editRole'])->name('edit');
                 Route::put('/{id}',      [AdminController::class, 'updateRole'])->name('update');
                 Route::delete('/{id}',   [AdminController::class, 'destroyRole'])->name('destroy');
-                
+
                 Route::patch('/{role}/toggle-visibility', [AdminController::class, 'toggleRoleVisibility'])
                     ->name('toggle-visibility');
             });
@@ -167,22 +172,21 @@ Route::middleware(['auth.custom', 'verified'])->group(function () {
                 Route::put('/{role}', [PermissionController::class, 'update'])->name('update');
             });
 
-        // ── Document Category ─────────────────────────────────────────────────
+        // ── Document Categories ───────────────────────────────────────────────
         Route::middleware('role:System Administrator')
             ->prefix('document-categories')->name('document-categories.')
             ->group(function () {
-                Route::get('/',                    [DocumentCategoryController::class, 'index'])->name('index');
-                Route::get('/create',              [DocumentCategoryController::class, 'create'])->name('create');
-                Route::post('/',                   [DocumentCategoryController::class, 'store'])->name('store');
-                Route::get('/{documentCategory}/edit', [DocumentCategoryController::class, 'edit'])->name('edit');
-                Route::put('/{documentCategory}',      [DocumentCategoryController::class, 'update'])->name('update');
-                Route::delete('/{documentCategory}',   [DocumentCategoryController::class, 'destroy'])->name('destroy');
+                Route::get('/',                            [DocumentCategoryController::class, 'index'])->name('index');
+                Route::get('/create',                      [DocumentCategoryController::class, 'create'])->name('create');
+                Route::post('/',                           [DocumentCategoryController::class, 'store'])->name('store');
+                Route::get('/{documentCategory}/edit',     [DocumentCategoryController::class, 'edit'])->name('edit');
+                Route::put('/{documentCategory}',          [DocumentCategoryController::class, 'update'])->name('update');
+                Route::delete('/{documentCategory}',       [DocumentCategoryController::class, 'destroy'])->name('destroy');
             });
-        
-        // ── Document Backups ──────────────────────────────────────────
+
+        // ── Document Backups ──────────────────────────────────────────────────
         Route::middleware('role:System Administrator')
-            ->prefix('document-backups')
-            ->name('document-backups.')
+            ->prefix('document-backups')->name('document-backups.')
             ->group(function () {
                 Route::get('/',                        [DocumentBackupController::class, 'index'])->name('index');
                 Route::post('/create',                 [DocumentBackupController::class, 'create'])->name('create');
@@ -191,15 +195,29 @@ Route::middleware(['auth.custom', 'verified'])->group(function () {
                 Route::delete('/destroy/{filename}',   [DocumentBackupController::class, 'destroy'])->name('destroy')->where('filename', '.*');
             });
 
-        // ── Audit Logs ───────────────────────────────────────────────────────
+        // ── Financial Categories ──────────────────────────────────────────────
         Route::middleware('role:System Administrator')
-            ->prefix('auditlogs')
-            ->name('auditlogs.')
+            ->prefix('financial-categories')->name('financial-categories.')
+            ->group(function () {
+                Route::get('/',                                            [FinancialCategoryController::class, 'index'])->name('index');
+                Route::get('/create',                                      [FinancialCategoryController::class, 'create'])->name('create');
+                Route::post('/',                                           [FinancialCategoryController::class, 'store'])->name('store');
+                Route::get('/{financialCategory}/edit',                    [FinancialCategoryController::class, 'edit'])->name('edit');
+                Route::put('/{financialCategory}',                         [FinancialCategoryController::class, 'update'])->name('update');
+                Route::patch('/{financialCategory}/toggle-active',         [FinancialCategoryController::class, 'toggleActive'])->name('toggleActive');
+                Route::delete('/{financialCategory}',                      [FinancialCategoryController::class, 'destroy'])->name('destroy');
+                Route::patch('/restore/{id}',                              [FinancialCategoryController::class, 'restore'])->name('restore');
+                Route::delete('/force-delete/{id}',                        [FinancialCategoryController::class, 'forceDelete'])->name('forceDelete');
+            });
+
+        // ── Audit Logs ────────────────────────────────────────────────────────
+        Route::middleware('role:System Administrator')
+            ->prefix('auditlogs')->name('auditlogs.')
             ->group(function () {
                 Route::get('/', [AuditLogController::class, 'index'])->name('index');
             });
 
-    }); // ✅ closes the admin group
+    }); // end admin group
 
     // ── Profile ───────────────────────────────────────────────────────────────
     Route::prefix('profile')->name('profile.')->group(function () {
@@ -209,7 +227,7 @@ Route::middleware(['auth.custom', 'verified'])->group(function () {
         Route::post('/theme',   [ProfileController::class, 'updateTheme'])->name('theme');
     });
 
-}); 
+}); // end auth + verified group
 
 // ── Flash message clear ───────────────────────────────────────────────────────
 Route::post('/clear-flash-messages', function () {
@@ -253,15 +271,15 @@ Route::post('/password/reset', function (Request $request) {
         : back()->withErrors(['email' => [__($status)]]);
 })->name('password.update');
 
-// ── Landing Page Resources ───────────────────────────────────────────────────
+// ── Landing Page Resources ────────────────────────────────────────────────────
 Route::view('/data-privacy-act', 'pages.data-privacy-act')->name('data-privacy-act');
 Route::view('/help', 'pages.help')->name('help');
 Route::view('/terms-of-service', 'pages.terms')->name('terms-of-service');
 
-// ── Login for Guest ───────────────────────────────────────────────────
+// ── Guest Login ───────────────────────────────────────────────────────────────
 Route::post('/guest-login', [AuthController::class, 'guestLogin'])->name('guest.login');
 
-// ── Avatar route handling ───────────────────────────────────────────────────
+// ── Secure Avatar ─────────────────────────────────────────────────────────────
 Route::get('/secure-avatar/{filename}', function ($filename) {
     $path = 'avatars/' . $filename;
     if (!Storage::disk('public')->exists($path)) {
@@ -270,4 +288,3 @@ Route::get('/secure-avatar/{filename}', function ($filename) {
     return response(Storage::disk('public')->get($path))
         ->header('Content-Type', Storage::disk('public')->mimeType($path));
 })->where('filename', '.*');
-

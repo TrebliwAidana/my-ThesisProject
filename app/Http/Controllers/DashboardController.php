@@ -8,7 +8,7 @@ use App\Models\FinancialTransaction;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
-
+use Illuminate\Support\Facades\Log;
 class DashboardController extends Controller
 {
     public function __construct()
@@ -18,7 +18,8 @@ class DashboardController extends Controller
 
     public function index(Request $request)
     {
-        $user = Auth::user()->load('role');
+
+        $user = Auth::user()->load(['role', 'member']);
 
         $user->avatar_url = $user->avatar
             ? asset('storage/' . $user->avatar)
@@ -30,16 +31,10 @@ class DashboardController extends Controller
         // ── Member Statistics ───────────────────────────────────────────────────
         $totalMembers = User::count();
         $activeMembers = User::where('is_active', true)->count();
-        $officersCount = User::whereHas('role', function ($q) {
-            $q->whereIn('name', [
-                'System Administrator',
-                'Supreme Admin',
-                'Supreme Officer',
-                'Org Admin',
-                'Org Officer',
-                'Club Adviser'
-            ]);
-        })->count();
+        $officersCount = User::join('roles', 'users.role_id', '=', 'roles.id')
+            ->whereIn('roles.name', [
+                'System Administrator', 'treasurer', 'auditor', 'Club Adviser'
+            ])->count();
         $newMembersThisMonth = User::whereMonth('created_at', now()->month)
             ->whereYear('created_at', now()->year)
             ->count();
@@ -139,68 +134,74 @@ class DashboardController extends Controller
      * Get chart data based on the selected range (weekly, monthly, yearly).
      * Results are cached for 1 hour to improve performance.
      */
-    private function getChartData(string $range): array
+   private function getChartData(string $range): array
     {
         $cacheKey = "dashboard_chart_{$range}";
 
         return Cache::remember($cacheKey, 3600, function () use ($range) {
-            $labels = [];
-            $incomeData = [];
-            $expenseData = [];
 
             if ($range === 'weekly') {
-                // Last 7 days
+                $start = now()->subDays(6)->startOfDay();
+                $format = '%a, %b %d';
+                $groupBy = "DATE(transaction_date)";
+
+                $rows = FinancialTransaction::approved()
+                    ->selectRaw("type, DATE(transaction_date) as period, SUM(amount) as total")
+                    ->whereBetween('transaction_date', [$start, now()->endOfDay()])
+                    ->groupByRaw("type, DATE(transaction_date)")
+                    ->get();
+
+                $labels = [];
                 for ($i = 6; $i >= 0; $i--) {
-                    $date = now()->subDays($i)->format('Y-m-d');
                     $labels[] = now()->subDays($i)->format('D, M d');
-
-                    $incomeData[] = FinancialTransaction::income()->approved()
-                        ->whereDate('transaction_date', $date)
-                        ->sum('amount');
-
-                    $expenseData[] = FinancialTransaction::expense()->approved()
-                        ->whereDate('transaction_date', $date)
-                        ->sum('amount');
                 }
+                $keys = array_map(fn($l) => now()->subDays(6-array_search($l, $labels))->format('Y-m-d'), $labels);
+
             } elseif ($range === 'yearly') {
-                // Last 12 months
+                $start = now()->subMonths(11)->startOfMonth();
+
+                $rows = FinancialTransaction::approved()
+                    ->selectRaw("type, DATE_FORMAT(transaction_date, '%Y-%m') as period, SUM(amount) as total")
+                    ->where('transaction_date', '>=', $start)
+                    ->groupByRaw("type, DATE_FORMAT(transaction_date, '%Y-%m')")
+                    ->get();
+
+                $labels = [];
+                $keys = [];
                 for ($i = 11; $i >= 0; $i--) {
-                    $date = now()->subMonths($i);
-                    $labels[] = $date->format('M Y');
-
-                    $incomeData[] = FinancialTransaction::income()->approved()
-                        ->whereYear('transaction_date', $date->year)
-                        ->whereMonth('transaction_date', $date->month)
-                        ->sum('amount');
-
-                    $expenseData[] = FinancialTransaction::expense()->approved()
-                        ->whereYear('transaction_date', $date->year)
-                        ->whereMonth('transaction_date', $date->month)
-                        ->sum('amount');
+                    $d = now()->subMonths($i);
+                    $labels[] = $d->format('M Y');
+                    $keys[] = $d->format('Y-m');
                 }
+
             } else {
-                // Default: monthly (current year)
-                $currentYear = now()->year;
+                // monthly
+                $year = now()->year;
+
+                $rows = FinancialTransaction::approved()
+                    ->selectRaw("type, MONTH(transaction_date) as period, SUM(amount) as total")
+                    ->whereYear('transaction_date', $year)
+                    ->groupByRaw("type, MONTH(transaction_date)")
+                    ->get();
+
+                $labels = [];
+                $keys = [];
                 for ($i = 1; $i <= 12; $i++) {
                     $labels[] = now()->setMonth($i)->format('M');
-
-                    $incomeData[] = FinancialTransaction::income()->approved()
-                        ->whereYear('transaction_date', $currentYear)
-                        ->whereMonth('transaction_date', $i)
-                        ->sum('amount');
-
-                    $expenseData[] = FinancialTransaction::expense()->approved()
-                        ->whereYear('transaction_date', $currentYear)
-                        ->whereMonth('transaction_date', $i)
-                        ->sum('amount');
+                    $keys[] = $i;
                 }
             }
 
-            return [
-                'labels'  => $labels,
-                'income'  => $incomeData,
-                'expense' => $expenseData,
-            ];
+            // Index rows by type + period
+            $indexed = [];
+            foreach ($rows as $row) {
+                $indexed[$row->type][$row->period] = (float) $row->total;
+            }
+
+            $incomeData  = array_map(fn($k) => $indexed['income'][$k]  ?? 0, $keys);
+            $expenseData = array_map(fn($k) => $indexed['expense'][$k] ?? 0, $keys);
+
+            return ['labels' => $labels, 'income' => $incomeData, 'expense' => $expenseData];
         });
     }
 }

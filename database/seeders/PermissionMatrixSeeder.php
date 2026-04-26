@@ -10,24 +10,27 @@ use Illuminate\Support\Facades\DB;
 class PermissionMatrixSeeder extends Seeder
 {
     /**
-     * Permission matrix – fine‑grained CRUD.
+     * Permission matrix – fine-grained CRUD.
      * Format: 'module' => ['action', ...]
      */
     private array $matrix = [
-        // Users – fine‑grained
+        // Users – fine-grained
         'users'     => ['view', 'create', 'edit', 'delete'],
 
-        // Members – fine‑grained
+        // Members – fine-grained
         'members'   => ['view', 'create', 'edit', 'delete'],
 
-        // Documents – fine‑grained + trash actions
+        // Documents – fine-grained + trash actions
         'documents' => ['view', 'create', 'edit', 'delete', 'trash', 'restore', 'force-delete'],
 
-        // Categories – new module for document categories
+        // Categories – document categories
         'categories' => ['view', 'create', 'edit', 'delete'],
 
-        // Financial – fine‑grained + audit / approve / review
+        // Financial – fine-grained + audit / approve / review
         'financial' => ['view', 'create', 'edit', 'delete', 'audit', 'approve', 'review'],
+
+        // Financial Categories – admin management
+        'financial_categories' => ['manage'],
 
         // Reports
         'reports'   => ['view', 'generate', 'public'],
@@ -36,15 +39,15 @@ class PermissionMatrixSeeder extends Seeder
         'audit'     => ['view', 'remarks'],
         'activities'=> ['monitor'],
 
-        // Roles – fine‑grained
+        // Roles – fine-grained
         'roles'     => ['view', 'create', 'edit', 'delete'],
 
-        // Permissions – view + edit (no create/delete needed)
+        // Permissions – view + edit
         'permissions' => ['view', 'edit'],
     ];
 
     /**
-     * Human‑readable labels.
+     * Human-readable labels.
      */
     private array $labels = [
         // Users
@@ -68,7 +71,7 @@ class PermissionMatrixSeeder extends Seeder
         'documents.restore'      => 'Restore Documents',
         'documents.force-delete' => 'Permanently Delete',
 
-        // Categories
+        // Document Categories
         'categories.view'   => 'View Document Categories',
         'categories.create' => 'Create Document Categories',
         'categories.edit'   => 'Edit Document Categories',
@@ -82,6 +85,9 @@ class PermissionMatrixSeeder extends Seeder
         'financial.audit'   => 'Audit Transactions',
         'financial.approve' => 'Approve Transactions',
         'financial.review'  => 'Review Transactions',
+
+        // Financial Categories
+        'financial_categories.manage' => 'Manage Financial Categories',
 
         // Reports
         'reports.view'     => 'View Reports',
@@ -115,7 +121,7 @@ class PermissionMatrixSeeder extends Seeder
                 $label = $this->labels[$slug] ?? ucwords("{$action} {$module}");
 
                 Permission::updateOrCreate(
-                    ['slug' => $slug], 
+                    ['slug' => $slug],
                     [
                         'name'   => $label,
                         'module' => $module,
@@ -141,48 +147,16 @@ class PermissionMatrixSeeder extends Seeder
 
             'Supreme Admin' => $all->except([
                 'roles.create', 'roles.edit', 'roles.delete',
-                'permissions.edit'
+                'permissions.edit',
             ])->keys()->toArray(),
 
-            'Supreme Officer' => [
-                'users.view',
-                'members.view', 'members.create', 'members.edit', 'members.delete',
-                'documents.view', 'documents.create', 'documents.edit', 'documents.delete',
-                'documents.trash', 'documents.restore', 'documents.force-delete',
-                'categories.view', // allow viewing categories
-                'financial.view', 'financial.create', 'financial.edit', 'financial.delete',
-                'financial.audit', 'financial.approve', 'financial.review',
-                'reports.view', 'reports.generate',
-                'audit.view', 'audit.remarks',
-                'activities.monitor',
-            ],
-
-            'Org Admin' => [
-                'members.view', 'members.create', 'members.edit', 'members.delete',
-                'documents.view', 'documents.create', 'documents.edit', 'documents.delete',
-                'documents.trash', 'documents.restore', 'documents.force-delete',
-                'categories.view', 'categories.create', 'categories.edit', 'categories.delete', // full category management
-                'financial.view', 'financial.create', 'financial.edit', 'financial.delete',
-                'financial.audit', 'financial.approve', 'financial.review',
-                'reports.view', 'reports.generate',
-                'audit.view',
-                'activities.monitor',
-            ],
-
-            'Org Officer' => [
-                'members.view',
-                'documents.view', 'documents.create', 'documents.edit', 'documents.delete',
-                'documents.trash', 'documents.restore',
-                'categories.view', // only view, not edit/delete
-                'financial.view', 'financial.create', 'financial.edit', 'financial.delete',
-                'reports.view', 'reports.generate',
-            ],
 
             'Club Adviser' => [
                 'members.view',
                 'documents.view', 'documents.trash', 'documents.restore',
-                'categories.view', // view categories
+                'categories.view',
                 'financial.view', 'financial.audit', 'financial.approve', 'financial.review',
+                'financial_categories.manage',
                 'reports.view',
                 'audit.view',
                 'activities.monitor',
@@ -198,21 +172,12 @@ class PermissionMatrixSeeder extends Seeder
                 'reports.view',
                 'audit.view', 'audit.remarks',
             ],
-
-            'Member' => [
-                'financial.view',
-                'reports.view',
-            ],
-
+      
             'Guest' => [
                 'reports.public',
             ],
 
-            'Admin/Adviser' => [
-                'financial.audit', 'financial.approve', 'financial.review',
-                'reports.view',
-                'activities.monitor',
-            ],
+
         ];
 
         foreach ($matrix as $roleName => $slugs) {

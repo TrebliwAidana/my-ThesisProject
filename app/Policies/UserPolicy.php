@@ -12,8 +12,7 @@ class UserPolicy
      */
     public function viewAny(User $user): bool
     {
-        // System Admin (level 1) can view all
-        if ($user->role->level === 1) {
+        if ((int) $user->role->level === 1) {
             return true;
         }
 
@@ -25,8 +24,7 @@ class UserPolicy
      */
     public function view(User $user, User $member): bool
     {
-        // System Admin (level 1) can view all
-        if ($user->role->level === 1) {
+        if ((int) $user->role->level === 1) {
             return true;
         }
 
@@ -38,8 +36,7 @@ class UserPolicy
      */
     public function create(User $user): bool
     {
-        // System Admin (level 1) can create all
-        if ($user->role->level === 1) {
+        if ((int) $user->role->level === 1) {
             return true;
         }
 
@@ -48,15 +45,18 @@ class UserPolicy
 
     /**
      * Determine whether user can assign specific role to a member.
-     * This prevents privilege escalation.
+     * Prevents privilege escalation — users cannot assign roles equal
+     * to or more privileged than their own (lower level number = more privileged).
      */
     public function assignRole(User $user, ?Role $role = null): bool
     {
+        // Must have create permission first
         if (!$this->create($user)) {
             return false;
         }
 
-        if ($user->role->level === 1) {
+        // System Admin can assign any role
+        if ((int) $user->role->level === 1) {
             return true;
         }
 
@@ -64,10 +64,13 @@ class UserPolicy
             return false;
         }
 
-        if ($role->level <= $user->role->level) {
+        // Allow assigning only roles with a higher level number (lower privilege)
+        // e.g. level 3 user can assign level 4, 5, 6... but NOT level 1, 2, or 3
+        if ((int) $role->level > (int) $user->role->level) {
             return $user->hasPermission('members.assign_roles');
         }
 
+        // Block assigning roles of equal or greater privilege
         return false;
     }
 
@@ -76,8 +79,7 @@ class UserPolicy
      */
     public function update(User $user, User $member): bool
     {
-        // System Admin (level 1) can update all
-        if ($user->role->level === 1) {
+        if ((int) $user->role->level === 1) {
             return true;
         }
 
@@ -94,8 +96,7 @@ class UserPolicy
      */
     public function delete(User $user, User $member): bool
     {
-        // Only System Admin (level 1) can delete
-        return $user->role->level === 1;
+        return (int) $user->role->level === 1;
     }
 
     /**
@@ -103,10 +104,8 @@ class UserPolicy
      */
     public function forceDelete(User $user, User $member): bool
     {
-        // Only System Admin (level 1) can force delete
-        return $user->role->level === 1;
+        return (int) $user->role->level === 1;
     }
-
 
     /**
      * Determine whether the user can restore the model.
@@ -115,12 +114,4 @@ class UserPolicy
     {
         return false;
     }
-
-    // /**
-    //  * Determine whether the user can permanently delete the model.
-    //  */
-    // public function forceDelete(User $user, User $model): bool
-    // {
-    //     return false;
-    // }
 }
