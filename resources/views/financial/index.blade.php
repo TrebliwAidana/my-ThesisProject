@@ -51,8 +51,8 @@
     <div class="bg-white dark:bg-gray-800 rounded-2xl shadow border border-gold-200 dark:border-gold-800 p-5">
         @php
             $user = auth()->user();
-            $canCreate     = $user->hasPermission('financial.create') || $user->role->level === 1;
-            $canViewReports = $user->hasPermission('reports.view')   || $user->role->level === 1;
+            $canCreate     = $user->hasPermission('submit_financial_transactions') || $user->role->level === 1;
+            $canViewReports = $user->hasPermission('approve_financial_transactions')   || $user->role->level === 1;
         @endphp
 
         <div class="flex flex-wrap gap-3 mb-4">
@@ -87,7 +87,7 @@
                 </a>
             @endif
 
-            @if($user->role->level === 1 || $user->hasPermission('financial.manage'))
+            @if($user->role->level === 1 || $user->hasPermission('manage_all'))
                 <a href="{{ route('financial.trash') }}"
                    class="inline-flex items-center gap-1.5 bg-gray-600 hover:bg-gray-700 text-white text-sm font-semibold px-3 py-2 rounded-lg transition">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -144,6 +144,22 @@
                 @endif
             </div>
         </form>
+
+        {{-- Suggestion 4 — Context hint below filter bar --}}
+        @if(!request('show_approved'))
+            <p class="text-xs text-gray-400 dark:text-gray-500 mt-2">
+                Showing active records only (pending, audited, rejected).
+                Summary card totals always reflect all approved/paid transactions regardless of this filter.
+                <a href="{{ request()->fullUrlWithQuery(['show_approved' => 1]) }}"
+                   class="underline hover:text-gray-600 dark:hover:text-gray-300 ml-1">
+                    Show approved/paid →
+                </a>
+            </p>
+        @else
+            <p class="text-xs text-amber-600 dark:text-amber-400 mt-2">
+                ⚠ Showing all records including finalized (approved/paid). These are read-only — no actions available.
+            </p>
+        @endif
     </div>
 
     {{-- Table --}}
@@ -170,10 +186,10 @@
                     @forelse($transactions as $tx)
                     @php
                         $user      = auth()->user();
-                        $canEdit   = ($user->hasPermission('financial.edit')   || $user->role->level === 1) && $tx->status === 'pending';
-                        $canDelete = ($user->hasPermission('financial.delete') || $user->role->level === 1);
-                        $canAudit  = ($user->hasPermission('financial.audit')  || $user->role->level === 1) && $tx->status === 'pending';
-                        $canApprove = ($user->hasPermission('financial.approve') || $user->role->level === 1) && $tx->status === 'audited';
+                        $canEdit   = ($user->hasPermission('submit_financial_transactions')   || $user->role->level === 1) && $tx->status === 'pending';
+                        $canDelete = ($user->hasPermission('submit_financial_transactions') || $user->role->level === 1);
+                        $canAudit  = ($user->hasPermission('view_financial_transactions')  || $user->role->level === 1) && $tx->status === 'pending';
+                        $canApprove = ($user->hasPermission('approve_financial_transactions') || $user->role->level === 1) && $tx->status === 'audited';
                         $canReject  = $canApprove;
 
                         $statusColors = [
@@ -280,10 +296,10 @@
             @forelse($transactions as $tx)
             @php
                 $user       = auth()->user();
-                $canEdit    = ($user->hasPermission('financial.edit')    || $user->role->level === 1) && $tx->status === 'pending';
-                $canDelete  = ($user->hasPermission('financial.delete')  || $user->role->level === 1);
-                $canAudit   = ($user->hasPermission('financial.audit')   || $user->role->level === 1) && $tx->status === 'pending';
-                $canApprove = ($user->hasPermission('financial.approve') || $user->role->level === 1) && $tx->status === 'audited';
+                $canEdit    = ($user->hasPermission('submit_financial_transactions')    || $user->role->level === 1) && $tx->status === 'pending';
+                $canDelete  = ($user->hasPermission('submit_financial_transactions')  || $user->role->level === 1);
+                $canAudit   = ($user->hasPermission('view_financial_transactions')   || $user->role->level === 1) && $tx->status === 'pending';
+                $canApprove = ($user->hasPermission('approve_financial_transactions') || $user->role->level === 1) && $tx->status === 'audited';
                 $canReject  = $canApprove;
                 $statusColors = [
                     'pending'  => 'bg-amber-100 text-amber-700',

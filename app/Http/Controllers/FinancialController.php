@@ -31,7 +31,7 @@ class FinancialController extends Controller
                 ->with('error', 'Guest accounts cannot view financial records.');
         }
 
-        if ($user->role->level !== 1 && !$user->hasPermission('financial.view')) {
+        if ($user->role->level !== 1 && !$user->hasPermission('view_financial_transactions')) {
             abort(403, 'You do not have permission to view financial records.');
         }
 
@@ -100,7 +100,7 @@ class FinancialController extends Controller
                 ->with('error', 'Guest accounts cannot view financial records.');
         }
 
-        if ($user->role->level !== 1 && !$user->hasPermission('financial.view')) {
+        if ($user->role->level !== 1 && !$user->hasPermission('view_financial_transactions')) {
             abort(403);
         }
 
@@ -173,7 +173,7 @@ class FinancialController extends Controller
                 ->with('error', 'Guest accounts cannot perform this action.');
         }
 
-        if (!$user->hasPermission('financial.audit') && $user->role->level !== 1) {
+        if (!$user->hasPermission('view_financial_transactions') && $user->role->level !== 1) {
             return back()->with('error', 'You do not have permission to audit transactions.');
         }
 
@@ -341,7 +341,7 @@ class FinancialController extends Controller
     {
         $user = Auth::user();
 
-        if ($user->role->level !== 1 && !$user->hasPermission('financial.manage')) {
+        if ($user->role->level !== 1 && !$user->hasPermission('manage_all')) {
             abort(403);
         }
 
@@ -357,7 +357,7 @@ class FinancialController extends Controller
     {
         $user = Auth::user();
 
-        if ($user->role->level !== 1 && !$user->hasPermission('financial.manage')) {
+        if ($user->role->level !== 1 && !$user->hasPermission('manage_all')) {
             abort(403);
         }
 
@@ -377,7 +377,7 @@ class FinancialController extends Controller
     {
         $user = Auth::user();
 
-        if ($user->role->level !== 1 && !$user->hasPermission('financial.manage')) {
+        if ($user->role->level !== 1 && !$user->hasPermission('manage_all')) {
             abort(403);
         }
 
@@ -406,7 +406,7 @@ class FinancialController extends Controller
     {
         $this->checkGuest();
 
-        if (!auth()->user()->hasPermission('reports.view') && auth()->user()->role->level !== 1) {
+        if (!auth()->user()->hasPermission('approve_financial_transactions') && auth()->user()->role->level !== 1) {
             abort(403);
         }
 
@@ -417,7 +417,7 @@ class FinancialController extends Controller
     {
         $this->checkGuest();
 
-        if (!auth()->user()->hasPermission('reports.view') && auth()->user()->role->level !== 1) {
+        if (!auth()->user()->hasPermission('approve_financial_transactions') && auth()->user()->role->level !== 1) {
             abort(403);
         }
 
@@ -439,7 +439,7 @@ class FinancialController extends Controller
     {
         $this->checkGuest();
 
-        if (!auth()->user()->hasPermission('reports.view') && auth()->user()->role->level !== 1) {
+        if (!auth()->user()->hasPermission('approve_financial_transactions') && auth()->user()->role->level !== 1) {
             abort(403);
         }
 

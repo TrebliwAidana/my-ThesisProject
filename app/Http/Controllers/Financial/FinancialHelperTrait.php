@@ -38,16 +38,17 @@ trait FinancialHelperTrait
                 ->with('error', 'Guest accounts cannot perform financial actions.');
         }
 
+        // Map action → actual permission slug from the permissions table
         $map = [
-            'create'  => 'financial.create',
-            'edit'    => 'financial.edit',
-            'delete'  => 'financial.delete',
-            'approve' => 'financial.approve',
+            'create'  => 'submit_financial_transactions',
+            'edit'    => 'submit_financial_transactions',
+            'delete'  => 'submit_financial_transactions',
+            'approve' => 'approve_financial_transactions',
         ];
 
         $permission = $map[$action] ?? null;
 
-        if ($permission && !$user->hasPermission($permission) && $user->role->level !== 1) {
+        if ($permission && !$user->hasPermission($permission) && (int) $user->role->level !== 1) {
             return back()->with('error', "You do not have permission to {$action} financial records.");
         }
 

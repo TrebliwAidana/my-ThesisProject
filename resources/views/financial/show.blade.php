@@ -32,14 +32,9 @@
                     $prefix = match($transaction->type) {
                         'income'     => '+',
                         'expense'    => '-',
-                        'receivable' => '⏳',
+                        'receivable' => $transaction->status === 'paid' ? '+' : '⏳',
                         default      => '',
                     };
-                @endphp
-                <span class="text-2xl font-bold {{ $amountColor }}">
-                    {{ $prefix }} {{ $transaction->formatted_amount }}
-                </span>
-                @php
                     $statusColors = [
                         'pending'  => 'bg-amber-100 text-amber-700',
                         'audited'  => 'bg-blue-100 text-blue-700',
@@ -48,6 +43,9 @@
                         'paid'     => 'bg-green-100 text-green-800',
                     ];
                 @endphp
+                <span class="text-2xl font-bold {{ $amountColor }}">
+                    {{ $prefix }} {{ $transaction->formatted_amount }}
+                </span>
                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold {{ $statusColors[$transaction->status] ?? '' }}">
                     {{ $transaction->status === 'paid' ? '✓ Paid' : ucfirst($transaction->status) }}
                 </span>
@@ -73,7 +71,6 @@
                 <p class="text-gray-800 dark:text-white">{{ $transaction->category ?? '—' }}</p>
             </div>
 
-            {{-- Receivable-specific fields --}}
             @if($transaction->type === 'receivable')
             <div>
                 <p class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Customer</p>
@@ -113,13 +110,13 @@
             @if($transaction->approved_at)
             <div>
                 <p class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">
-                    {{ $transaction->status === 'paid' ? 'Paid / Confirmed By' : 'Approved By' }}
+                    {{ $transaction->status === 'paid' ? 'Collected By' : 'Approved By' }}
                 </p>
                 <p class="text-gray-800 dark:text-white">{{ $transaction->approver->full_name ?? '—' }}</p>
             </div>
             <div>
                 <p class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">
-                    {{ $transaction->status === 'paid' ? 'Paid On' : 'Approved On' }}
+                    {{ $transaction->status === 'paid' ? 'Collected On' : 'Approved On' }}
                 </p>
                 <p class="text-gray-800 dark:text-white">{{ $transaction->approved_at->format('M d, Y h:i A') }}</p>
             </div>
@@ -136,16 +133,76 @@
         </div>
         @endif
 
-        {{-- Documents --}}
+        {{-- ══════════════════════════════════════════════════════════
+             SUGGESTION 3 — Approval Document section
+             Clearly labeled, distinguished from generic documents
+        ══════════════════════════════════════════════════════════ --}}
         @if($transaction->documents->isNotEmpty())
+        @php
+            $approvalDocs = $transaction->documents->filter(function($doc) {
+                $tags = is_array($doc->tags) ? $doc->tags : ($doc->tags ?? []);
+                return in_array('auto-generated', $tags);
+            });
+            $receiptDocs = $transaction->documents->filter(function($doc) {
+                $tags = is_array($doc->tags) ? $doc->tags : ($doc->tags ?? []);
+                return !in_array('auto-generated', $tags);
+            });
+        @endphp
+
+        {{-- Approval Document --}}
+        @if($approvalDocs->isNotEmpty())
         <div>
-            <p class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Documents</p>
+            <div class="flex items-center gap-2 mb-2">
+                <p class="text-xs font-semibold uppercase tracking-wider text-gray-400">Approval Document</p>
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+                    ✓ Auto-generated
+                </span>
+            </div>
             <div class="space-y-2">
-                @foreach($transaction->documents as $doc)
+                @foreach($approvalDocs as $doc)
+                    @php $version = $doc->latestVersion; @endphp
+                    <div class="flex items-center justify-between bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-lg px-4 py-2.5">
+                        <div class="flex items-center gap-2 min-w-0">
+                            <span class="shrink-0 text-emerald-600">📋</span>
+                            <div class="min-w-0">
+                                <span class="text-sm font-medium text-gray-800 dark:text-white truncate block">{{ $doc->title }}</span>
+                                <span class="text-xs text-gray-500 dark:text-gray-400">Generated {{ $doc->created_at->format('M d, Y h:i A') }}</span>
+                            </div>
+                        </div>
+                        <div class="flex gap-2 shrink-0 ml-3">
+                            @if($version)
+                                <a href="{{ route('documents.version.download', [$doc, $version]) }}"
+                                   class="text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-medium px-3 py-1 rounded-lg transition">
+                                    ⬇ Download
+                                </a>
+                                <a href="{{ route('documents.preview', $doc) }}" target="_blank"
+                                   class="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 font-medium border border-gray-300 dark:border-gray-600 px-3 py-1 rounded-lg transition">
+                                    👁 Preview
+                                </a>
+                            @else
+                                <span class="text-xs text-gray-400 italic">File not yet generated</span>
+                            @endif
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+            <p class="text-xs text-gray-400 dark:text-gray-500 mt-1.5 ml-1">
+                This document is a copy saved from Financial Records. To remove it, delete the transaction from
+                <a href="{{ route('financial.index') }}" class="underline hover:text-gray-600">Financial Records</a>.
+            </p>
+        </div>
+        @endif
+
+        {{-- Receipt / Manual attachments --}}
+        @if($receiptDocs->isNotEmpty())
+        <div>
+            <p class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Attached Receipt</p>
+            <div class="space-y-2">
+                @foreach($receiptDocs as $doc)
                     @php $version = $doc->latestVersion; @endphp
                     <div class="flex items-center justify-between bg-gray-50 dark:bg-gray-700/30 rounded-lg px-4 py-2.5">
                         <div class="flex items-center gap-2 min-w-0">
-                            <span class="shrink-0">📄</span>
+                            <span class="shrink-0">📎</span>
                             <span class="text-sm text-gray-800 dark:text-white truncate">{{ $doc->title }}</span>
                         </div>
                         <div class="flex gap-2 shrink-0 ml-3">
@@ -161,20 +218,24 @@
             </div>
         </div>
         @endif
+        @endif
 
         <hr class="border-gray-100 dark:border-gray-700">
 
-        {{-- ── Mark as Paid (receivable only, status = approved) ── --}}
+        {{-- ══════════════════════════════════════════════════════════
+             Mark as Paid — receivable only, status = approved
+        ══════════════════════════════════════════════════════════ --}}
         @if($transaction->type === 'receivable' && $transaction->status === 'approved')
-            @if(auth()->user()->hasPermission('financial.approve') || auth()->user()->role->level === 1)
+            @if(auth()->user()->hasPermission('approve_financial_transactions') || auth()->user()->role->level === 1)
             <div class="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-700 rounded-xl p-4">
                 <p class="text-sm font-semibold text-purple-800 dark:text-purple-300 mb-1">Ready to collect?</p>
                 <p class="text-xs text-purple-600 dark:text-purple-400 mb-3">
-                    Clicking <strong>Mark as Paid</strong> will add ₱{{ number_format($transaction->amount, 2) }} to
-                    Total Income and save the approval slip to Documents.
+                    Clicking <strong>Mark as Paid</strong> will add
+                    <strong>₱{{ number_format($transaction->amount, 2) }}</strong> to Total Income
+                    and save the approval slip to Documents automatically.
                 </p>
                 <form method="POST" action="{{ route('financial.mark-as-paid', $transaction->id) }}"
-                      onsubmit="return confirm('Confirm payment received from {{ $transaction->customer_name }}? This will add ₱{{ number_format($transaction->amount, 2) }} to total income.')">
+                      onsubmit="return confirm('Confirm payment received from {{ addslashes($transaction->customer_name) }}?\n\nThis will add ₱{{ number_format($transaction->amount, 2) }} to total income and cannot be undone.')">
                     @csrf
                     @method('PATCH')
                     <button type="submit"
@@ -186,11 +247,14 @@
             @endif
         @endif
 
-        {{-- Actions --}}
+        {{-- ══════════════════════════════════════════════════════════
+             Actions
+        ══════════════════════════════════════════════════════════ --}}
         <div class="flex flex-wrap gap-3">
             @php $user = auth()->user(); @endphp
 
-            @if($transaction->status === 'pending' && $user->can('update', $transaction))
+            @if($transaction->status === 'pending')
+                @if($user->hasPermission('submit_financial_transactions') || $user->role->level === 1)
                 <a href="{{ route('financial.edit', $transaction->id) }}"
                    class="bg-gold-500 hover:bg-gold-600 text-white text-sm font-semibold px-4 py-2 rounded-lg transition">
                     Edit
@@ -203,9 +267,10 @@
                         Delete
                     </button>
                 </form>
+                @endif
             @endif
 
-            @if($transaction->status === 'pending' && $user->hasPermission('financial.audit'))
+            @if($transaction->status === 'pending' && $user->hasPermission('view_financial_transactions'))
                 <form method="POST" action="{{ route('financial.audit', $transaction->id) }}" class="inline">
                     @csrf @method('PATCH')
                     <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition">
@@ -214,7 +279,7 @@
                 </form>
             @endif
 
-            @if($transaction->status === 'audited' && $user->hasPermission('financial.approve'))
+            @if($transaction->status === 'audited' && $user->hasPermission('approve_financial_transactions'))
                 <form method="POST" action="{{ route('financial.approve', $transaction->id) }}" class="inline">
                     @csrf @method('PATCH')
                     <button type="submit" class="bg-green-600 hover:bg-green-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition">

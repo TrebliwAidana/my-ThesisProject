@@ -308,7 +308,7 @@ class MemberController extends Controller
                 'phone'             => $validated['phone'] ?? null,
                 'birthday'          => $validated['birthday'] ?? null,
                 'is_active'         => $validated['is_active'] ?? true,
-                // 'email_verified_at' => now(),
+               
             ]);
 
             Member::create([
@@ -456,8 +456,10 @@ class MemberController extends Controller
         // -----------------------------------------------------------------
         // Resolve position using Member::VALID_POSITIONS
         // -----------------------------------------------------------------
+        // Cast to string so logPositionChange() never receives null.
+        // A member with no previous position is treated as an empty string.
         $allowedPositions = Member::VALID_POSITIONS[$selectedRole->id] ?? [];
-        $oldPosition      = $user->position;
+        $oldPosition      = (string) ($user->position ?? '');
         $newPosition      = $oldPosition;
         $autoChanged      = false;
 
@@ -552,7 +554,8 @@ class MemberController extends Controller
 
             $message = "Member {$fullName} updated successfully.";
             if ($positionChanged) {
-                $message .= " Position changed from '{$oldPosition}' to '{$newPosition}'.";
+                $from     = $oldPosition !== '' ? "'{$oldPosition}'" : 'none';
+                $message .= " Position changed from {$from} to '{$newPosition}'.";
                 if ($autoChanged) $message .= " (auto-assigned for new role)";
             }
 
