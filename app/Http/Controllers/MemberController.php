@@ -16,7 +16,6 @@ use Illuminate\Validation\Rule;
 use App\Models\FinancialTransaction;
 use App\Services\AuditLogger;
 use Illuminate\Support\Facades\Storage;
-use Cloudinary\Cloudinary;
 
 
 class MemberController extends Controller
@@ -388,14 +387,11 @@ class MemberController extends Controller
             }
 
             if ($request->hasFile('avatar') && $request->file('avatar')->isValid()) {
-                if ($user->avatar && !str_starts_with($user->avatar, 'http')) {
-                    Storage::disk('public')->delete($user->avatar);
-                }
-                $path         = $request->file('avatar')->store('avatars', 'public');
-                $user->avatar = $path;
+                $this->deleteAvatar($user->avatar);
+                $user->avatar = $this->uploadAvatar($request->file('avatar'));
                 $user->save();
 
-                AuditLogger::log('updated', $user, "Guest avatar updated", [], ['avatar' => $path]);
+                AuditLogger::log('updated', $user, "Guest avatar updated", [], ['avatar' => $user->avatar]);
 
                 return redirect()->route('members.index')
                     ->with('success', 'Guest avatar updated successfully.');
@@ -829,18 +825,41 @@ class MemberController extends Controller
     // -------------------------------------------------------------------------
 
     /**
+     * Build and return a configured Cloudinary instance using individual
+     * env variables (CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET).
+     *
+     * This avoids the broken `new Cloudinary(url_string)` pattern from v3.x.
+     */
+    private function getCloudinaryInstance(): \Cloudinary\Cloudinary
+    {
+        return new \Cloudinary\Cloudinary(
+            \Cloudinary\Configuration\Configuration::instance([
+                'cloud' => [
+                    'cloud_name' => env('CLOUDINARY_CLOUD_NAME'),
+                    'api_key'    => env('CLOUDINARY_API_KEY'),
+                    'api_secret' => env('CLOUDINARY_API_SECRET'),
+                ],
+                'url' => ['secure' => true],
+            ])
+        );
+    }
+
+    /**
      * Upload an avatar file.
-     * Uses Cloudinary when CLOUDINARY_URL is set and APP_ENV is production.
+     * Uses Cloudinary when credentials are present and APP_ENV is production
+     * (or FORCE_CLOUDINARY=true for local testing).
      * Falls back to local public disk otherwise.
      */
     private function uploadAvatar($file): string
     {
         if ($this->useCloudinary()) {
-            $cloudinary = new Cloudinary(env('CLOUDINARY_URL'));
-            $result     = $cloudinary->uploadApi()->upload(
-                $file->getRealPath(),
-                ['folder' => 'vsulhs-sslg/avatars']
-            );
+            $result = $this->getCloudinaryInstance()
+                ->uploadApi()
+                ->upload(
+                    $file->getRealPath(),
+                    ['folder' => 'vsulhs-sslg/avatars']
+                );
+
             return $result['secure_url'];
         }
 
@@ -860,8 +879,7 @@ class MemberController extends Controller
             // Extract public_id from Cloudinary URL and destroy
             preg_match('/\/v\d+\/(.+)\.[a-z]+$/i', parse_url($avatar, PHP_URL_PATH), $matches);
             if (!empty($matches[1])) {
-                $cloudinary = new Cloudinary(env('CLOUDINARY_URL'));
-                $cloudinary->uploadApi()->destroy($matches[1]);
+                $this->getCloudinaryInstance()->uploadApi()->destroy($matches[1]);
             }
             return;
         }
@@ -874,13 +892,19 @@ class MemberController extends Controller
 
     /**
      * Determine whether to use Cloudinary based on environment.
-     * Uses Cloudinary when:
-     *   - APP_ENV is production, OR
-     *   - CLOUDINARY_URL is explicitly set and FORCE_CLOUDINARY=true
+     *
+     * Requires all three env variables to be set:
+     *   CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET
+     *
+     * Active when:
+     *   - APP_ENV=production, OR
+     *   - FORCE_CLOUDINARY=true (useful for local testing)
      */
     private function useCloudinary(): bool
     {
-        $hasCredentials = !empty(env('CLOUDINARY_URL'));
+        $hasCredentials = !empty(env('CLOUDINARY_CLOUD_NAME'))
+                       && !empty(env('CLOUDINARY_API_KEY'))
+                       && !empty(env('CLOUDINARY_API_SECRET'));
 
         if (!$hasCredentials) return false;
 
@@ -892,5 +916,4 @@ class MemberController extends Controller
 
         return false;
     }
-
 }
