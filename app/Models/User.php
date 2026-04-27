@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Auth\MustVerifyEmail as MustVerifyEmailTrait;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Cloudinary\Cloudinary;
 
 use App\Models\Role;
 use App\Models\Member;
@@ -373,12 +374,15 @@ class User extends Authenticatable implements MustVerifyEmail
     // =========================================================================
     // AVATAR
     // =========================================================================
-
-    public function getAvatarUrlAttribute()
+        public function getAvatarUrlAttribute()
     {
-        return $this->avatar
-            ? asset('storage/' . $this->avatar)
-            : asset('images/default-avatar.png');
+        if (!$this->avatar) {
+            return asset('images/default-avatar.png');
+        }
+        if (str_starts_with($this->avatar, 'http')) {
+            return $this->avatar; // Cloudinary URL — return as-is
+        }
+        return asset('storage/' . $this->avatar); // local path
     }
 
     // =========================================================================
@@ -403,4 +407,5 @@ class User extends Authenticatable implements MustVerifyEmail
             }
         });
     }
+
 }
