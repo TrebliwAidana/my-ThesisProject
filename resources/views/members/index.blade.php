@@ -274,10 +274,9 @@
                         <td class="px-4 py-3">
                             <div class="flex items-center gap-3">
                                 @if($member->avatar)
-                                    <img src="{{ asset('storage/' . $member->avatar) }}"
-                                        alt="{{ $member->full_name }}"
-                                        class="w-8 h-8 md:w-9 md:h-9 rounded-xl object-cover shadow-sm flex-shrink-0">
-                                @else
+                                <img src="{{ str_starts_with($member->avatar, 'http') ? $member->avatar : asset('storage/' . $member->avatar) }}"
+                                    alt="{{ $member->full_name }}"
+                                    class="w-8 h-8 md:w-9 md:h-9 rounded-xl object-cover shadow-sm flex-shrink-0">
                                     <div class="w-8 h-8 md:w-9 md:h-9 rounded-xl bg-gradient-to-br {{ $gradientBg }} 
                                         flex items-center justify-center text-xs md:text-sm font-bold text-white shadow-sm flex-shrink-0">
                                         {{ $initials }}
