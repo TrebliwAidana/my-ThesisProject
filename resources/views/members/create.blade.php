@@ -3,10 +3,6 @@
 @section('title', 'Create Member')
 @section('page-title', 'Create New Member')
 
-@php
-    $nonStudentRoleIds = [1, 6, 8];
-@endphp
-
 @section('content')
 
 <div class="relative overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-600 to-emerald-700 dark:from-emerald-800 dark:to-emerald-900 p-6 mb-6">
@@ -38,7 +34,7 @@
             </div>
         @endif
 
-        {{-- ── Basic Information Card (Emerald Header) ────────────────── --}}
+        {{-- ── Basic Information Card ──────────────────────────────────────── --}}
         <div class="bg-white dark:bg-gray-800 rounded-xl border border-gold-200 dark:border-gold-800 overflow-hidden">
             <div class="bg-gradient-to-r from-emerald-600 to-emerald-700 dark:from-emerald-800 dark:to-emerald-900 px-6 py-4 border-b border-emerald-200 dark:border-emerald-800">
                 <div class="flex items-center gap-3">
@@ -55,6 +51,7 @@
             </div>
 
             <div class="p-6 space-y-4">
+
                 {{-- First & Last Name --}}
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
@@ -149,40 +146,56 @@
                     @error('role_id') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
                 </div>
 
-                {{-- Position (dynamic based on role) --}}
+                {{-- Position --}}
+                {{--
+                    Uses x-if (NOT x-show) so only ONE element with name="position"
+                    ever exists in the DOM at a time — prevents the hidden empty input
+                    from overriding the real select value on form submit.
+                --}}
                 <div>
                     <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
                         Position <span class="text-red-500">*</span>
                     </label>
 
-                    <div x-show="selectedRoleId && positionOptions.length === 0" x-cloak>
-                        <input type="hidden" name="position" value="">
-                        <p class="text-sm text-gray-400 italic">No position required for this role.</p>
-                    </div>
+                    {{-- No role chosen yet --}}
+                    <template x-if="!selectedRoleId">
+                        <select disabled class="w-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50 text-gray-400 rounded-lg px-4 py-2.5 text-sm">
+                            <option>Select a role first</option>
+                        </select>
+                    </template>
 
-                    <div x-show="positionOptions.length > 0" x-cloak>
+                    {{-- Role chosen and has positions (all current roles have exactly one position) --}}
+                    <template x-if="selectedRoleId && positionOptions.length > 0">
                         <select name="position"
                                 x-model="selectedPosition"
                                 class="w-full border border-gold-300 dark:border-gold-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500 {{ $errors->has('position') ? 'border-red-400' : '' }}">
                             <option value="">Select Position</option>
                             <template x-for="pos in positionOptions" :key="pos">
-                                <option :value="pos" x-text="pos"></option>
+                                <option :value="pos" x-text="pos" :selected="pos === selectedPosition"></option>
                             </template>
                         </select>
-                    </div>
+                    </template>
 
-                    <div x-show="!selectedRoleId">
-                        <select disabled class="w-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50 text-gray-400 rounded-lg px-4 py-2.5 text-sm">
-                            <option>Select a role first</option>
-                        </select>
-                    </div>
+                    {{-- Role chosen but has no positions defined — safety fallback --}}
+                    <template x-if="selectedRoleId && positionOptions.length === 0">
+                        <div>
+                            <input type="hidden" name="position" value="">
+                            <p class="text-sm text-gray-400 italic py-2">No position required for this role.</p>
+                        </div>
+                    </template>
 
                     <p class="text-xs text-gray-400 mt-1">Positions are based on the selected role.</p>
                     @error('position') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
                 </div>
 
-                {{-- Student ID --}}
-                <div>
+                {{--
+                    Student ID & Year Level:
+                    With the current Member::VALID_POSITIONS all roles are non-student
+                    (System Administrator, Club Adviser, Treasurer, Auditor, Guest).
+                    These fields are hidden for all current roles but remain in the
+                    template so they automatically appear if student roles are added later.
+                --}}
+                <div x-show="isStudentRole" x-cloak>
                     <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Student ID</label>
                     <input type="text" name="student_id" value="{{ old('student_id') }}" placeholder="2020-12345"
                            class="w-full border border-gold-300 dark:border-gold-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500 {{ $errors->has('student_id') ? 'border-red-400' : '' }}">
@@ -190,7 +203,6 @@
                     @error('student_id') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
                 </div>
 
-                {{-- Year Level (student roles only) --}}
                 <div x-show="isStudentRole" x-cloak>
                     <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Year Level</label>
                     <select x-model="yearLevelValue"
@@ -203,10 +215,22 @@
                         @endfor
                     </select>
                 </div>
+                {{-- Always submit year_level — controller clears it for non-student roles server-side --}}
                 <input type="hidden" name="year_level" :value="yearLevelValue">
 
-                <div x-show="selectedRoleId && !isStudentRole" x-cloak>
-                    <p class="text-sm text-gray-400 italic">Year level is not applicable for this role.</p>
+                {{-- Active Status toggle --}}
+                <div class="flex items-center gap-3">
+                    <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300">Account Status</label>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="hidden" name="is_active" value="0">
+                        <input type="checkbox" name="is_active" value="1"
+                               {{ old('is_active', '1') == '1' ? 'checked' : '' }}
+                               class="sr-only peer">
+                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-gold-500 rounded-full peer dark:bg-gray-700
+                                    peer-checked:bg-emerald-500 transition-colors after:content-[''] after:absolute after:top-[2px] after:left-[2px]
+                                    after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full"></div>
+                        <span class="ml-2 text-sm text-gray-600 dark:text-gray-400">Active</span>
+                    </label>
                 </div>
 
                 {{-- Profile Photo --}}
@@ -214,17 +238,60 @@
                     <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
                         Profile Photo <span class="text-gray-400 font-normal">(Optional)</span>
                     </label>
-                    <input type="file" name="avatar" accept="image/*"
+                    <input type="file" name="avatar" accept="image/jpg,image/jpeg,image/png,image/gif,image/webp"
                            class="w-full border border-gold-300 dark:border-gold-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500
                                   file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-semibold
                                   file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100
                                   dark:file:bg-emerald-900/50 dark:file:text-emerald-300">
-                    <p class="text-xs text-gray-400 mt-1">JPG, PNG, GIF — max 2MB</p>
+                    <p class="text-xs text-gray-400 mt-1">JPG, PNG, GIF, WEBP — max 2MB</p>
+                    @error('avatar') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
                 </div>
+
             </div>
         </div>
 
-        {{-- ── Membership Details Card (Emerald Header) ────────────────── --}}
+        {{-- ── Security / Password Card ────────────────────────────────────── --}}
+        {{--
+            ROOT CAUSE FIX: This card was entirely missing from the original form.
+            The controller validates password with 'confirmed', which requires a
+            matching password_confirmation field. Without it, validation silently
+            failed every time and the form never redirected to members.index.
+        --}}
+        <div class="bg-white dark:bg-gray-800 rounded-xl border border-gold-200 dark:border-gold-800 overflow-hidden">
+            <div class="bg-gradient-to-r from-emerald-600 to-emerald-700 dark:from-emerald-800 dark:to-emerald-900 px-6 py-4 border-b border-emerald-200 dark:border-emerald-800">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
+                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h2 class="font-semibold text-white">Security</h2>
+                        <p class="text-emerald-100 text-xs">Leave blank to auto-generate a secure password</p>
+                    </div>
+                </div>
+            </div>
+            <div class="p-6 space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Password</label>
+                        <input type="password" name="password" autocomplete="new-password"
+                               class="w-full border border-gold-300 dark:border-gold-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500 {{ $errors->has('password') ? 'border-red-400' : '' }}">
+                        @error('password') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Confirm Password</label>
+                        <input type="password" name="password_confirmation" autocomplete="new-password"
+                               class="w-full border border-gold-300 dark:border-gold-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500">
+                    </div>
+                </div>
+                <p class="text-xs text-gray-400">
+                    Minimum 8 characters. If left blank, a random password is generated and emailed to the member.
+                </p>
+            </div>
+        </div>
+
+        {{-- ── Membership Details Card ──────────────────────────────────────── --}}
         <div class="bg-white dark:bg-gray-800 rounded-xl border border-gold-200 dark:border-gold-800 overflow-hidden">
             <div class="bg-gradient-to-r from-emerald-600 to-emerald-700 dark:from-emerald-800 dark:to-emerald-900 px-6 py-4 border-b border-emerald-200 dark:border-emerald-800">
                 <div class="flex items-center gap-3">
@@ -239,7 +306,6 @@
                     </div>
                 </div>
             </div>
-
             <div class="p-6 space-y-4">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
@@ -263,7 +329,7 @@
             </div>
         </div>
 
-        {{-- ── Actions ───────────────────────────────────────────────── --}}
+        {{-- ── Actions ───────────────────────────────────────────────────────── --}}
         <div class="flex justify-between items-center gap-3">
             <button type="submit"
                     class="bg-emerald-600 hover:bg-gold-500 text-white text-sm font-semibold px-6 py-2.5 rounded-lg transition shadow-sm">
@@ -282,26 +348,24 @@
 
 @push('scripts')
 <script>
-    // Hardcoded fallback mapping (same as Member::VALID_POSITIONS)
-    const fallbackMapping = {
-        1: [],
-        2: ['SSLG President', 'SSLG Adviser', 'Student Affairs Head'],
-        3: ['SSLG Secretary', 'SSLG Treasurer', 'SSLG PIO'],
-        4: ['Organization President', 'Organization Vice President'],
-        5: ['Organization Secretary', 'Organization Treasurer', 'Organization Auditor', 'Organization PIO'],
-        6: ['Club Adviser'],
-        7: ['Regular Member'],
-        8: ['Guest'],
-    };
+    {{--
+        Both values come from MemberController@create — derived directly from
+        Member::VALID_POSITIONS so there is no hardcoding in this file.
 
-    // Use mapping from controller if available, otherwise fallback
-    let controllerMapping = @json($positionMapping ?? []);
-    console.log('Controller mapping:', controllerMapping);
-    const positionMapping = (Object.keys(controllerMapping).length > 0) ? controllerMapping : fallbackMapping;
-    console.log('Final position mapping:', positionMapping);
+        Current VALID_POSITIONS:
+          1 => ['System Administrator']
+          2 => ['Club Adviser']
+          3 => ['Treasurer']
+          4 => ['Auditor']
+          5 => ['Guest']
 
-    const nonStudentRoleIds = @json($nonStudentRoleIds);
-    console.log('Non-student role IDs:', nonStudentRoleIds);
+        All five are non-student roles, so isStudentRole will always be false
+        with the current model. The logic is future-proof: add a student role
+        to VALID_POSITIONS + the controller's nonStudentRoleIds derivation and
+        the year level / student ID fields will automatically show up here.
+    --}}
+    const positionMapping   = @json($positionMapping ?? []);
+    const nonStudentRoleIds = @json($nonStudentRoleIds ?? []);
 
     function memberCreateForm() {
         return {
@@ -309,14 +373,13 @@
             selectedPosition: '{{ old('position', '') }}',
             yearLevelValue:   '{{ old('year_level', '') }}',
             positionOptions:  [],
-            isStudentRole:    true,
+            isStudentRole:    false,
 
             init() {
                 this.updatePositionOptions();
                 this.checkStudentRole();
 
                 this.$watch('selectedRoleId', () => {
-                    console.log('Role changed to:', this.selectedRoleId);
                     this.selectedPosition = '';
                     this.yearLevelValue   = '';
                     this.updatePositionOptions();
@@ -324,52 +387,33 @@
                 });
 
                 this.$watch('selectedPosition', () => {
-                    console.log('Position changed to:', this.selectedPosition);
                     this.checkStudentRole();
                 });
             },
 
             updatePositionOptions() {
                 const id = parseInt(this.selectedRoleId);
-                console.log('Updating position options for role ID:', id);
-                if (id && positionMapping[id]) {
-                    this.positionOptions = positionMapping[id];
-                    console.log('Options found:', this.positionOptions);
-                } else {
-                    this.positionOptions = [];
-                    console.warn('No options for role ID:', id);
-                }
+                this.positionOptions = (id && positionMapping[id] !== undefined)
+                    ? positionMapping[id]
+                    : [];
+                // Clear stale selection when role changes
                 if (this.selectedPosition && !this.positionOptions.includes(this.selectedPosition)) {
-                    console.log('Clearing invalid selected position:', this.selectedPosition);
                     this.selectedPosition = '';
                 }
             },
 
             checkStudentRole() {
-                const id  = parseInt(this.selectedRoleId);
-                const pos = this.selectedPosition;
-                console.log('checkStudentRole: roleId=', id, 'position=', pos);
-
-                if (!id) { this.isStudentRole = true; return; }
-
-                if (nonStudentRoleIds.includes(id)) {
+                const id = parseInt(this.selectedRoleId);
+                if (!id) {
                     this.isStudentRole = false;
+                    return;
+                }
+                // Student role = NOT in nonStudentRoleIds
+                this.isStudentRole = !nonStudentRoleIds.includes(id);
+                if (!this.isStudentRole) {
                     this.yearLevelValue = '';
-                    return;
                 }
-
-                if (id === 2) {
-                    this.isStudentRole = (pos === 'SSLG President');
-                    if (!this.isStudentRole) this.yearLevelValue = '';
-                    return;
-                }
-
-                this.isStudentRole = true;
             },
-
-            get isNonStudentRole() {
-                return nonStudentRoleIds.includes(parseInt(this.selectedRoleId));
-            }
         };
     }
 </script>
