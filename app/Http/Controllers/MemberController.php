@@ -293,6 +293,12 @@ class MemberController extends Controller
             $password       = $validated['password'] ?? Str::random(10);
             $hashedPassword = Hash::make($password);
 
+            // Upload avatar — Cloudinary in production, local disk in local/dev
+            $avatarUrl = null;
+            if ($request->hasFile('avatar') && $request->file('avatar')->isValid()) {
+                $avatarUrl = $this->uploadAvatar($request->file('avatar'));
+            }
+
             $user = User::create([
                 'full_name'         => $fullName,
                 'first_name'        => $validated['first_name'],
@@ -308,7 +314,8 @@ class MemberController extends Controller
                 'phone'             => $validated['phone'] ?? null,
                 'birthday'          => $validated['birthday'] ?? null,
                 'is_active'         => $validated['is_active'] ?? true,
-               
+                'avatar'            => $avatarUrl,
+                // 'email_verified_at' => now(),
             ]);
 
             Member::create([
@@ -527,11 +534,11 @@ class MemberController extends Controller
             }
 
             if ($request->hasFile('avatar') && $request->file('avatar')->isValid()) {
-                if ($user->avatar && !str_starts_with($user->avatar, 'http')) {
-                    Storage::disk('public')->delete($user->avatar);
-                }
-                $path         = $request->file('avatar')->store('avatars', 'public');
-                $user->avatar = $path;
+                // Delete old avatar before replacing
+                $this->deleteAvatar($user->avatar);
+
+                // Upload new avatar — Cloudinary in production, local disk in local/dev
+                $user->avatar = $this->uploadAvatar($request->file('avatar'));
             }
 
             $user->save();
@@ -814,4 +821,74 @@ class MemberController extends Controller
 
         return false;
     }
+
+    // -------------------------------------------------------------------------
+    // Avatar Helpers — local disk in development, Cloudinary in production
+    // -------------------------------------------------------------------------
+
+    /**
+     * Upload an avatar file.
+     * Uses Cloudinary when CLOUDINARY_URL is set and APP_ENV is production.
+     * Falls back to local public disk otherwise.
+     */
+    private function uploadAvatar($file): string
+    {
+        if ($this->useCloudinary()) {
+            $cloudinary = new Cloudinary(env('CLOUDINARY_URL'));
+            $result     = $cloudinary->uploadApi()->upload(
+                $file->getRealPath(),
+                ['folder' => 'vsulhs-sslg/avatars']
+            );
+            return $result['secure_url'];
+        }
+
+        // Local storage (development)
+        return $file->store('avatars', 'public');
+    }
+
+    /**
+     * Delete an existing avatar.
+     * Handles both Cloudinary URLs and local file paths.
+     */
+    private function deleteAvatar(?string $avatar): void
+    {
+        if (!$avatar) return;
+
+        if (str_starts_with($avatar, 'https://res.cloudinary.com')) {
+            // Extract public_id from Cloudinary URL and destroy
+            preg_match('/\/v\d+\/(.+)\.[a-z]+$/i', parse_url($avatar, PHP_URL_PATH), $matches);
+            if (!empty($matches[1])) {
+                $cloudinary = new Cloudinary(env('CLOUDINARY_URL'));
+                $cloudinary->uploadApi()->destroy($matches[1]);
+            }
+            return;
+        }
+
+        // Local file
+        if (!str_starts_with($avatar, 'http')) {
+            Storage::disk('public')->delete($avatar);
+        }
+    }
+
+    /**
+     * Determine whether to use Cloudinary based on environment.
+     * Uses Cloudinary when:
+     *   - APP_ENV is production, OR
+     *   - CLOUDINARY_URL is explicitly set and FORCE_CLOUDINARY=true
+     */
+    private function useCloudinary(): bool
+    {
+        $hasCredentials = !empty(env('CLOUDINARY_URL'));
+
+        if (!$hasCredentials) return false;
+
+        // Always use Cloudinary in production
+        if (app()->environment('production')) return true;
+
+        // Optionally force Cloudinary in local for testing
+        if (env('FORCE_CLOUDINARY', false)) return true;
+
+        return false;
+    }
+
 }
