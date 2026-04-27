@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Documents')
+@section('title', 'Financial Documents')
 
 @section('content')
 <div class="relative overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-600 to-emerald-700 dark:from-emerald-800 dark:to-emerald-900 p-6 mb-6">
