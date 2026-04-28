@@ -284,7 +284,7 @@ class AdminController extends Controller
             return back()->with('error', 'Cannot toggle visibility of System Administrator role.');
         }
 
-        if (auth()->user()->role_id == $role->id && $role->is_visible) {
+        if ($user->role_id == $role->id && $role->is_visible) {
             return back()->with('error', 'Cannot hide your own current role.');
         }
 
@@ -318,7 +318,7 @@ class AdminController extends Controller
         }
 
         if ($request->filled('search')) {
-            $search = $request->search;
+            $search = $request->input('search');
             $query->where(function ($q) use ($search) {
                 $q->where('full_name', 'like', "%{$search}%")
                     ->orWhere('email', 'like', "%{$search}%");
@@ -326,17 +326,17 @@ class AdminController extends Controller
         }
 
         if ($request->filled('role')) {
-            $query->whereHas('role', fn ($q) => $q->where('name', $request->role));
+            $query->whereHas('role', fn ($q) => $q->where('name', $request->input('role')));
         }
 
         if ($request->filled('status')) {
-            $query->where('is_active', $request->status === 'active');
+            $query->where('is_active', $request->input('status') === 'active');
         }
 
         if ($request->filled('verification')) {
-            if ($request->verification === 'verified') {
+            if ($request->input('verification') === 'verified') {
                 $query->whereNotNull('email_verified_at');
-            } elseif ($request->verification === 'unverified') {
+            } elseif ($request->input('verification') === 'unverified') {
                 $query->whereNull('email_verified_at');
             }
         }
@@ -524,7 +524,7 @@ class AdminController extends Controller
 
         $user = User::with('role')->findOrFail($id);
 
-        if ($user->id === auth()->id()) {
+        if ($user->id === $authUser->id) {
             return back()->with('error', 'You cannot delete your own account.');
         }
         if ($user->email === 'guest@gmail.com') {

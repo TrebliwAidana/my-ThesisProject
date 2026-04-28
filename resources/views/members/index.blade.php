@@ -9,7 +9,6 @@
     $isSystemAdmin  = $currentUser->role->level === 1;
     $guestEmail     = 'guest@gmail.com';
 
-    // Badge classes keyed by role name — keep in sync with Role::name values in DB
     $roleBadgeClasses = [
         'System Administrator' => 'bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300',
         'Club Adviser'         => 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300',
@@ -61,6 +60,7 @@
 
             @if($isSystemAdmin || Gate::allows('members.create'))
             <a href="{{ route('members.create') }}"
+               data-nav-link
                class="inline-flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 bg-white/20 hover:bg-white/30 border border-white/30 text-white text-xs md:text-sm font-medium rounded-xl transition shadow-sm shrink-0">
                 <svg class="w-3.5 h-3.5 md:w-4 md:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
@@ -73,10 +73,6 @@
     </div>
 
     {{-- ─── Stats Grid ─── --}}
-    {{--
-        Keys MUST match what MemberController@index puts in $filteredStats:
-        'admin', 'adviser', 'treasurer', 'auditor', 'guest', 'custom', 'all'
-    --}}
     <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 md:gap-5">
 
         {{-- All --}}
@@ -156,7 +152,6 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
                     </svg>
                 </div>
-                {{-- guest + custom combined for the "other" card --}}
                 <span class="text-xl md:text-2xl font-bold text-gray-800 dark:text-white">{{ number_format($filteredStats['guest'] + $filteredStats['custom']) }}</span>
             </div>
             <p class="text-xs font-medium text-gray-600 dark:text-gray-400">Guest / Custom</p>
@@ -225,22 +220,23 @@
             </div>
         </div>
 
-        {{-- Role Tabs — keys match controller's match() + $filteredStats keys exactly --}}
+        {{-- Role Tabs --}}
         <div class="mt-5 border-b border-gold-200 dark:border-gold-800 overflow-x-auto pb-px">
             <nav class="flex flex-nowrap sm:flex-wrap gap-1 -mb-px min-w-max sm:min-w-0">
                 @php
                     $tabs = [
-                        ['key' => 'all',      'label' => 'All',          'count' => $filteredStats['all']],
-                        ['key' => 'admin',    'label' => 'System Admin', 'count' => $filteredStats['admin']],
-                        ['key' => 'adviser',  'label' => 'Adviser',      'count' => $filteredStats['adviser']],
-                        ['key' => 'treasurer','label' => 'Treasurer',    'count' => $filteredStats['treasurer']],
-                        ['key' => 'auditor',  'label' => 'Auditor',      'count' => $filteredStats['auditor']],
-                        ['key' => 'guest',    'label' => 'Guest',        'count' => $filteredStats['guest']],
-                        ['key' => 'custom',   'label' => 'Custom',       'count' => $filteredStats['custom']],
+                        ['key' => 'all',       'label' => 'All',          'count' => $filteredStats['all']],
+                        ['key' => 'admin',     'label' => 'System Admin', 'count' => $filteredStats['admin']],
+                        ['key' => 'adviser',   'label' => 'Adviser',      'count' => $filteredStats['adviser']],
+                        ['key' => 'treasurer', 'label' => 'Treasurer',    'count' => $filteredStats['treasurer']],
+                        ['key' => 'auditor',   'label' => 'Auditor',      'count' => $filteredStats['auditor']],
+                        ['key' => 'guest',     'label' => 'Guest',        'count' => $filteredStats['guest']],
+                        ['key' => 'custom',    'label' => 'Custom',       'count' => $filteredStats['custom']],
                     ];
                 @endphp
                 @foreach($tabs as $tab)
                 <a href="{{ route('members.index', array_merge(request()->except('role', 'page'), ['role' => $tab['key']])) }}"
+                   data-nav-link
                    class="inline-flex items-center gap-1.5 px-3 py-2 text-xs sm:text-sm font-medium border-b-2 transition-colors whitespace-nowrap
                        {{ $roleFilter === $tab['key']
                             ? 'border-gold-500 text-gold-600 dark:text-gold-400'
@@ -288,7 +284,6 @@
                         <td class="px-4 py-3">
                             <div class="flex items-center gap-3">
                                 @if($member->avatar)
-                                    {{-- Handle both Cloudinary (absolute URL) and local storage paths --}}
                                     <img src="{{ str_starts_with($member->avatar, 'http') ? $member->avatar : asset('storage/' . $member->avatar) }}"
                                          alt="{{ $member->full_name }}"
                                          class="w-8 h-8 md:w-9 md:h-9 rounded-xl object-cover shadow-sm flex-shrink-0">
@@ -379,6 +374,7 @@
                                 @else
                                     {{-- View --}}
                                     <a href="{{ route('members.show', $member->id) }}"
+                                       data-nav-link
                                        class="p-1.5 rounded-lg text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
                                        title="View">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
@@ -387,9 +383,10 @@
                                         </svg>
                                     </a>
 
-                                    {{-- Edit —only for non-guest, OR system admin editing guest --}}
+                                    {{-- Edit --}}
                                     @if(($isSystemAdmin || Gate::allows('members.edit')) && (!$isGuest || $canEditGuest))
                                     <a href="{{ route('members.edit', $member->id) }}"
+                                       data-nav-link
                                        class="p-1.5 rounded-lg text-gray-500 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors"
                                        title="Edit">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
@@ -400,6 +397,7 @@
 
                                     {{-- History --}}
                                     <a href="{{ route('members.edit-history', $member->id) }}"
+                                       data-nav-link
                                        class="p-1.5 rounded-lg text-gray-500 hover:text-gold-600 hover:bg-gold-50 dark:hover:bg-gold-900/20 transition-colors"
                                        title="History">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
@@ -407,7 +405,7 @@
                                         </svg>
                                     </a>
 
-                                    {{-- Delete — never for guest, never for self --}}
+                                    {{-- Delete --}}
                                     @if(!$isGuest && ($isSystemAdmin || Gate::allows('members.delete')) && $member->id !== auth()->id())
                                     <button
                                         type="button"
@@ -445,42 +443,50 @@
             </table>
         </div>
 
-        {{-- Pagination --}}
+        {{-- ─── Pagination ─── --}}
         @if($users->hasPages())
         <div class="px-4 py-3 border-t border-gold-100 dark:border-gold-800 bg-gray-50 dark:bg-gray-800/50 flex flex-wrap items-center justify-between gap-3">
             <p class="text-xs text-gray-400 dark:text-gray-500">
                 Showing {{ $users->firstItem() }}–{{ $users->lastItem() }} of {{ $users->total() }} members
             </p>
             <div class="flex items-center gap-1">
+
+                {{-- Prev --}}
                 @if($users->onFirstPage())
                     <span class="px-2.5 py-1 text-xs rounded-lg border border-gold-200 dark:border-gold-800 text-gray-300 dark:text-gray-600 cursor-not-allowed">Prev</span>
                 @else
                     <a href="{{ $users->previousPageUrl() }}"
+                       data-nav-link
                        class="px-2.5 py-1 text-xs rounded-lg border border-gold-200 dark:border-gold-800 text-gray-600 dark:text-gray-400 hover:bg-gold-50 dark:hover:bg-gold-900/20 hover:border-gold-400 transition-colors">Prev</a>
                 @endif
 
+                {{-- Page numbers --}}
                 @foreach($users->getUrlRange(max(1, $users->currentPage() - 2), min($users->lastPage(), $users->currentPage() + 2)) as $page => $url)
                     @if($page == $users->currentPage())
                         <span class="px-2.5 py-1 text-xs rounded-lg border border-primary-600 bg-primary-600 text-white font-medium">{{ $page }}</span>
                     @else
                         <a href="{{ $url }}"
+                           data-nav-link
                            class="px-2.5 py-1 text-xs rounded-lg border border-gold-200 dark:border-gold-800 text-gray-600 dark:text-gray-400 hover:bg-gold-50 dark:hover:bg-gold-900/20 hover:border-gold-400 transition-colors">{{ $page }}</a>
                     @endif
                 @endforeach
 
+                {{-- Next --}}
                 @if($users->hasMorePages())
                     <a href="{{ $users->nextPageUrl() }}"
+                       data-nav-link
                        class="px-2.5 py-1 text-xs rounded-lg border border-gold-200 dark:border-gold-800 text-gray-600 dark:text-gray-400 hover:bg-gold-50 dark:hover:bg-gold-900/20 hover:border-gold-400 transition-colors">Next</a>
                 @else
                     <span class="px-2.5 py-1 text-xs rounded-lg border border-gold-200 dark:border-gold-800 text-gray-300 dark:text-gray-600 cursor-not-allowed">Next</span>
                 @endif
+
             </div>
         </div>
         @endif
     </div>
 </div>
 
-{{-- Hidden delete forms — guest excluded (delete button is never rendered for guest) --}}
+{{-- Hidden delete forms --}}
 @foreach($users as $member)
     @if($member->email !== $guestEmail)
     <form id="delete-form-{{ $member->id }}" action="{{ route('members.destroy', $member->id) }}" method="POST" class="hidden">
@@ -490,17 +496,35 @@
     @endif
 @endforeach
 
-<script>
-function confirmDelete(userId, userName, userRole, userEmail) {
-    if (userEmail === '{{ $guestEmail }}') {
-        alert('The shared guest account cannot be deleted.');
-        return;
-    }
-    const msg = `You are about to delete ${userName} (${userRole}).\n\nThis action cannot be undone. Continue?`;
-    if (confirm(msg)) {
-        document.getElementById(`delete-form-${userId}`)?.submit();
-    }
-}
-</script>
-
 @endsection
+
+{{--
+    FIX: Script moved OUT of @section('content') and into @push('scripts').
+    Inline scripts inside @section block can block navigation and cause the
+    tab to keep spinning when the browser tries to navigate away.
+    @push('scripts') defers execution to after the full layout is ready.
+--}}
+@push('scripts')
+<script>
+(function () {
+    'use strict';
+
+    window.confirmDelete = function (userId, userName, userRole, userEmail) {
+        if (userEmail === '{{ $guestEmail }}') {
+            alert('The shared guest account cannot be deleted.');
+            return;
+        }
+
+        const msg = `You are about to delete ${userName} (${userRole}).\n\nThis action cannot be undone. Continue?`;
+
+        if (confirm(msg)) {
+            const form = document.getElementById(`delete-form-${userId}`);
+            if (form) {
+                if (window.showNavSkeleton) window.showNavSkeleton();
+                form.submit();
+            }
+        }
+    };
+}());
+</script>
+@endpush

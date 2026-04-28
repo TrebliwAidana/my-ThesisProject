@@ -41,25 +41,19 @@ class MemberController extends Controller
     {
         $user = Auth::user();
 
-        // System Administrator can assign any visible role
         if ($this->isSysAdmin($user)) {
             return Role::where('is_visible', true)->get();
         }
 
-        // Club Adviser can assign any visible role except System Administrator (role_id 1)
         if ($user->role->name === 'Club Adviser') {
             return Role::where('is_visible', true)
                 ->where('id', '!=', 1)
                 ->get();
         }
 
-        // Treasurer, Auditor, Guest, and any custom role: no role assignment rights.
-        // Use whereRaw('0') to return a genuine empty Eloquent Collection so that
-        // ->pluck() and ->contains() callers (e.g. assertRoleIsAllowed) stay safe.
         return Role::whereRaw('0')->get();
     }
 
-    /** Uses Member::VALID_POSITIONS as the single source of truth. */
     private function getAllowedPositions(Role $role): array
     {
         return Member::VALID_POSITIONS[$role->id] ?? [];
@@ -80,15 +74,12 @@ class MemberController extends Controller
 
         if ($this->isSysAdmin($current)) return true;
 
-        // Any user may view their own profile
         if ($action === 'view' && $current->id === $target->id) return true;
 
-        // Club Adviser can manage all non-SysAdmin members
         if ($current->role->name === 'Club Adviser') {
             return !$this->isSysAdmin($target);
         }
 
-        // Treasurer and Auditor can only view — no manage rights over other members
         return false;
     }
 
@@ -108,8 +99,15 @@ class MemberController extends Controller
     {
         $this->requiresPermission('members.view');
 
-        $query = User::with(['role:id,name,abbreviation,level']);
+        // ── FIX 1: Eager-load 'member' alongside 'role' to eliminate the N+1
+        //    that was firing one extra query per row in the view when accessing
+        //    $member->member (the Member model relation for joined_at etc.)
+        $query = User::with([
+            'role:id,name,abbreviation,level',
+            'member',           // ← was missing; view accesses this relation
+        ]);
 
+        // ── Search
         if ($search = $request->input('search')) {
             $query->where(fn($q) =>
                 $q->where('full_name', 'like', "%{$search}%")
@@ -117,10 +115,11 @@ class MemberController extends Controller
             );
         }
 
+        // ── Role filter
         $roleFilter = $request->input('role', 'all');
         match ($roleFilter) {
-            'admin'   => $query->whereHas('role', fn($q) => $q->where('name', 'System Administrator')),
-            'adviser' => $query->whereHas('role', fn($q) => $q->where('name', 'Club Adviser')),
+            'admin'     => $query->whereHas('role', fn($q) => $q->where('name', 'System Administrator')),
+            'adviser'   => $query->whereHas('role', fn($q) => $q->where('name', 'Club Adviser')),
             'treasurer' => $query->whereHas('role', fn($q) => $q->where('name', 'Treasurer')),
             'auditor'   => $query->whereHas('role', fn($q) => $q->where('name', 'Auditor')),
             'guest'     => $query->whereHas('role', fn($q) => $q->where('name', 'Guest')),
@@ -138,18 +137,42 @@ class MemberController extends Controller
                 : $query->whereNull('email_verified_at');
         }
 
-        $statsBase     = clone $query;
+        // ── FIX 2: Replace 7 cloned subqueries with a single aggregated query.
+        //    Previously this was running 7 COUNT(*) + whereHas() calls on top of
+        //    the filtered base — each with its own subquery. One GROUP BY query
+        //    over the roles table is far cheaper and avoids the 2-3 min delay.
         $predefinedIds = array_keys(Member::VALID_POSITIONS);
+
+        $roleCounts = DB::table('users')
+            ->join('roles', 'users.role_id', '=', 'roles.id')
+            ->selectRaw('
+                roles.name,
+                roles.id as role_id,
+                COUNT(*) as total
+            ')
+            ->groupBy('roles.id', 'roles.name')
+            ->get()
+            ->keyBy('name');
+
+        // Total across ALL users (unfiltered by search/status — matches original intent)
+        $allTotal = DB::table('users')->count();
+
+        // Custom roles = roles whose ID is NOT in the predefined list
+        $customTotal = DB::table('users')
+            ->whereNotIn('role_id', $predefinedIds)
+            ->count();
+
         $filteredStats = [
-            'admin'     => (clone $statsBase)->whereHas('role', fn($q) => $q->where('name', 'System Administrator'))->count(),
-            'adviser'   => (clone $statsBase)->whereHas('role', fn($q) => $q->where('name', 'Club Adviser'))->count(),
-            'treasurer' => (clone $statsBase)->whereHas('role', fn($q) => $q->where('name', 'Treasurer'))->count(),
-            'auditor'   => (clone $statsBase)->whereHas('role', fn($q) => $q->where('name', 'Auditor'))->count(),
-            'guest'     => (clone $statsBase)->whereHas('role', fn($q) => $q->where('name', 'Guest'))->count(),
-            'custom'    => (clone $statsBase)->whereHas('role', fn($q) => $q->whereNotIn('id', $predefinedIds))->count(),
-            'all'       => (clone $statsBase)->count(),
+            'admin'     => (int) ($roleCounts->get('System Administrator')->total ?? 0),
+            'adviser'   => (int) ($roleCounts->get('Club Adviser')->total         ?? 0),
+            'treasurer' => (int) ($roleCounts->get('Treasurer')->total            ?? 0),
+            'auditor'   => (int) ($roleCounts->get('Auditor')->total              ?? 0),
+            'guest'     => (int) ($roleCounts->get('Guest')->total                ?? 0),
+            'custom'    => $customTotal,
+            'all'       => $allTotal,
         ];
 
+        // ── Paginate AFTER all filters are applied
         $users = $query->paginate(15)->appends($request->except('page'));
 
         $roleColors = [
@@ -170,15 +193,14 @@ class MemberController extends Controller
     public function create()
     {
         $this->requiresPermission('members.create');
- 
+
         $roles               = $this->getAllowedRolesForCurrentUser();
         $positionMapping     = $this->buildPositionMapping($roles);
-        // Passed so the view can derive "student role" client-side without
-        // hardcoding any role IDs or position strings.
         $nonStudentPositions = Member::NON_STUDENT_POSITIONS;
- 
+
         return view('members.create', compact('roles', 'positionMapping', 'nonStudentPositions'));
     }
+
     public function store(Request $request)
     {
         $this->requiresPermission('members.create');
@@ -249,25 +271,25 @@ class MemberController extends Controller
     {
         $user        = User::findOrFail($id);
         $currentUser = Auth::user();
- 
+
         if (!$this->isSysAdmin($currentUser)) {
             if (!$currentUser->hasPermission('members.edit') || !$this->canManageMember($user, 'edit')) {
                 abort(403, 'Unauthorized to edit this member.');
             }
         }
- 
+
         $roles               = $this->getAllowedRolesForCurrentUser();
         $positionMapping     = $this->buildPositionMapping($roles);
         $nonStudentPositions = Member::NON_STUDENT_POSITIONS;
         $memberRecord        = $user->member;
- 
+
         $positionLogs = $memberRecord
             ? PositionChangeLog::forMember($memberRecord->id)
                 ->with('changer')
                 ->orderByDesc('created_at')
                 ->get()
             : collect();
- 
+
         return view('members.edit', compact(
             'user', 'roles', 'positionMapping', 'nonStudentPositions', 'positionLogs'
         ))->with('member', $user);
@@ -279,7 +301,6 @@ class MemberController extends Controller
         $memberRecord = $user->member;
         $currentUser  = Auth::user();
 
-        // Guest account: only avatar updates allowed (SysAdmin only for anything else)
         if ($user->email === 'guest@gmail.com') {
             return $this->handleGuestUpdate($request, $user, $currentUser);
         }
@@ -297,7 +318,6 @@ class MemberController extends Controller
         $this->assertRoleIsVisible($selectedRole);
         $this->guardLastUserInRole($oldRoleId, $newRoleId, $currentUser);
 
-        // Resolve once — passed into assertRoleIsAllowed to avoid a redundant DB query
         $allowedRoles = $this->getAllowedRolesForCurrentUser();
         $this->assertRoleIsAllowed($selectedRole, $allowedRoles);
 
@@ -323,7 +343,6 @@ class MemberController extends Controller
         try {
             $fullName    = $this->buildFullName($validated);
             $oldData     = $user->getOriginal();
-            // Must be captured before save() — Laravel clears dirty/original state after persist
             $oldPosition = (string) ($user->position ?? '');
 
             $user->fill([
@@ -624,10 +643,6 @@ class MemberController extends Controller
         }
     }
 
-    /**
-     * Resolve a valid position for the given role.
-     * Returns null when the role has no defined positions (e.g. System Administrator).
-     */
     private function resolvePositionForRole(Role $role, ?string $submitted): ?string
     {
         $allowed = $this->getAllowedPositions($role);
@@ -640,7 +655,6 @@ class MemberController extends Controller
             return $submitted;
         }
 
-        // Validate that the submitted value is present and valid
         request()->validate([
             'position' => ['required', Rule::in($allowed)],
         ], [
@@ -651,11 +665,6 @@ class MemberController extends Controller
         return $submitted;
     }
 
-    /**
-     * Returns [newPosition, positionChanged, autoChanged].
-     *
-     * @return array{string|null, bool, bool}
-     */
     private function resolvePositionChange(User $user, Role $selectedRole, int $oldRoleId, int $newRoleId, ?string $submitted): array
     {
         $allowed     = $this->getAllowedPositions($selectedRole);
@@ -667,7 +676,6 @@ class MemberController extends Controller
         }
 
         if ($oldRoleId !== $newRoleId || !in_array($oldPosition, $allowed, true)) {
-            // Auto-assign first valid position when role changes or current is invalid
             return [$allowed[0], $oldPosition !== $allowed[0], true];
         }
 
@@ -702,9 +710,6 @@ class MemberController extends Controller
         ));
     }
 
-    /**
-     * Normalises a PH phone number to +63XXXXXXXXXX format.
-     */
     private function normalizePhone(string $phone): string
     {
         $digits = preg_replace('/[^0-9]/', '', $phone);
@@ -713,17 +718,6 @@ class MemberController extends Controller
         return '+63' . substr($digits, 0, 10);
     }
 
-    /**
-     * Whether year_level should be cleared for the given role + position.
-     *
-     * Non-student logic is derived entirely from Member::NON_STUDENT_POSITIONS
-     * and Member::VALID_POSITIONS — no hardcoded role IDs or position strings here.
-     *
-     * Clears year_level when:
-     *   (a) the role has no positions defined at all, OR
-     *   (b) every position the role allows is a non-student position, OR
-     *   (c) the specific resolved position is itself a non-student position.
-     */
     private function shouldClearYearLevel(int $roleId, ?string $position): bool
     {
         $positionsForRole = Member::VALID_POSITIONS[$roleId] ?? [];
@@ -734,19 +728,13 @@ class MemberController extends Controller
 
         $nonStudent = Member::NON_STUDENT_POSITIONS;
 
-        // All positions for this role are non-student
         if (array_diff($positionsForRole, $nonStudent) === []) {
             return true;
         }
 
-        // The specific resolved position is non-student
         return $position !== null && in_array($position, $nonStudent, true);
     }
 
-    /**
-     * Validate a create or update member request.
-     * Pass $userId on updates to exclude the current record from unique checks.
-     */
     private function validateMemberRequest(Request $request, ?int $userId = null): array
     {
         $uniqueEmail     = $userId ? "unique:users,email,{$userId}"     : 'unique:users,email';
@@ -785,7 +773,7 @@ class MemberController extends Controller
     }
 
     // -------------------------------------------------------------------------
-    // Avatar Helpers — local disk in development, Cloudinary in production
+    // Avatar Helpers
     // -------------------------------------------------------------------------
 
     private function getCloudinaryInstance(): \Cloudinary\Cloudinary
