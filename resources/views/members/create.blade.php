@@ -34,9 +34,9 @@
             </div>
         @endif
 
-        {{-- ── Basic Information Card ──────────────────────────────────────── --}}
+        {{-- ── Basic Information ──────────────────────────────────────────── --}}
         <div class="bg-white dark:bg-gray-800 rounded-xl border border-gold-200 dark:border-gold-800 overflow-hidden">
-            <div class="bg-gradient-to-r from-emerald-600 to-emerald-700 dark:from-emerald-800 dark:to-emerald-900 px-6 py-4 border-b border-emerald-200 dark:border-emerald-800">
+            <div class="bg-gradient-to-r from-emerald-600 to-emerald-700 dark:from-emerald-800 dark:to-emerald-900 px-6 py-4">
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
                         <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -89,9 +89,9 @@
                     <select name="gender" required
                             class="w-full border border-gold-300 dark:border-gold-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500 {{ $errors->has('gender') ? 'border-red-400' : '' }}">
                         <option value="">Select Gender</option>
-                        <option value="Male"   {{ old('gender') == 'Male'   ? 'selected' : '' }}>Male</option>
-                        <option value="Female" {{ old('gender') == 'Female' ? 'selected' : '' }}>Female</option>
-                        <option value="Other"  {{ old('gender') == 'Other'  ? 'selected' : '' }}>Other</option>
+                        <option value="Male"   {{ old('gender') === 'Male'   ? 'selected' : '' }}>Male</option>
+                        <option value="Female" {{ old('gender') === 'Female' ? 'selected' : '' }}>Female</option>
+                        <option value="Other"  {{ old('gender') === 'Other'  ? 'selected' : '' }}>Other</option>
                     </select>
                     @error('gender') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
                 </div>
@@ -146,25 +146,22 @@
                     @error('role_id') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
                 </div>
 
-                {{-- Position --}}
                 {{--
-                    Uses x-if (NOT x-show) so only ONE element with name="position"
-                    ever exists in the DOM at a time — prevents the hidden empty input
-                    from overriding the real select value on form submit.
+                    Position — uses x-if so only ONE element named "position" ever
+                    exists in the DOM at a time, preventing a hidden blank value from
+                    shadowing the real select on submit.
                 --}}
                 <div>
                     <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
                         Position <span class="text-red-500">*</span>
                     </label>
 
-                    {{-- No role chosen yet --}}
                     <template x-if="!selectedRoleId">
                         <select disabled class="w-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50 text-gray-400 rounded-lg px-4 py-2.5 text-sm">
                             <option>Select a role first</option>
                         </select>
                     </template>
 
-                    {{-- Role chosen and has positions (all current roles have exactly one position) --}}
                     <template x-if="selectedRoleId && positionOptions.length > 0">
                         <select name="position"
                                 x-model="selectedPosition"
@@ -176,7 +173,6 @@
                         </select>
                     </template>
 
-                    {{-- Role chosen but has no positions defined — safety fallback --}}
                     <template x-if="selectedRoleId && positionOptions.length === 0">
                         <div>
                             <input type="hidden" name="position" value="">
@@ -189,11 +185,12 @@
                 </div>
 
                 {{--
-                    Student ID & Year Level:
-                    With the current Member::VALID_POSITIONS all roles are non-student
-                    (System Administrator, Club Adviser, Treasurer, Auditor, Guest).
-                    These fields are hidden for all current roles but remain in the
-                    template so they automatically appear if student roles are added later.
+                    Student ID & Year Level — shown only for student roles.
+                    "Student role" = role whose VALID_POSITIONS list contains at least
+                    one position NOT in Member::NON_STUDENT_POSITIONS.
+                    The controller always passes $positionMapping; the JS derives
+                    $nonStudentPositions from Member::NON_STUDENT_POSITIONS (also
+                    passed) so no hardcoded arrays exist here.
                 --}}
                 <div x-show="isStudentRole" x-cloak>
                     <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Student ID</label>
@@ -209,16 +206,16 @@
                             class="w-full border border-gold-300 dark:border-gold-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500">
                         <option value="">Select Grade</option>
                         @for($i = 7; $i <= 12; $i++)
-                            <option value="Grade {{ $i }}" {{ old('year_level') == 'Grade '.$i ? 'selected' : '' }}>
+                            <option value="Grade {{ $i }}" {{ old('year_level') === 'Grade '.$i ? 'selected' : '' }}>
                                 Grade {{ $i }}
                             </option>
                         @endfor
                     </select>
                 </div>
-                {{-- Always submit year_level — controller clears it for non-student roles server-side --}}
+                {{-- Always submit year_level — controller clears it server-side for non-student roles --}}
                 <input type="hidden" name="year_level" :value="yearLevelValue">
 
-                {{-- Active Status toggle --}}
+                {{-- Active Status --}}
                 <div class="flex items-center gap-3">
                     <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300">Account Status</label>
                     <label class="relative inline-flex items-center cursor-pointer">
@@ -250,15 +247,9 @@
             </div>
         </div>
 
-        {{-- ── Security / Password Card ────────────────────────────────────── --}}
-        {{--
-            ROOT CAUSE FIX: This card was entirely missing from the original form.
-            The controller validates password with 'confirmed', which requires a
-            matching password_confirmation field. Without it, validation silently
-            failed every time and the form never redirected to members.index.
-        --}}
+        {{-- ── Security / Password ─────────────────────────────────────────── --}}
         <div class="bg-white dark:bg-gray-800 rounded-xl border border-gold-200 dark:border-gold-800 overflow-hidden">
-            <div class="bg-gradient-to-r from-emerald-600 to-emerald-700 dark:from-emerald-800 dark:to-emerald-900 px-6 py-4 border-b border-emerald-200 dark:border-emerald-800">
+            <div class="bg-gradient-to-r from-emerald-600 to-emerald-700 dark:from-emerald-800 dark:to-emerald-900 px-6 py-4">
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
                         <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -291,9 +282,9 @@
             </div>
         </div>
 
-        {{-- ── Membership Details Card ──────────────────────────────────────── --}}
+        {{-- ── Membership Details ───────────────────────────────────────────── --}}
         <div class="bg-white dark:bg-gray-800 rounded-xl border border-gold-200 dark:border-gold-800 overflow-hidden">
-            <div class="bg-gradient-to-r from-emerald-600 to-emerald-700 dark:from-emerald-800 dark:to-emerald-900 px-6 py-4 border-b border-emerald-200 dark:border-emerald-800">
+            <div class="bg-gradient-to-r from-emerald-600 to-emerald-700 dark:from-emerald-800 dark:to-emerald-900 px-6 py-4">
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
                         <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -329,7 +320,7 @@
             </div>
         </div>
 
-        {{-- ── Actions ───────────────────────────────────────────────────────── --}}
+        {{-- ── Actions ──────────────────────────────────────────────────────── --}}
         <div class="flex justify-between items-center gap-3">
             <button type="submit"
                     class="bg-emerald-600 hover:bg-gold-500 text-white text-sm font-semibold px-6 py-2.5 rounded-lg transition shadow-sm">
@@ -349,23 +340,12 @@
 @push('scripts')
 <script>
     {{--
-        Both values come from MemberController@create — derived directly from
-        Member::VALID_POSITIONS so there is no hardcoding in this file.
-
-        Current VALID_POSITIONS:
-          1 => ['System Administrator']
-          2 => ['Club Adviser']
-          3 => ['Treasurer']
-          4 => ['Auditor']
-          5 => ['Guest']
-
-        All five are non-student roles, so isStudentRole will always be false
-        with the current model. The logic is future-proof: add a student role
-        to VALID_POSITIONS + the controller's nonStudentRoleIds derivation and
-        the year level / student ID fields will automatically show up here.
+        positionMapping — passed from MemberController@create, derived from Member::VALID_POSITIONS.
+        nonStudentPositions — passed from MemberController@create, derived from Member::NON_STUDENT_POSITIONS.
+        Neither array is hardcoded here; all logic is data-driven from the model constants.
     --}}
-    const positionMapping   = @json($positionMapping ?? []);
-    const nonStudentRoleIds = @json($nonStudentRoleIds ?? []);
+    const positionMapping      = @json($positionMapping ?? []);
+    const nonStudentPositions  = @json($nonStudentPositions ?? []);
 
     function memberCreateForm() {
         return {
@@ -377,17 +357,15 @@
 
             init() {
                 this.updatePositionOptions();
-                this.checkStudentRole();
 
                 this.$watch('selectedRoleId', () => {
                     this.selectedPosition = '';
                     this.yearLevelValue   = '';
                     this.updatePositionOptions();
-                    this.checkStudentRole();
                 });
 
                 this.$watch('selectedPosition', () => {
-                    this.checkStudentRole();
+                    this.updateStudentFlag();
                 });
             },
 
@@ -396,20 +374,31 @@
                 this.positionOptions = (id && positionMapping[id] !== undefined)
                     ? positionMapping[id]
                     : [];
-                // Clear stale selection when role changes
+
+                // Clear a stale selection when role changes
                 if (this.selectedPosition && !this.positionOptions.includes(this.selectedPosition)) {
                     this.selectedPosition = '';
                 }
+
+                this.updateStudentFlag();
             },
 
-            checkStudentRole() {
-                const id = parseInt(this.selectedRoleId);
-                if (!id) {
+            updateStudentFlag() {
+                if (!this.selectedRoleId) {
                     this.isStudentRole = false;
                     return;
                 }
-                // Student role = NOT in nonStudentRoleIds
-                this.isStudentRole = !nonStudentRoleIds.includes(id);
+
+                // A position is "student" if it is NOT in nonStudentPositions.
+                // If no position is selected yet, assume student until we know otherwise.
+                const pos = this.selectedPosition;
+                if (!pos) {
+                    // Check if any position for this role is a student position
+                    this.isStudentRole = this.positionOptions.some(p => !nonStudentPositions.includes(p));
+                } else {
+                    this.isStudentRole = !nonStudentPositions.includes(pos);
+                }
+
                 if (!this.isStudentRole) {
                     this.yearLevelValue = '';
                 }

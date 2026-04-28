@@ -11,7 +11,7 @@
     <div class="absolute top-0 right-0 -mt-8 -mr-8 w-64 h-64 bg-white/5 rounded-full blur-3xl"></div>
 </div>
 
-{{-- Flash Messages --}}
+{{-- Flash Messages
 @if(session('success'))
     <div class="mb-4 p-4 bg-green-100 border border-green-300 text-green-800 rounded-xl text-sm">
         ✅ {{ session('success') }}
@@ -21,7 +21,7 @@
     <div class="mb-4 p-4 bg-red-100 border border-red-300 text-red-800 rounded-xl text-sm">
         ❌ {{ session('error') }}
     </div>
-@endif
+@endif --}}
 
 {{-- Filters + Action Buttons --}}
 <div class="bg-white dark:bg-gray-800 rounded-2xl shadow border border-gray-200 dark:border-gray-700 p-4 mb-6">

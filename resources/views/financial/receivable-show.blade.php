@@ -6,7 +6,7 @@
 @section('content')
 <div class="space-y-6">
     {{-- Flash Messages --}}
-    @if(session('success'))
+    {{-- @if(session('success'))
         <div class="p-4 bg-green-100 border border-green-300 text-green-800 rounded-xl text-sm">
             ✅ {{ session('success') }}
         </div>
@@ -15,7 +15,7 @@
         <div class="p-4 bg-red-100 border border-red-300 text-red-800 rounded-xl text-sm">
             ❌ {{ session('error') }}
         </div>
-    @endif
+    @endif --}}
 
     {{-- Back Button --}}
     <div>

@@ -36,6 +36,12 @@ class Member extends Model
 
     ];
 
+    public const NON_STUDENT_POSITIONS = [
+        'System Administrator',
+        'Club Adviser',
+        'Guest',
+    ];
+
     protected static function booted(): void
     {
         static::saving(function (Member $member) {

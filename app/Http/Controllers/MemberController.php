@@ -11,12 +11,12 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use App\Models\FinancialTransaction;
 use App\Services\AuditLogger;
-use Illuminate\Support\Facades\Storage;
-
 
 class MemberController extends Controller
 {
@@ -31,83 +31,73 @@ class MemberController extends Controller
     // Permission Helpers
     // -------------------------------------------------------------------------
 
-    private function getAllowedRolesForCurrentUser()
+    private function isSysAdmin(User $user): bool
+    {
+        return in_array($user->role->abbreviation, ['SysAdmin', 'SA'])
+            || (int) $user->role->level === 1;
+    }
+
+    private function getAllowedRolesForCurrentUser(): \Illuminate\Database\Eloquent\Collection
     {
         $user = Auth::user();
-        $map  = config('roles.hierarchy');
 
-        if (in_array($user->role->abbreviation, ['SysAdmin', 'SA'])) {
+        // System Administrator can assign any visible role
+        if ($this->isSysAdmin($user)) {
             return Role::where('is_visible', true)->get();
         }
 
-        if (isset($map[$user->role->abbreviation])) {
-            $allowed = $map[$user->role->abbreviation];
-            if (in_array('all', $allowed)) {
-                return Role::where('is_visible', true)->get();
-            }
-            return Role::whereIn('abbreviation', $allowed)
-                       ->where('is_visible', true)
-                       ->get();
+        // Club Adviser can assign any visible role except System Administrator (role_id 1)
+        if ($user->role->name === 'Club Adviser') {
+            return Role::where('is_visible', true)
+                ->where('id', '!=', 1)
+                ->get();
         }
 
-        // Default: only Org Member role
-        return Role::where('abbreviation', 'OM')
-                   ->where('is_visible', true)
-                   ->get();
+        // Treasurer, Auditor, Guest, and any custom role: no role assignment rights.
+        // Use whereRaw('0') to return a genuine empty Eloquent Collection so that
+        // ->pluck() and ->contains() callers (e.g. assertRoleIsAllowed) stay safe.
+        return Role::whereRaw('0')->get();
     }
 
-    /**
-     * Get allowed positions for a role using Member::VALID_POSITIONS as
-     * the single source of truth.
-     *
-     * Accepts a Role model, stdClass, or array with 'id' field.
-     */
-    private function getAllowedPositions($role): array
+    /** Uses Member::VALID_POSITIONS as the single source of truth. */
+    private function getAllowedPositions(Role $role): array
     {
-        // Normalize to a Role model instance
-        if (is_array($role) && isset($role['id'])) {
-            $role = Role::find($role['id']);
-        } elseif (is_object($role) && !($role instanceof Role) && isset($role->id)) {
-            $role = Role::find($role->id);
-        }
-
-        if (!($role instanceof Role)) {
-            return [];
-        }
-
-        // Single source of truth: Member::VALID_POSITIONS keyed by role_id
         return Member::VALID_POSITIONS[$role->id] ?? [];
     }
 
-    /**
-     * Kept for backward compatibility — delegates to Member::VALID_POSITIONS.
-     */
-    private function getPositionMapping(): array
+    private function buildPositionMapping(iterable $roles): array
     {
-        return Member::VALID_POSITIONS;
+        $map = [];
+        foreach ($roles as $role) {
+            $map[$role->id] = $this->getAllowedPositions($role);
+        }
+        return $map;
     }
 
-    private function canManageMember(User $targetUser, string $action = 'view'): bool
+    private function canManageMember(User $target, string $action = 'view'): bool
     {
-        $currentUser = Auth::user();
+        $current = Auth::user();
 
-        if (in_array($currentUser->role->abbreviation, ['SysAdmin', 'SA'])) return true;
+        if ($this->isSysAdmin($current)) return true;
 
-        if ($action === 'view' && $currentUser->id === $targetUser->id) return true;
+        // Any user may view their own profile
+        if ($action === 'view' && $current->id === $target->id) return true;
 
-        if ($currentUser->role->abbreviation === 'CA') {
-            return true;
+        // Club Adviser can manage all non-SysAdmin members
+        if ($current->role->name === 'Club Adviser') {
+            return !$this->isSysAdmin($target);
         }
 
-        if (in_array($currentUser->role->abbreviation, ['OA', 'OO'])) {
-            $forbidden = ['OA', 'OO', 'CA', 'SA', 'SysAdmin'];
-            if (in_array($targetUser->role->abbreviation ?? '', $forbidden)) {
-                return false;
-            }
-            return true;
-        }
-
+        // Treasurer and Auditor can only view — no manage rights over other members
         return false;
+    }
+
+    private function requiresPermission(string $permission): void
+    {
+        $user = Auth::user();
+        if (!$this->isSysAdmin($user) && !$user->hasPermission($permission)) {
+            abort(403, "You are not authorized to perform this action.");
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -116,75 +106,58 @@ class MemberController extends Controller
 
     public function index(Request $request)
     {
-        $currentUser = auth()->user();
-
-        if ((int) $currentUser->role->level !== 1 && !$currentUser->hasPermission('members.view')) {
-            abort(403, 'You are not authorized to view members.');
-        }
+        $this->requiresPermission('members.view');
 
         $query = User::with(['role:id,name,abbreviation,level']);
 
-        if ($request->filled('search')) {
-            $search = $request->search;
-            $query->where(function ($q) use ($search) {
+        if ($search = $request->input('search')) {
+            $query->where(fn($q) =>
                 $q->where('full_name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%");
-            });
+                  ->orWhere('email', 'like', "%{$search}%")
+            );
         }
 
         $roleFilter = $request->input('role', 'all');
-        if ($roleFilter !== 'all') {
-            switch ($roleFilter) {
-                case 'admin':
-                    $query->whereHas('role', fn($q) => $q->where('name', 'System Administrator'));
-                    break;
-                case 'supreme':
-                    $query->whereHas('role', fn($q) => $q->where('level', '<=', 3));
-                    break;
-                case 'org-leader':
-                    $query->whereHas('role', fn($q) => $q->whereIn('name', ['Org Admin', 'Org Officer']));
-                    break;
-                case 'adviser':
-                    $query->whereHas('role', fn($q) => $q->where('name', 'Club Adviser'));
-                    break;
-                case 'member':
-                    $query->whereHas('role', fn($q) => $q->where('name', 'Org Member'));
-                    break;
-            }
-        }
+        match ($roleFilter) {
+            'admin'   => $query->whereHas('role', fn($q) => $q->where('name', 'System Administrator')),
+            'adviser' => $query->whereHas('role', fn($q) => $q->where('name', 'Club Adviser')),
+            'treasurer' => $query->whereHas('role', fn($q) => $q->where('name', 'Treasurer')),
+            'auditor'   => $query->whereHas('role', fn($q) => $q->where('name', 'Auditor')),
+            'guest'     => $query->whereHas('role', fn($q) => $q->where('name', 'Guest')),
+            'custom'    => $query->whereHas('role', fn($q) => $q->whereNotIn('id', array_keys(Member::VALID_POSITIONS))),
+            default     => null,
+        };
 
         if ($request->filled('status')) {
             $query->where('is_active', $request->status === 'active');
         }
 
         if ($request->filled('verification')) {
-            if ($request->verification === 'verified') {
-                $query->whereNotNull('email_verified_at');
-            } elseif ($request->verification === 'unverified') {
-                $query->whereNull('email_verified_at');
-            }
+            $request->verification === 'verified'
+                ? $query->whereNotNull('email_verified_at')
+                : $query->whereNull('email_verified_at');
         }
 
-        $statsQuery    = clone $query;
+        $statsBase     = clone $query;
+        $predefinedIds = array_keys(Member::VALID_POSITIONS);
         $filteredStats = [
-            'system_admin' => (clone $statsQuery)->whereHas('role', fn($q) => $q->where('name', 'System Administrator'))->count(),
-            'supreme'      => (clone $statsQuery)->whereHas('role', fn($q) => $q->where('level', '<=', 3))->count(),
-            'leaders'      => (clone $statsQuery)->whereHas('role', fn($q) => $q->whereIn('name', ['Org Admin', 'Org Officer']))->count(),
-            'members'      => (clone $statsQuery)->whereHas('role', fn($q) => $q->where('name', 'Org Member'))->count(),
-            'advisers'     => (clone $statsQuery)->whereHas('role', fn($q) => $q->where('name', 'Club Adviser'))->count(),
-            'all'          => (clone $statsQuery)->count(),
+            'admin'     => (clone $statsBase)->whereHas('role', fn($q) => $q->where('name', 'System Administrator'))->count(),
+            'adviser'   => (clone $statsBase)->whereHas('role', fn($q) => $q->where('name', 'Club Adviser'))->count(),
+            'treasurer' => (clone $statsBase)->whereHas('role', fn($q) => $q->where('name', 'Treasurer'))->count(),
+            'auditor'   => (clone $statsBase)->whereHas('role', fn($q) => $q->where('name', 'Auditor'))->count(),
+            'guest'     => (clone $statsBase)->whereHas('role', fn($q) => $q->where('name', 'Guest'))->count(),
+            'custom'    => (clone $statsBase)->whereHas('role', fn($q) => $q->whereNotIn('id', $predefinedIds))->count(),
+            'all'       => (clone $statsBase)->count(),
         ];
 
         $users = $query->paginate(15)->appends($request->except('page'));
 
         $roleColors = [
             'System Administrator' => 'purple',
-            'Supreme Admin'        => 'indigo',
-            'Supreme Officer'      => 'blue',
-            'Org Admin'            => 'emerald',
-            'Org Officer'          => 'sky',
             'Club Adviser'         => 'amber',
-            'Org Member'           => 'gray',
+            'Treasurer'            => 'emerald',
+            'Auditor'              => 'blue',
+            'Guest'                => 'gray',
         ];
 
         return view('members.index', compact('users', 'filteredStats', 'roleColors', 'roleFilter'));
@@ -196,93 +169,28 @@ class MemberController extends Controller
 
     public function create()
     {
-        $currentUser = Auth::user();
-        if (!$currentUser || !$currentUser->role) abort(403);
-
-        if ((int) $currentUser->role->level !== 1 && !$currentUser->hasPermission('members.create')) {
-            abort(403, 'You do not have permission to create members.');
-        }
-
-        $roles = $this->getAllowedRolesForCurrentUser();
-
-        // Build positionMapping keyed by role ID using Member::VALID_POSITIONS
-        $positionMapping = [];
-        foreach ($roles as $role) {
-            $positionMapping[$role->id] = $this->getAllowedPositions($role);
-        }
-
-        return view('members.create', compact('roles', 'positionMapping'));
+        $this->requiresPermission('members.create');
+ 
+        $roles               = $this->getAllowedRolesForCurrentUser();
+        $positionMapping     = $this->buildPositionMapping($roles);
+        // Passed so the view can derive "student role" client-side without
+        // hardcoding any role IDs or position strings.
+        $nonStudentPositions = Member::NON_STUDENT_POSITIONS;
+ 
+        return view('members.create', compact('roles', 'positionMapping', 'nonStudentPositions'));
     }
-
     public function store(Request $request)
     {
-        $currentUser = Auth::user();
-        if (!$currentUser || !$currentUser->role) abort(403);
+        $this->requiresPermission('members.create');
 
-        if ((int) $currentUser->role->level !== 1 && !$currentUser->hasPermission('members.create')) {
-            abort(403, 'You do not have permission to create members.');
-        }
-
-        $validated = $request->validate([
-            'first_name'  => ['required', 'string', 'max:255'],
-            'middle_name' => ['nullable', 'string', 'max:255'],
-            'last_name'   => ['required', 'string', 'max:255'],
-            'email'       => ['required', 'email', 'ends_with:@gmail.com', 'unique:users,email', 'not_in:guest@gmail.com'],
-            'student_id'  => ['nullable', 'string', 'unique:users,student_id', function ($attr, $val, $fail) {
-                if (!empty($val) && !preg_match('/^\d{4}-\d{5}$/', $val)) {
-                    $fail('Student ID must be in format: YYYY-XXXXX');
-                }
-            }],
-            'year_level'  => ['nullable', 'string', 'in:Grade 7,Grade 8,Grade 9,Grade 10,Grade 11,Grade 12'],
-            'gender'      => ['required', 'string', 'in:Male,Female,Other'],
-            'phone'       => ['nullable', 'string', 'max:20', 'unique:users,phone'],
-            'birthday'    => ['nullable', 'date'],
-            'role_id'     => ['required', 'exists:roles,id'],
-            'is_active'   => ['boolean'],
-            'password'    => ['nullable', 'string', 'min:8', 'confirmed'],
-        ], [
-            'email.unique'      => 'This email is already registered.',
-            'student_id.unique' => 'This student ID is already assigned.',
-            'phone.unique'      => 'This phone number is already in use.',
-        ]);
-
-        if (!empty($validated['phone'])) {
-            $phone = preg_replace('/[^0-9]/', '', $validated['phone']);
-            if (substr($phone, 0, 2) == '63') $phone = substr($phone, 2);
-            if (substr($phone, 0, 1) == '0')  $phone = substr($phone, 1);
-            $validated['phone'] = '+63' . substr($phone, 0, 10);
-        }
-
+        $validated    = $this->validateMemberRequest($request);
         $selectedRole = Role::findOrFail($validated['role_id']);
 
-        if (!$selectedRole->is_visible) {
-            return back()->withErrors(['role_id' => 'The selected role is not available.'])->withInput();
-        }
-
-        // Policy-based authorization — relies on fixed UserPolicy (int cast on level)
+        $this->assertRoleIsVisible($selectedRole);
         $this->authorize('assignRole', [User::class, $selectedRole]);
+        $this->assertRoleIsAllowed($selectedRole);
 
-        $allowedRoleIds = $this->getAllowedRolesForCurrentUser()->pluck('id')->toArray();
-        if (!in_array($selectedRole->id, $allowedRoleIds)) {
-            return redirect()->route('members.index')
-                ->with('error', "ACCESS DENIED: You cannot create users with the role '{$selectedRole->name}'.");
-        }
-
-        // Resolve and validate position from Member::VALID_POSITIONS
-        $allowedPositions = Member::VALID_POSITIONS[$selectedRole->id] ?? [];
-
-        if (!empty($allowedPositions)) {
-            $request->validate([
-                'position' => ['required', Rule::in($allowedPositions)],
-            ], [
-                'position.required' => 'Position is required for this role.',
-                'position.in'       => 'Invalid position for this role. Valid options: ' . implode(', ', $allowedPositions),
-            ]);
-            $position = $request->position;
-        } else {
-            // No positions defined for this role (e.g. System Administrator)
-            $position = null;
-        }
+        $position = $this->resolvePositionForRole($selectedRole, $request->input('position'));
 
         if ($this->shouldClearYearLevel($selectedRole->id, $position)) {
             $validated['year_level'] = null;
@@ -290,33 +198,25 @@ class MemberController extends Controller
 
         DB::beginTransaction();
         try {
-            $fullName       = $this->buildFullName($validated);
-            $password       = $validated['password'] ?? Str::random(10);
-            $hashedPassword = Hash::make($password);
-
-            // Upload avatar — Cloudinary in production, local disk in local/dev
-            $avatarUrl = null;
-            if ($request->hasFile('avatar') && $request->file('avatar')->isValid()) {
-                $avatarUrl = $this->uploadAvatar($request->file('avatar'));
-            }
+            $fullName = $this->buildFullName($validated);
+            $password = $validated['password'] ?? Str::random(10);
 
             $user = User::create([
-                'full_name'         => $fullName,
-                'first_name'        => $validated['first_name'],
-                'middle_name'       => $validated['middle_name'] ?? null,
-                'last_name'         => $validated['last_name'],
-                'email'             => $validated['email'],
-                'password'          => $hashedPassword,
-                'role_id'           => $validated['role_id'],
-                'position'          => $position,
-                'student_id'        => $validated['student_id'] ?? null,
-                'year_level'        => $validated['year_level'] ?? null,
-                'gender'            => $validated['gender'],
-                'phone'             => $validated['phone'] ?? null,
-                'birthday'          => $validated['birthday'] ?? null,
-                'is_active'         => $validated['is_active'] ?? true,
-                'avatar'            => $avatarUrl,
-                // 'email_verified_at' => now(),
+                'full_name'   => $fullName,
+                'first_name'  => $validated['first_name'],
+                'middle_name' => $validated['middle_name'] ?? null,
+                'last_name'   => $validated['last_name'],
+                'email'       => $validated['email'],
+                'password'    => Hash::make($password),
+                'role_id'     => $validated['role_id'],
+                'position'    => $position,
+                'student_id'  => $validated['student_id'] ?? null,
+                'year_level'  => $validated['year_level'] ?? null,
+                'gender'      => $validated['gender'],
+                'phone'       => $validated['phone'] ?? null,
+                'birthday'    => $validated['birthday'] ?? null,
+                'is_active'   => $validated['is_active'] ?? true,
+                'avatar'      => $request->hasFile('avatar') ? $this->uploadAvatar($request->file('avatar')) : null,
             ]);
 
             Member::create([
@@ -330,11 +230,11 @@ class MemberController extends Controller
             DB::commit();
 
             AuditLogger::log('created', $user, "Member: {$user->full_name}", [], $user->toArray());
-
             $user->notify(new \App\Notifications\NewUserWelcomeNotification($password));
 
             return redirect()->route('members.index')
                 ->with('success', "Member {$fullName} created successfully! A welcome email has been sent.");
+
         } catch (\Exception $e) {
             DB::rollBack();
             return back()->with('error', 'Failed to create member: ' . $e->getMessage())->withInput();
@@ -349,28 +249,28 @@ class MemberController extends Controller
     {
         $user        = User::findOrFail($id);
         $currentUser = Auth::user();
-        if (!$currentUser || !$currentUser->role) abort(403);
-
-        if ((int) $currentUser->role->level !== 1) {
+ 
+        if (!$this->isSysAdmin($currentUser)) {
             if (!$currentUser->hasPermission('members.edit') || !$this->canManageMember($user, 'edit')) {
                 abort(403, 'Unauthorized to edit this member.');
             }
         }
-
-        $roles = $this->getAllowedRolesForCurrentUser();
-
-        $positionMapping = [];
-        foreach ($roles as $role) {
-            $positionMapping[$role->id] = $this->getAllowedPositions($role);
-        }
-
-        $memberRecord = $user->member;
+ 
+        $roles               = $this->getAllowedRolesForCurrentUser();
+        $positionMapping     = $this->buildPositionMapping($roles);
+        $nonStudentPositions = Member::NON_STUDENT_POSITIONS;
+        $memberRecord        = $user->member;
+ 
         $positionLogs = $memberRecord
-            ? PositionChangeLog::forMember($memberRecord->id)->with('changer')->orderBy('created_at', 'desc')->get()
+            ? PositionChangeLog::forMember($memberRecord->id)
+                ->with('changer')
+                ->orderByDesc('created_at')
+                ->get()
             : collect();
-
-        return view('members.edit', compact('user', 'roles', 'positionMapping', 'positionLogs'))
-            ->with('member', $user);
+ 
+        return view('members.edit', compact(
+            'user', 'roles', 'positionMapping', 'nonStudentPositions', 'positionLogs'
+        ))->with('member', $user);
     }
 
     public function update(Request $request, int $id)
@@ -378,117 +278,36 @@ class MemberController extends Controller
         $user         = User::findOrFail($id);
         $memberRecord = $user->member;
         $currentUser  = Auth::user();
-        if (!$currentUser || !$currentUser->role) abort(403);
 
-        // Guest account protection
+        // Guest account: only avatar updates allowed (SysAdmin only for anything else)
         if ($user->email === 'guest@gmail.com') {
-            if ((int) $currentUser->role->level !== 1) {
-                return back()->with('error', 'Only a System Administrator can modify the shared guest account.');
-            }
-
-            if ($request->hasFile('avatar') && $request->file('avatar')->isValid()) {
-                $this->deleteAvatar($user->avatar);
-                $user->avatar = $this->uploadAvatar($request->file('avatar'));
-                $user->save();
-
-                AuditLogger::log('updated', $user, "Guest avatar updated", [], ['avatar' => $user->avatar]);
-
-                return redirect()->route('members.index')
-                    ->with('success', 'Guest avatar updated successfully.');
-            }
-
-            return back()->with('error', 'Only the avatar can be updated for the guest account.');
+            return $this->handleGuestUpdate($request, $user, $currentUser);
         }
 
-        if ((int) $currentUser->role->level !== 1 && (!$currentUser->hasPermission('members.edit') || !$this->canManageMember($user, 'edit'))) {
-            abort(403, 'Unauthorized to edit this member.');
-        }
-
-        $oldRoleId = $user->role_id;
-        $newRoleId = (int) $request->role_id;
-
-        // Prevent removing the last user from a role
-        if ($oldRoleId != $newRoleId) {
-            $oldRole = Role::find($oldRoleId);
-            if ($oldRole) {
-                $usersWithOldRole = User::where('role_id', $oldRoleId)->count();
-                if ($usersWithOldRole <= 1) {
-                    if ((int) $currentUser->role->level !== 1) {
-                        return back()->with('error', "Only a System Administrator can change the role of the last user with the role '{$oldRole->name}'.");
-                    }
-                    if ($oldRole->id == 1) {
-                        session()->flash('warning', '⚠️ You are changing the role of the last System Administrator. Make sure another user has this role to avoid lockout.');
-                    }
-                }
+        if (!$this->isSysAdmin($currentUser)) {
+            if (!$currentUser->hasPermission('members.edit') || !$this->canManageMember($user, 'edit')) {
+                abort(403, 'Unauthorized to edit this member.');
             }
         }
 
+        $oldRoleId    = $user->role_id;
+        $newRoleId    = (int) $request->role_id;
         $selectedRole = Role::findOrFail($newRoleId);
 
-        if (!$selectedRole->is_visible) {
-            return back()->withErrors(['role_id' => 'The selected role is not available.'])->withInput();
-        }
+        $this->assertRoleIsVisible($selectedRole);
+        $this->guardLastUserInRole($oldRoleId, $newRoleId, $currentUser);
 
-        $validated = $request->validate([
-            'first_name'  => ['required', 'string', 'max:255'],
-            'middle_name' => ['nullable', 'string', 'max:255'],
-            'last_name'   => ['required', 'string', 'max:255'],
-            'email'       => ['required', 'email', 'ends_with:@gmail.com', 'unique:users,email,' . $user->id],
-            'student_id'  => ['nullable', 'string', 'unique:users,student_id,' . $user->id, function ($attr, $val, $fail) {
-                if (!empty($val) && !preg_match('/^\d{4}-\d{5}$/', $val)) $fail('Student ID must be in format: YYYY-XXXXX');
-            }],
-            'year_level'  => ['nullable', 'string', 'in:Grade 7,Grade 8,Grade 9,Grade 10,Grade 11,Grade 12'],
-            'gender'      => ['required', 'string', 'in:Male,Female,Other'],
-            'phone'       => ['nullable', 'string', 'max:20', 'unique:users,phone,' . $user->id],
-            'birthday'    => ['nullable', 'date'],
-            'role_id'     => ['required', 'exists:roles,id'],
-            'is_active'   => ['boolean'],
-            'password'    => ['nullable', 'string', 'min:8', 'confirmed'],
-            'avatar'      => ['nullable', 'image', 'mimes:jpg,jpeg,png,gif,webp', 'max:2048'],
-        ], [
-            'email.unique'      => 'This email is already registered.',
-            'student_id.unique' => 'This student ID is already assigned.',
-            'phone.unique'      => 'This phone number is already in use.',
-        ]);
+        // Resolve once — passed into assertRoleIsAllowed to avoid a redundant DB query
+        $allowedRoles = $this->getAllowedRolesForCurrentUser();
+        $this->assertRoleIsAllowed($selectedRole, $allowedRoles);
 
-        if (!empty($validated['phone'])) {
-            $phone = preg_replace('/[^0-9]/', '', $validated['phone']);
-            if (substr($phone, 0, 2) == '63') $phone = substr($phone, 2);
-            if (substr($phone, 0, 1) == '0')  $phone = substr($phone, 1);
-            $validated['phone'] = '+63' . substr($phone, 0, 10);
-        }
+        $validated = $this->validateMemberRequest($request, $user->id);
 
-        // -----------------------------------------------------------------
-        // Resolve position using Member::VALID_POSITIONS
-        // -----------------------------------------------------------------
-        // Cast to string so logPositionChange() never receives null.
-        // A member with no previous position is treated as an empty string.
-        $allowedPositions = Member::VALID_POSITIONS[$selectedRole->id] ?? [];
-        $oldPosition      = (string) ($user->position ?? '');
-        $newPosition      = $oldPosition;
-        $autoChanged      = false;
+        [$newPosition, $positionChanged, $autoChanged] = $this->resolvePositionChange(
+            $user, $selectedRole, $oldRoleId, $newRoleId, $request->input('position')
+        );
 
-        if (!empty($allowedPositions)) {
-            if ($oldRoleId != $newRoleId || !in_array($oldPosition, $allowedPositions)) {
-                // Auto-assign first valid position when role changes or current position is invalid
-                $newPosition = $allowedPositions[0];
-                $autoChanged = true;
-            } else {
-                // Keep submitted position if it is valid for the role
-                $submittedPosition = $request->input('position');
-                if ($submittedPosition && in_array($submittedPosition, $allowedPositions)) {
-                    $newPosition = $submittedPosition;
-                }
-            }
-        } else {
-            // No positions for this role (e.g. System Administrator)
-            $newPosition = null;
-        }
-
-        $positionChanged = ($oldPosition != $newPosition);
-        $manuallyChanged = $request->boolean('position_manually_changed');
-
-        if ($positionChanged && $manuallyChanged) {
+        if ($positionChanged && $request->boolean('position_manually_changed')) {
             $request->validate([
                 'position_change_reason' => ['required', 'string', 'max:1000'],
             ], [
@@ -500,16 +319,12 @@ class MemberController extends Controller
             $validated['year_level'] = null;
         }
 
-        $allowedRoleIds = $this->getAllowedRolesForCurrentUser()->pluck('id')->toArray();
-        if (!in_array($selectedRole->id, $allowedRoleIds)) {
-            return redirect()->route('members.index')
-                ->with('error', "ACCESS DENIED: You cannot assign the role '{$selectedRole->name}'.");
-        }
-
         DB::beginTransaction();
         try {
-            $fullName = $this->buildFullName($validated);
-            $oldData  = $user->getOriginal();
+            $fullName    = $this->buildFullName($validated);
+            $oldData     = $user->getOriginal();
+            // Must be captured before save() — Laravel clears dirty/original state after persist
+            $oldPosition = (string) ($user->position ?? '');
 
             $user->fill([
                 'full_name'   => $fullName,
@@ -532,10 +347,7 @@ class MemberController extends Controller
             }
 
             if ($request->hasFile('avatar') && $request->file('avatar')->isValid()) {
-                // Delete old avatar before replacing
                 $this->deleteAvatar($user->avatar);
-
-                // Upload new avatar — Cloudinary in production, local disk in local/dev
                 $user->avatar = $this->uploadAvatar($request->file('avatar'));
             }
 
@@ -548,7 +360,8 @@ class MemberController extends Controller
                 if ($positionChanged) {
                     $reason = $autoChanged
                         ? "Auto-updated due to role change from role ID {$oldRoleId} to {$newRoleId}"
-                        : ($request->position_change_reason ?? null);
+                        : ($request->input('position_change_reason') ?? null);
+
                     $this->logPositionChange($memberRecord, $oldPosition, $newPosition, $reason);
                 }
             }
@@ -557,17 +370,12 @@ class MemberController extends Controller
 
             AuditLogger::log('updated', $user, "Member: {$user->full_name}", $oldData, $user->getChanges());
 
-            $message = "Member {$fullName} updated successfully.";
-            if ($positionChanged) {
-                $from     = $oldPosition !== '' ? "'{$oldPosition}'" : 'none';
-                $message .= " Position changed from {$from} to '{$newPosition}'.";
-                if ($autoChanged) $message .= " (auto-assigned for new role)";
-            }
+            return redirect()->route('members.index')
+                ->with('success', $this->buildUpdateSuccessMessage($fullName, $positionChanged, $autoChanged, $oldPosition, $newPosition));
 
-            return redirect()->route('members.index')->with('success', $message);
         } catch (\Exception $e) {
             DB::rollBack();
-            \Log::error('MemberController@update error: ' . $e->getMessage());
+            Log::error('MemberController@update error: ' . $e->getMessage());
             return back()->with('error', 'Failed to update member: ' . $e->getMessage())->withInput();
         }
     }
@@ -578,13 +386,9 @@ class MemberController extends Controller
 
     public function show(int $id)
     {
+        $this->requiresPermission('members.view');
+
         $user        = User::with('role', 'member')->findOrFail($id);
-        $currentUser = Auth::user();
-
-        if ((int) $currentUser->role->level !== 1 && !$currentUser->hasPermission('members.view')) {
-            abort(403);
-        }
-
         $memberSince = optional($user->member)->joined_at ?? $user->created_at;
 
         $documentsCount             = $user->documents()->count();
@@ -615,43 +419,36 @@ class MemberController extends Controller
 
     public function destroy(int $id)
     {
-        $targetUser  = User::findOrFail($id);
+        $target      = User::findOrFail($id);
         $currentUser = Auth::user();
 
-        if ($targetUser->email === 'guest@gmail.com') {
+        if ($target->email === 'guest@gmail.com') {
             return back()->with('error', 'The shared guest account cannot be deleted.');
         }
 
-        if ((int) $currentUser->role->level !== 1 && !$currentUser->hasPermission('members.delete')) {
-            abort(403);
-        }
+        $this->requiresPermission('members.delete');
 
-        if ($targetUser->role->level >= $currentUser->role->level && (int) $currentUser->role->level !== 1) {
+        if (!$this->isSysAdmin($currentUser) && $target->role->level >= $currentUser->role->level) {
             return back()->with('error', 'You cannot delete a user with a role level equal or higher than yours.');
         }
 
-        if ($targetUser->id === $currentUser->id) {
+        if ($target->id === $currentUser->id) {
             return back()->with('error', 'You cannot delete your own account.');
         }
 
-        if ($targetUser->role && $targetUser->role->is_predefined) {
-            $count = User::where('role_id', $targetUser->role_id)->count();
-            if ($count <= 1) {
-                return back()->with('error', "Cannot delete the last user with the role '{$targetUser->role->name}'. This role is required for system functionality.");
-            }
+        if ($target->role?->is_predefined && User::where('role_id', $target->role_id)->count() <= 1) {
+            return back()->with('error', "Cannot delete the last user with the role '{$target->role->name}'. This role is required for system functionality.");
         }
 
         try {
-            $userName = $targetUser->full_name;
-            $userRole = $targetUser->role->name ?? 'Unknown';
+            AuditLogger::log('deleted', $target, "Member: {$target->full_name}", $target->toArray(), []);
 
-            AuditLogger::log('deleted', $targetUser, "Member: {$targetUser->full_name}", $targetUser->toArray(), []);
-
-            $targetUser->member?->delete();
-            $targetUser->delete();
+            $target->member?->delete();
+            $target->delete();
 
             return redirect()->route('members.index')
-                ->with('success', "{$userName} ({$userRole}) has been removed from the system.");
+                ->with('success', "{$target->full_name} ({$target->role->name}) has been removed from the system.");
+
         } catch (\Exception $e) {
             return back()->with('error', 'Failed to delete member: ' . $e->getMessage());
         }
@@ -666,11 +463,11 @@ class MemberController extends Controller
         $user        = User::findOrFail($id);
         $currentUser = Auth::user();
 
-        if ($user->id === auth()->id()) {
+        if ($user->id === $currentUser->id) {
             return response()->json(['error' => 'You cannot deactivate your own account.'], 403);
         }
 
-        if ((int) $currentUser->role->level !== 1 && !$this->canManageMember($user, 'edit')) {
+        if (!$this->isSysAdmin($currentUser) && !$this->canManageMember($user, 'edit')) {
             return response()->json(['error' => 'Unauthorized.'], 403);
         }
 
@@ -687,7 +484,7 @@ class MemberController extends Controller
         $user        = User::findOrFail($id);
         $currentUser = Auth::user();
 
-        if ((int) $currentUser->role->level !== 1 && !$this->canManageMember($user, 'edit')) {
+        if (!$this->isSysAdmin($currentUser) && !$this->canManageMember($user, 'edit')) {
             return response()->json(['error' => 'Unauthorized.'], 403);
         }
 
@@ -707,22 +504,24 @@ class MemberController extends Controller
     {
         try {
             $user         = User::findOrFail($id);
-            $memberRecord = $user->member;
             $currentUser  = Auth::user();
+            $memberRecord = $user->member;
 
-            if (!$currentUser || !$currentUser->role) {
+            if (!$currentUser?->role) {
                 return response()->json(['error' => 'Unauthorized'], 403);
             }
 
-            if ((int) $currentUser->role->level !== 1 && !$this->canManageMember($user, 'view')) {
+            if (!$this->isSysAdmin($currentUser) && !$this->canManageMember($user, 'view')) {
                 return response()->json(['error' => 'Unauthorized'], 403);
             }
 
-            if (!$memberRecord) return response()->json([]);
+            if (!$memberRecord) {
+                return response()->json([]);
+            }
 
             $logs = PositionChangeLog::forMember($memberRecord->id)
                 ->with('changer')
-                ->orderBy('created_at', 'desc')
+                ->orderByDesc('created_at')
                 ->get()
                 ->map(fn($log) => [
                     'id'           => $log->id,
@@ -737,8 +536,9 @@ class MemberController extends Controller
                 ]);
 
             return response()->json($logs);
+
         } catch (\Exception $e) {
-            \Log::error('MemberController@getPositionHistoryData: ' . $e->getMessage());
+            Log::error('MemberController@getPositionHistoryData: ' . $e->getMessage());
             return response()->json(['error' => 'Failed to load position change log.'], 500);
         }
     }
@@ -750,19 +550,18 @@ class MemberController extends Controller
     public function editHistory(int $id)
     {
         $user         = User::with('role', 'member')->findOrFail($id);
-        $memberRecord = $user->member;
-        if (!$memberRecord) abort(404, 'Member record not found.');
+        $memberRecord = $user->member ?? abort(404, 'Member record not found.');
+        $currentUser  = Auth::user();
 
-        $currentUser = Auth::user();
-        if (!$currentUser || !$currentUser->role) abort(403);
+        if (!$currentUser?->role) abort(403);
 
-        if ((int) $currentUser->role->level !== 1 && !$this->canManageMember($user, 'view')) {
-            abort(403, 'Unauthorized to view this member\'s history.');
+        if (!$this->isSysAdmin($currentUser) && !$this->canManageMember($user, 'view')) {
+            abort(403, "Unauthorized to view this member's history.");
         }
 
         $positionLogs = PositionChangeLog::forMember($memberRecord->id)
             ->with('changer')
-            ->orderBy('created_at', 'desc')
+            ->orderByDesc('created_at')
             ->paginate(20);
 
         return view('members.edit-history', compact('user', 'memberRecord', 'positionLogs'));
@@ -771,6 +570,128 @@ class MemberController extends Controller
     // -------------------------------------------------------------------------
     // Private Helpers
     // -------------------------------------------------------------------------
+
+    private function handleGuestUpdate(Request $request, User $user, User $currentUser): \Illuminate\Http\RedirectResponse
+    {
+        if (!$this->isSysAdmin($currentUser)) {
+            return back()->with('error', 'Only a System Administrator can modify the shared guest account.');
+        }
+
+        if ($request->hasFile('avatar') && $request->file('avatar')->isValid()) {
+            $this->deleteAvatar($user->avatar);
+            $user->avatar = $this->uploadAvatar($request->file('avatar'));
+            $user->save();
+
+            AuditLogger::log('updated', $user, "Guest avatar updated", [], ['avatar' => $user->avatar]);
+
+            return redirect()->route('members.index')->with('success', 'Guest avatar updated successfully.');
+        }
+
+        return back()->with('error', 'Only the avatar can be updated for the guest account.');
+    }
+
+    private function guardLastUserInRole(int $oldRoleId, int $newRoleId, User $currentUser): void
+    {
+        if ($oldRoleId === $newRoleId) return;
+
+        $oldRole = Role::find($oldRoleId);
+        if (!$oldRole) return;
+
+        if (User::where('role_id', $oldRoleId)->count() > 1) return;
+
+        if (!$this->isSysAdmin($currentUser)) {
+            abort(403, "Only a System Administrator can change the role of the last user with the role '{$oldRole->name}'.");
+        }
+
+        if ($oldRole->id === 1) {
+            session()->flash('warning', '⚠️ You are changing the role of the last System Administrator. Make sure another user has this role to avoid lockout.');
+        }
+    }
+
+    private function assertRoleIsVisible(Role $role): void
+    {
+        if (!$role->is_visible) {
+            abort(422, 'The selected role is not available.');
+        }
+    }
+
+    private function assertRoleIsAllowed(Role $role, ?\Illuminate\Database\Eloquent\Collection $allowedRoles = null): void
+    {
+        $allowedIds = ($allowedRoles ?? $this->getAllowedRolesForCurrentUser())->pluck('id');
+
+        if (!$allowedIds->contains($role->id)) {
+            abort(403, "ACCESS DENIED: You cannot assign the role '{$role->name}'.");
+        }
+    }
+
+    /**
+     * Resolve a valid position for the given role.
+     * Returns null when the role has no defined positions (e.g. System Administrator).
+     */
+    private function resolvePositionForRole(Role $role, ?string $submitted): ?string
+    {
+        $allowed = $this->getAllowedPositions($role);
+
+        if (empty($allowed)) {
+            return null;
+        }
+
+        if ($submitted && in_array($submitted, $allowed, true)) {
+            return $submitted;
+        }
+
+        // Validate that the submitted value is present and valid
+        request()->validate([
+            'position' => ['required', Rule::in($allowed)],
+        ], [
+            'position.required' => 'Position is required for this role.',
+            'position.in'       => 'Invalid position for this role. Valid options: ' . implode(', ', $allowed),
+        ]);
+
+        return $submitted;
+    }
+
+    /**
+     * Returns [newPosition, positionChanged, autoChanged].
+     *
+     * @return array{string|null, bool, bool}
+     */
+    private function resolvePositionChange(User $user, Role $selectedRole, int $oldRoleId, int $newRoleId, ?string $submitted): array
+    {
+        $allowed     = $this->getAllowedPositions($selectedRole);
+        $oldPosition = (string) ($user->position ?? '');
+        $autoChanged = false;
+
+        if (empty($allowed)) {
+            return [null, $oldPosition !== '', false];
+        }
+
+        if ($oldRoleId !== $newRoleId || !in_array($oldPosition, $allowed, true)) {
+            // Auto-assign first valid position when role changes or current is invalid
+            return [$allowed[0], $oldPosition !== $allowed[0], true];
+        }
+
+        if ($submitted && in_array($submitted, $allowed, true)) {
+            return [$submitted, $oldPosition !== $submitted, false];
+        }
+
+        return [$oldPosition, false, false];
+    }
+
+    private function buildUpdateSuccessMessage(string $fullName, bool $positionChanged, bool $autoChanged, string $oldPosition, ?string $newPosition): string
+    {
+        $message = "Member {$fullName} updated successfully.";
+
+        if ($positionChanged) {
+            $from     = $oldPosition !== '' ? "'{$oldPosition}'" : 'none';
+            $message .= " Position changed from {$from} to '{$newPosition}'.";
+            if ($autoChanged) {
+                $message .= ' (auto-assigned for new role)';
+            }
+        }
+
+        return $message;
+    }
 
     private function buildFullName(array $validated): string
     {
@@ -782,54 +703,91 @@ class MemberController extends Controller
     }
 
     /**
-     * Determine whether year_level should be cleared for the given role/position.
-     *
-     * Non-student roles are derived from Member::VALID_POSITIONS:
-     *   - Roles with an empty positions array (e.g. role_id 1 = System Administrator)
-     *   - Roles whose positions include non-student titles (Club Adviser, Guest)
-     *
-     * If you add new non-student roles, update Member::VALID_POSITIONS and they
-     * will automatically be excluded here — no need to touch this method.
+     * Normalises a PH phone number to +63XXXXXXXXXX format.
      */
-    private function shouldClearYearLevel($roleId, $position): bool
+    private function normalizePhone(string $phone): string
     {
-        $nonStudentPositions = ['System Administrator', 'Club Adviser', 'Guest'];
+        $digits = preg_replace('/[^0-9]/', '', $phone);
+        if (str_starts_with($digits, '63')) $digits = substr($digits, 2);
+        if (str_starts_with($digits, '0'))  $digits = substr($digits, 1);
+        return '+63' . substr($digits, 0, 10);
+    }
 
+    /**
+     * Whether year_level should be cleared for the given role + position.
+     *
+     * Non-student logic is derived entirely from Member::NON_STUDENT_POSITIONS
+     * and Member::VALID_POSITIONS — no hardcoded role IDs or position strings here.
+     *
+     * Clears year_level when:
+     *   (a) the role has no positions defined at all, OR
+     *   (b) every position the role allows is a non-student position, OR
+     *   (c) the specific resolved position is itself a non-student position.
+     */
+    private function shouldClearYearLevel(int $roleId, ?string $position): bool
+    {
         $positionsForRole = Member::VALID_POSITIONS[$roleId] ?? [];
 
-        // Roles with no positions at all (e.g. System Administrator role_id=1)
         if (empty($positionsForRole)) {
             return true;
         }
 
-        // Roles whose entire position list is non-student titles
-        $allNonStudent = count(array_filter(
-            $positionsForRole,
-            fn($p) => in_array($p, $nonStudentPositions)
-        )) === count($positionsForRole);
+        $nonStudent = Member::NON_STUDENT_POSITIONS;
 
-        if ($allNonStudent) {
+        // All positions for this role are non-student
+        if (array_diff($positionsForRole, $nonStudent) === []) {
             return true;
         }
 
-        // Specific position override (e.g. a mixed role where only some positions are non-student)
-        if ($position && in_array($position, $nonStudentPositions)) {
-            return true;
+        // The specific resolved position is non-student
+        return $position !== null && in_array($position, $nonStudent, true);
+    }
+
+    /**
+     * Validate a create or update member request.
+     * Pass $userId on updates to exclude the current record from unique checks.
+     */
+    private function validateMemberRequest(Request $request, ?int $userId = null): array
+    {
+        $uniqueEmail     = $userId ? "unique:users,email,{$userId}"     : 'unique:users,email';
+        $uniqueStudentId = $userId ? "unique:users,student_id,{$userId}" : 'unique:users,student_id';
+        $uniquePhone     = $userId ? "unique:users,phone,{$userId}"      : 'unique:users,phone';
+
+        $validated = $request->validate([
+            'first_name'  => ['required', 'string', 'max:255'],
+            'middle_name' => ['nullable', 'string', 'max:255'],
+            'last_name'   => ['required', 'string', 'max:255'],
+            'email'       => ['required', 'email', 'ends_with:@gmail.com', $uniqueEmail, 'not_in:guest@gmail.com'],
+            'student_id'  => ['nullable', 'string', $uniqueStudentId, function ($attr, $val, $fail) {
+                if (!empty($val) && !preg_match('/^\d{4}-\d{5}$/', $val)) {
+                    $fail('Student ID must be in format: YYYY-XXXXX');
+                }
+            }],
+            'year_level'  => ['nullable', 'string', 'in:Grade 7,Grade 8,Grade 9,Grade 10,Grade 11,Grade 12'],
+            'gender'      => ['required', 'string', 'in:Male,Female,Other'],
+            'phone'       => ['nullable', 'string', 'max:20', $uniquePhone],
+            'birthday'    => ['nullable', 'date'],
+            'role_id'     => ['required', 'exists:roles,id'],
+            'is_active'   => ['boolean'],
+            'password'    => ['nullable', 'string', 'min:8', 'confirmed'],
+            'avatar'      => ['nullable', 'image', 'mimes:jpg,jpeg,png,gif,webp', 'max:2048'],
+        ], [
+            'email.unique'      => 'This email is already registered.',
+            'student_id.unique' => 'This student ID is already assigned.',
+            'phone.unique'      => 'This phone number is already in use.',
+        ]);
+
+        if (!empty($validated['phone'])) {
+            $validated['phone'] = $this->normalizePhone($validated['phone']);
         }
 
-        return false;
+        return $validated;
     }
 
     // -------------------------------------------------------------------------
     // Avatar Helpers — local disk in development, Cloudinary in production
     // -------------------------------------------------------------------------
 
-    /**
-     * Build and return a configured Cloudinary instance using individual
-     * env variables (CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET).
-     *
-     * This avoids the broken `new Cloudinary(url_string)` pattern from v3.x.
-     */
     private function getCloudinaryInstance(): \Cloudinary\Cloudinary
     {
         return new \Cloudinary\Cloudinary(
@@ -844,39 +802,24 @@ class MemberController extends Controller
         );
     }
 
-    /**
-     * Upload an avatar file.
-     * Uses Cloudinary when credentials are present and APP_ENV is production
-     * (or FORCE_CLOUDINARY=true for local testing).
-     * Falls back to local public disk otherwise.
-     */
     private function uploadAvatar($file): string
     {
         if ($this->useCloudinary()) {
             $result = $this->getCloudinaryInstance()
                 ->uploadApi()
-                ->upload(
-                    $file->getRealPath(),
-                    ['folder' => 'vsulhs-sslg/avatars']
-                );
+                ->upload($file->getRealPath(), ['folder' => 'vsulhs-sslg/avatars']);
 
             return $result['secure_url'];
         }
 
-        // Local storage (development)
         return $file->store('avatars', 'public');
     }
 
-    /**
-     * Delete an existing avatar.
-     * Handles both Cloudinary URLs and local file paths.
-     */
     private function deleteAvatar(?string $avatar): void
     {
         if (!$avatar) return;
 
         if (str_starts_with($avatar, 'https://res.cloudinary.com')) {
-            // Extract public_id from Cloudinary URL and destroy
             preg_match('/\/v\d+\/(.+)\.[a-z]+$/i', parse_url($avatar, PHP_URL_PATH), $matches);
             if (!empty($matches[1])) {
                 $this->getCloudinaryInstance()->uploadApi()->destroy($matches[1]);
@@ -884,36 +827,18 @@ class MemberController extends Controller
             return;
         }
 
-        // Local file
         if (!str_starts_with($avatar, 'http')) {
             Storage::disk('public')->delete($avatar);
         }
     }
 
-    /**
-     * Determine whether to use Cloudinary based on environment.
-     *
-     * Requires all three env variables to be set:
-     *   CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET
-     *
-     * Active when:
-     *   - APP_ENV=production, OR
-     *   - FORCE_CLOUDINARY=true (useful for local testing)
-     */
     private function useCloudinary(): bool
     {
         $hasCredentials = !empty(env('CLOUDINARY_CLOUD_NAME'))
                        && !empty(env('CLOUDINARY_API_KEY'))
                        && !empty(env('CLOUDINARY_API_SECRET'));
 
-        if (!$hasCredentials) return false;
-
-        // Always use Cloudinary in production
-        if (app()->environment('production')) return true;
-
-        // Optionally force Cloudinary in local for testing
-        if (env('FORCE_CLOUDINARY', false)) return true;
-
-        return false;
+        return $hasCredentials
+            && (app()->environment('production') || env('FORCE_CLOUDINARY', false));
     }
 }

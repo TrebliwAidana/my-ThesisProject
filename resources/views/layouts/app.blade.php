@@ -17,16 +17,24 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
 
-    {{-- Flash data for JS toast system --}}
-    @if(session()->hasAny(['success','error','warning','info']))
-        @php
-            $flashData = array_filter([
-                'success' => session('success'),
-                'error'   => session('error'),
-                'warning' => session('warning'),
-                'info'    => session('info'),
-            ]);
-        @endphp
+    {{--
+        Flash data for JS toast system.
+        - 'success' merges session('success') and session('password_success') so both
+          trigger the same single toast without needing inline HTML blocks in child views.
+        - All other flash keys are passed through as-is.
+        - Child views should NOT render their own @if(session('success')) HTML blocks;
+          this meta tag is the single source of truth for all flash messages.
+    --}}
+    @php
+        $flashSuccess = session('success') ?? session('password_success');
+        $flashData = array_filter([
+            'success' => $flashSuccess,
+            'error'   => session('error'),
+            'warning' => session('warning'),
+            'info'    => session('info'),
+        ]);
+    @endphp
+    @if(!empty($flashData))
         <meta name="flash-data" content="{{ json_encode($flashData) }}">
     @endif
 
@@ -214,7 +222,7 @@
             text-rendering: geometricPrecision;
             letter-spacing: -0.01em;           /* subtle crispness */
         }
-        
+
         /* Section labels (Main, Records, Account, Administration) */
         html.dark .sidebar-section-label {
             color: #A5B4FC !important;        /* Soft indigo tint for readability */
@@ -223,7 +231,7 @@
             opacity: 1;
             -webkit-font-smoothing: antialiased;
         }
-        
+
         /* Keep hover/active states consistent (gold or emerald backgrounds, white text) */
         .sidebar-link:hover,
         .sidebar-sub-link:hover,
@@ -231,7 +239,7 @@
         .sidebar-sub-link.active {
             color: white !important;            /* override any dark text on hover/active */
         }
-        
+
         /* Additional safeguard for any text spans inside sidebar */
         html.dark .sidebar-link span,
         html.dark .sidebar-sub-link span,
@@ -893,6 +901,13 @@
         }
     };
 
+    /*
+     | Flash message bootstrapper.
+     | Reads the single <meta name="flash-data"> tag written by the layout's
+     | @php block above and fires one toast per flash key.
+     | Child views must NOT render their own session() HTML blocks — this is
+     | the only place flash messages are displayed.
+     */
     document.addEventListener('DOMContentLoaded', function () {
         var meta = document.querySelector('meta[name="flash-data"]');
         if (!meta) return;

@@ -5,9 +5,11 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Role extends Model
 {
+    use SoftDeletes;
     protected $fillable = [
         'name',
         'abbreviation',
@@ -126,7 +128,7 @@ class Role extends Model
     /**
      * Get the role description, with a fallback for predefined roles if missing.
      */
-    public function getDescriptionAttribute(?string $value): string
+    public function getDescAttribute(?string $value): string
     {
         if ($value) {
             return $value;

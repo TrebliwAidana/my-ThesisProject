@@ -15,7 +15,7 @@
         <div class="absolute top-0 right-0 -mt-8 -mr-8 w-64 h-64 bg-white/5 rounded-full blur-3xl"></div>
     </div>
 
-    {{-- Flash Messages (gold borders) --}}
+    {{-- Flash Messages (gold borders)
     @if(session('success'))
         <div class="p-4 bg-green-100 dark:bg-green-900/30 border border-gold-300 dark:border-gold-800 text-green-800 dark:text-green-300 rounded-xl text-sm">
             ✅ {{ session('success') }}
@@ -25,7 +25,7 @@
         <div class="p-4 bg-red-100 dark:bg-red-900/30 border border-gold-300 dark:border-gold-800 text-red-800 dark:text-red-300 rounded-xl text-sm">
             ❌ {{ session('error') }}
         </div>
-    @endif
+    @endif --}}
 
     {{-- Table Card --}}
     <div class="bg-white dark:bg-gray-800 rounded-xl border border-gold-200 dark:border-gold-800 overflow-hidden shadow-sm">
