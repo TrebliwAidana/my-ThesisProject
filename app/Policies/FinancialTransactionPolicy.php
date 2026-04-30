@@ -5,138 +5,180 @@ namespace App\Policies;
 use App\Models\FinancialTransaction;
 use App\Models\User;
 
+/**
+ * FinancialTransactionPolicy
+ *
+ * Workflow:  pending → audited → approved → (paid for receivables)
+ *
+ * FIXES applied vs original:
+ *
+ * 1. audit():   was checking status !== 'approved'   — WRONG.
+ *               Audit action applies to PENDING transactions.
+ *               Fixed to: status !== 'pending'
+ *
+ * 2. approve(): was checking status !== 'pending'    — WRONG.
+ *               Approve action requires status === 'audited'.
+ *               Fixed to: status !== 'audited'
+ *
+ * 3. delete():  was hard-coded to level === 1 only.
+ *               Treasurer has 'financial.delete' in the seeder — they can
+ *               delete their own pending/rejected transactions.
+ *               Fixed to: isAdmin OR (hasPermission AND owns the transaction).
+ *
+ * 4. forceDelete(): remains System Admin only — permanent deletion is a
+ *               privileged action not assigned to any non-admin role.
+ *
+ * 5. restore(): was always false — restored to: isAdmin OR financial.delete.
+ *               Consistent with FinancialController::restore() guard.
+ *
+ * 6. All methods cast role->level to int before comparison to prevent
+ *               silent failures when DB returns a string "1".
+ */
 class FinancialTransactionPolicy
 {
-    /**
-     * Determine whether the user can view any financial transactions.
-     */
+    // ── View ──────────────────────────────────────────────────────────────────
+
     public function viewAny(User $user): bool
     {
-        // System Admin (level 1) can always view
-        if ($user->role->level === 1) {
-            return true;
-        }
-
-        return $user->hasPermission('financial.view');
+        return (int) $user->role->level === 1
+            || $user->hasPermission('financial.view');
     }
 
-    /**
-     * Determine whether the user can view a specific transaction.
-     */
     public function view(User $user, FinancialTransaction $transaction): bool
     {
-        // System Admin (level 1) can always view
-        if ($user->role->level === 1) {
-            return true;
-        }
-
-        return $user->hasPermission('financial.view');
+        return (int) $user->role->level === 1
+            || $user->hasPermission('financial.view');
     }
 
-    /**
-     * Determine whether the user can create transactions.
-     */
+    // ── Create ────────────────────────────────────────────────────────────────
+
     public function create(User $user): bool
     {
-        // System Admin (level 1) can always create
-        if ($user->role->level === 1) {
-            return true;
-        }
-
-        return $user->hasPermission('financial.create');
+        return (int) $user->role->level === 1
+            || $user->hasPermission('financial.create');
     }
 
+    // ── Edit / Update ─────────────────────────────────────────────────────────
+
     /**
-     * Determine whether the user can update a transaction.
+     * Only pending transactions can be edited.
+     * Treasurer can edit their own; System Admin can edit any.
      */
     public function update(User $user, FinancialTransaction $transaction): bool
     {
-        // Only updatable if pending status
         if ($transaction->status !== 'pending') {
             return false;
         }
 
-        // System Admin (level 1) can always update
-        if ($user->role->level === 1) {
+        if ((int) $user->role->level === 1) {
             return true;
         }
 
-        // Creator can update their own pending transaction
-        if ($transaction->user_id === $user->id) {
-            return $user->hasPermission('financial.create');
-        }
-
-        return false;
+        // Own transaction + edit permission
+        return $transaction->user_id === $user->id
+            && $user->hasPermission('financial.edit');
     }
 
-    /**
-     * Determine whether the user can approve a transaction.
-     */
-    public function approve(User $user, FinancialTransaction $transaction): bool
-    {
-        // Only approvable if pending
-        if ($transaction->status !== 'pending') {
-            return false;
-        }
-
-        // System Admin (level 1) can approve
-        if ($user->role->level === 1) {
-            return true;
-        }
-
-        return $user->hasPermission('financial.approve');
-    }
+    // ── Audit ─────────────────────────────────────────────────────────────────
 
     /**
-     * Determine whether the user can audit a transaction.
+     * FIX: was checking status !== 'approved' — inverted from actual workflow.
+     * Audit applies to PENDING transactions only.
+     * Workflow: pending → [audit] → audited → [approve] → approved
      */
     public function audit(User $user, FinancialTransaction $transaction): bool
     {
-        // Only auditable if approved
-        if ($transaction->status !== 'approved') {
+        // Only pending transactions can be audited
+        if ($transaction->status !== 'pending') {
             return false;
         }
 
-        // System Admin (level 1) can audit
-        if ($user->role->level === 1) {
-            return true;
+        return (int) $user->role->level === 1
+            || $user->hasPermission('financial.audit');
+    }
+
+    // ── Approve / Reject ──────────────────────────────────────────────────────
+
+    /**
+     * FIX: was checking status !== 'pending' — inverted from actual workflow.
+     * Approve applies to AUDITED transactions only.
+     * Workflow: pending → audited → [approve] → approved
+     */
+    public function approve(User $user, FinancialTransaction $transaction): bool
+    {
+        // Only audited transactions can be approved
+        if ($transaction->status !== 'audited') {
+            return false;
         }
 
-        return $user->hasPermission('financial.audit');
+        return (int) $user->role->level === 1
+            || $user->hasPermission('financial.approve');
     }
 
     /**
-     * Determine whether the user can delete a transaction.
+     * Reject follows the same gate as approve — only audited or pending
+     * transactions that haven't been finalized yet can be rejected.
+     */
+    public function reject(User $user, FinancialTransaction $transaction): bool
+    {
+        if (in_array($transaction->status, ['approved', 'paid', 'rejected'])) {
+            return false;
+        }
+
+        return (int) $user->role->level === 1
+            || $user->hasPermission('financial.approve');
+    }
+
+    // ── Mark as Paid (receivables only) ──────────────────────────────────────
+
+    public function markAsPaid(User $user, FinancialTransaction $transaction): bool
+    {
+        if ($transaction->type !== 'receivable' || $transaction->status !== 'approved') {
+            return false;
+        }
+
+        return (int) $user->role->level === 1
+            || $user->hasPermission('financial.approve');
+    }
+
+    // ── Delete ────────────────────────────────────────────────────────────────
+
+    /**
+     * FIX: original was System Admin only, but PermissionMatrixSeeder assigns
+     * 'financial.delete' to Treasurer. Treasurers can delete their own
+     * pending or rejected transactions. System Admin can delete any.
      */
     public function delete(User $user, FinancialTransaction $transaction): bool
     {
-        // Only System Admin (level 1) can delete
-        return $user->role->level === 1;
+        if ((int) $user->role->level === 1) {
+            return true;
+        }
+
+        // Non-admin: must own the transaction + have delete permission
+        return $transaction->user_id === $user->id
+            && $user->hasPermission('financial.delete');
     }
 
+    // ── Restore ───────────────────────────────────────────────────────────────
+
     /**
-     * Determine whether the user can permanently delete a transaction.
+     * FIX: original always returned false, but FinancialController::restore()
+     * allows users with 'financial.delete'. Aligned to match controller logic.
+     */
+    public function restore(User $user, FinancialTransaction $transaction): bool
+    {
+        return (int) $user->role->level === 1
+            || $user->hasPermission('financial.delete');
+    }
+
+    // ── Force Delete ──────────────────────────────────────────────────────────
+
+    /**
+     * Permanent deletion is System Admin only — no non-admin role is assigned
+     * this capability in PermissionMatrixSeeder, and it cannot be undone.
      */
     public function forceDelete(User $user, FinancialTransaction $transaction): bool
     {
-        // Only System Admin (level 1) can force delete
-        return $user->role->level === 1;
+        return (int) $user->role->level === 1;
     }
-
-
-    /**
-     * Determine whether the user can restore the model.
-     */
-    public function restore(User $user, FinancialTransaction $financialTransaction): bool
-    {
-        return false;
-    }
-
-    // /**
-    //  * Determine whether the user can permanently delete the model.
-    //  */
-    // public function forceDelete(User $user, FinancialTransaction $financialTransaction): bool
-    // {
-    //     return false;
-    // }
 }

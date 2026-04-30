@@ -42,6 +42,24 @@
                         'rejected' => 'bg-red-100 text-red-700',
                         'paid'     => 'bg-green-100 text-green-800',
                     ];
+
+                    // ─────────────────────────────────────────────────────────
+                    // FIX: All slugs now match PermissionMatrixSeeder exactly.
+                    // Previous slugs were underscore-style and never existed in DB:
+                    //   'submit_financial_transactions'  → financial.edit / financial.delete
+                    //   'view_financial_transactions'    → financial.audit
+                    //   'approve_financial_transactions' → financial.approve
+                    // ─────────────────────────────────────────────────────────
+                    $user       = auth()->user();
+                    $isAdmin    = (int) $user->role->level === 1;
+                    $canEdit    = ($isAdmin || $user->hasPermission('financial.edit'))   && $transaction->status === 'pending';
+                    $canDelete  = ($isAdmin || $user->hasPermission('financial.delete')) && $transaction->status === 'pending';
+                    $canAudit   = ($isAdmin || $user->hasPermission('financial.audit'))  && $transaction->status === 'pending';
+                    $canApprove = ($isAdmin || $user->hasPermission('financial.approve')) && $transaction->status === 'audited';
+                    $canReject  = $canApprove;
+                    $canMarkPaid = ($isAdmin || $user->hasPermission('financial.approve'))
+                                    && $transaction->type === 'receivable'
+                                    && $transaction->status === 'approved';
                 @endphp
                 <span class="text-2xl font-bold {{ $amountColor }}">
                     {{ $prefix }} {{ $transaction->formatted_amount }}
@@ -133,10 +151,7 @@
         </div>
         @endif
 
-        {{-- ══════════════════════════════════════════════════════════
-             SUGGESTION 3 — Approval Document section
-             Clearly labeled, distinguished from generic documents
-        ══════════════════════════════════════════════════════════ --}}
+        {{-- Documents --}}
         @if($transaction->documents->isNotEmpty())
         @php
             $approvalDocs = $transaction->documents->filter(function($doc) {
@@ -149,7 +164,6 @@
             });
         @endphp
 
-        {{-- Approval Document --}}
         @if($approvalDocs->isNotEmpty())
         <div>
             <div class="flex items-center gap-2 mb-2">
@@ -193,7 +207,6 @@
         </div>
         @endif
 
-        {{-- Receipt / Manual attachments --}}
         @if($receiptDocs->isNotEmpty())
         <div>
             <p class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Attached Receipt</p>
@@ -222,76 +235,148 @@
 
         <hr class="border-gray-100 dark:border-gray-700">
 
-        {{-- ══════════════════════════════════════════════════════════
-             Mark as Paid — receivable only, status = approved
-        ══════════════════════════════════════════════════════════ --}}
-        @if($transaction->type === 'receivable' && $transaction->status === 'approved')
-            @if(auth()->user()->hasPermission('approve_financial_transactions') || auth()->user()->role->level === 1)
-            <div class="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-700 rounded-xl p-4">
-                <p class="text-sm font-semibold text-purple-800 dark:text-purple-300 mb-1">Ready to collect?</p>
-                <p class="text-xs text-purple-600 dark:text-purple-400 mb-3">
-                    Clicking <strong>Mark as Paid</strong> will add
-                    <strong>₱{{ number_format($transaction->amount, 2) }}</strong> to Total Income
-                    and save the approval slip to Documents automatically.
-                </p>
-                <form method="POST" action="{{ route('financial.mark-as-paid', $transaction->id) }}"
-                      onsubmit="return confirm('Confirm payment received from {{ addslashes($transaction->customer_name) }}?\n\nThis will add ₱{{ number_format($transaction->amount, 2) }} to total income and cannot be undone.')">
-                    @csrf
-                    @method('PATCH')
-                    <button type="submit"
-                            class="bg-purple-600 hover:bg-purple-700 text-white font-semibold px-6 py-2 rounded-lg transition">
-                        ✅ Mark as Paid
-                    </button>
-                </form>
-            </div>
-            @endif
+        {{-- ── Mark as Paid — receivable only ──────────────────────────── --}}
+        {{--
+            FIX: was checking 'approve_financial_transactions' — correct slug is 'financial.approve'.
+            $canMarkPaid already computed in the @php block above for consistency.
+        --}}
+        @if($canMarkPaid)
+        <div class="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-700 rounded-xl p-4"
+             x-data="{ submitting: false }">
+            <p class="text-sm font-semibold text-purple-800 dark:text-purple-300 mb-1">Ready to collect?</p>
+            <p class="text-xs text-purple-600 dark:text-purple-400 mb-3">
+                Clicking <strong>Mark as Paid</strong> will add
+                <strong>₱{{ number_format($transaction->amount, 2) }}</strong> to Total Income
+                and save the approval slip to Documents automatically.
+            </p>
+            {{--
+                FIX: x-data + @submit handler disables button immediately on click,
+                preventing accidental double-submissions on slow connections.
+            --}}
+            <form method="POST"
+                  action="{{ route('financial.mark-as-paid', $transaction->id) }}"
+                  @submit.prevent="
+                      if (!confirm('Confirm payment received from {{ addslashes($transaction->customer_name) }}?\n\nThis will add ₱{{ number_format($transaction->amount, 2) }} to total income and cannot be undone.')) return;
+                      submitting = true;
+                      $el.submit();
+                  ">
+                @csrf
+                @method('PATCH')
+                <button type="submit"
+                        :disabled="submitting"
+                        :class="submitting ? 'opacity-60 cursor-not-allowed' : 'hover:bg-purple-700'"
+                        class="bg-purple-600 text-white font-semibold px-6 py-2 rounded-lg transition inline-flex items-center gap-2">
+                    <svg x-show="submitting" class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                    </svg>
+                    <span x-text="submitting ? 'Processing…' : '✅ Mark as Paid'"></span>
+                </button>
+            </form>
+        </div>
         @endif
 
-        {{-- ══════════════════════════════════════════════════════════
-             Actions
-        ══════════════════════════════════════════════════════════ --}}
+        {{-- ── Actions ──────────────────────────────────────────────────── --}}
+        {{--
+            All action buttons wrapped in x-data for per-form submit-lock.
+            This prevents double-clicks on Audit, Approve, Reject, and Delete
+            which can cause duplicate DB writes on slow connections.
+        --}}
         <div class="flex flex-wrap gap-3">
-            @php $user = auth()->user(); @endphp
 
-            @if($transaction->status === 'pending')
-                @if($user->hasPermission('submit_financial_transactions') || $user->role->level === 1)
+            @if($canEdit)
                 <a href="{{ route('financial.edit', $transaction->id) }}"
                    class="bg-gold-500 hover:bg-gold-600 text-white text-sm font-semibold px-4 py-2 rounded-lg transition">
                     Edit
                 </a>
-                <form method="POST" action="{{ route('financial.destroy', $transaction->id) }}"
-                      class="inline" onsubmit="return confirm('Delete this transaction?')">
-                    @csrf @method('DELETE')
-                    <button type="submit"
-                            class="bg-gray-200 hover:bg-red-600 hover:text-white text-gray-700 text-sm font-semibold px-4 py-2 rounded-lg transition">
-                        Delete
-                    </button>
-                </form>
-                @endif
             @endif
 
-            @if($transaction->status === 'pending' && $user->hasPermission('view_financial_transactions'))
-                <form method="POST" action="{{ route('financial.audit', $transaction->id) }}" class="inline">
-                    @csrf @method('PATCH')
-                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition">
-                        Mark as Audited
-                    </button>
-                </form>
+            @if($canAudit)
+                {{-- FIX: was checking 'view_financial_transactions' — correct slug is 'financial.audit' --}}
+                <div x-data="{ submitting: false }">
+                    <form method="POST"
+                          action="{{ route('financial.audit', $transaction->id) }}"
+                          @submit="if (!submitting) submitting = true; else $event.preventDefault();">
+                        @csrf @method('PATCH')
+                        <button type="submit"
+                                :disabled="submitting"
+                                :class="submitting ? 'opacity-60 cursor-not-allowed' : 'hover:bg-blue-700'"
+                                class="bg-blue-600 text-white text-sm font-semibold px-4 py-2 rounded-lg transition inline-flex items-center gap-2">
+                            <svg x-show="submitting" class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                            </svg>
+                            <span x-text="submitting ? 'Processing…' : 'Mark as Audited'"></span>
+                        </button>
+                    </form>
+                </div>
             @endif
 
-            @if($transaction->status === 'audited' && $user->hasPermission('approve_financial_transactions'))
-                <form method="POST" action="{{ route('financial.approve', $transaction->id) }}" class="inline">
-                    @csrf @method('PATCH')
-                    <button type="submit" class="bg-green-600 hover:bg-green-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition">
-                        Approve
-                    </button>
-                </form>
-                <form method="POST" action="{{ route('financial.reject', $transaction->id) }}" class="inline">
-                    @csrf @method('PATCH')
-                    <button type="submit" class="bg-red-600 hover:bg-red-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition">
-                        Reject
-                    </button>
-                </form>
+            @if($canApprove)
+                {{-- FIX: was checking 'approve_financial_transactions' — correct slug is 'financial.approve' --}}
+                <div x-data="{ submitting: false }">
+                    <form method="POST"
+                          action="{{ route('financial.approve', $transaction->id) }}"
+                          @submit="if (!submitting) submitting = true; else $event.preventDefault();">
+                        @csrf @method('PATCH')
+                        <button type="submit"
+                                :disabled="submitting"
+                                :class="submitting ? 'opacity-60 cursor-not-allowed' : 'hover:bg-green-700'"
+                                class="bg-green-600 text-white text-sm font-semibold px-4 py-2 rounded-lg transition inline-flex items-center gap-2">
+                            <svg x-show="submitting" class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                            </svg>
+                            <span x-text="submitting ? 'Processing…' : 'Approve'"></span>
+                        </button>
+                    </form>
+                </div>
+            @endif
+
+            @if($canReject)
+                <div x-data="{ submitting: false }">
+                    <form method="POST"
+                          action="{{ route('financial.reject', $transaction->id) }}"
+                          @submit.prevent="
+                              if (!confirm('Reject this transaction? This action cannot be undone.')) return;
+                              if (!submitting) { submitting = true; $el.submit(); }
+                          ">
+                        @csrf @method('PATCH')
+                        <button type="submit"
+                                :disabled="submitting"
+                                :class="submitting ? 'opacity-60 cursor-not-allowed' : 'hover:bg-red-700'"
+                                class="bg-red-600 text-white text-sm font-semibold px-4 py-2 rounded-lg transition inline-flex items-center gap-2">
+                            <svg x-show="submitting" class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                            </svg>
+                            <span x-text="submitting ? 'Processing…' : 'Reject'"></span>
+                        </button>
+                    </form>
+                </div>
+            @endif
+
+            @if($canDelete)
+                <div x-data="{ submitting: false }">
+                    <form method="POST"
+                          action="{{ route('financial.destroy', $transaction->id) }}"
+                          @submit.prevent="
+                              if (!confirm('Delete this transaction? It will be moved to Trash.')) return;
+                              if (!submitting) { submitting = true; $el.submit(); }
+                          ">
+                        @csrf @method('DELETE')
+                        <button type="submit"
+                                :disabled="submitting"
+                                :class="submitting ? 'opacity-60 cursor-not-allowed' : 'hover:bg-red-600 hover:text-white'"
+                                class="bg-gray-200 text-gray-700 text-sm font-semibold px-4 py-2 rounded-lg transition inline-flex items-center gap-2">
+                            <svg x-show="submitting" class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                            </svg>
+                            <span x-text="submitting ? 'Deleting…' : 'Delete'"></span>
+                        </button>
+                    </form>
+                </div>
             @endif
 
             <a href="{{ route('financial.index') }}"

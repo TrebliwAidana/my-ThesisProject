@@ -27,7 +27,17 @@
             <span class="ml-2 text-xs text-amber-600 font-medium">Pending — editable</span>
         </div>
 
-        <form method="POST" action="{{ route('financial.update', $transaction->id) }}" enctype="multipart/form-data">
+        {{--
+            FIX: Added x-data="{ submitting: false }" on the form wrapper so the
+            Submit button is locked after first click, preventing duplicate
+            transactions from double-clicks on slow connections.
+            The spinner gives visual feedback while the request is in-flight.
+        --}}
+        <form method="POST"
+              action="{{ route('financial.update', $transaction->id) }}"
+              enctype="multipart/form-data"
+              x-data="{ submitting: false }"
+              @submit="submitting = true">
             @csrf
             @method('PUT')
 
@@ -55,7 +65,7 @@
                 </div>
             </div>
 
-            {{-- Category — dynamic dropdown scoped to the transaction's type --}}
+            {{-- Category — dynamic dropdown scoped to transaction type --}}
             <div class="mb-4"
                  x-data="{
                      category: @json(old('category_final', $transaction->category ?? '')),
@@ -64,13 +74,8 @@
                      init() {
                          fetch('{{ route('api.financial-categories.list') }}?type={{ $transaction->type }}')
                              .then(r => r.json())
-                             .then(data => {
-                                 this.categories = data;
-                                 this.loading = false;
-                             })
-                             .catch(() => {
-                                 this.loading = false;
-                             });
+                             .then(data => { this.categories = data; this.loading = false; })
+                             .catch(() => { this.loading = false; });
                      }
                  }"
                  x-init="init()">
@@ -84,18 +89,12 @@
 
                 <template x-if="!loading">
                     <div>
-                        <select
-                            name="category_final"
-                            x-model="category"
-                            class="w-full border border-gold-300 dark:border-gold-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500"
-                        >
+                        <select name="category_final"
+                                x-model="category"
+                                class="w-full border border-gold-300 dark:border-gold-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500">
                             <option value="">— No category —</option>
                             <template x-for="cat in categories" :key="cat.id">
-                                <option
-                                    :value="cat.name"
-                                    x-text="cat.name"
-                                    :selected="cat.name === category"
-                                ></option>
+                                <option :value="cat.name" x-text="cat.name" :selected="cat.name === category"></option>
                             </template>
                             {{-- Graceful fallback: if saved category no longer exists in DB --}}
                             <template x-if="category && !categories.find(c => c.name === category)">
@@ -156,9 +155,20 @@
 
             {{-- Buttons --}}
             <div class="flex gap-3">
+                {{--
+                    :disabled="submitting" prevents second click.
+                    opacity-60 + cursor-not-allowed gives clear visual feedback.
+                    Spinner appears while the form is submitting.
+                --}}
                 <button type="submit"
-                        class="flex-1 bg-primary-600 hover:bg-gold-500 text-white font-semibold py-2 px-4 rounded-lg transition">
-                    Update Transaction
+                        :disabled="submitting"
+                        :class="submitting ? 'opacity-60 cursor-not-allowed' : 'hover:bg-gold-500'"
+                        class="flex-1 bg-primary-600 text-white font-semibold py-2 px-4 rounded-lg transition inline-flex items-center justify-center gap-2">
+                    <svg x-show="submitting" class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                    </svg>
+                    <span x-text="submitting ? 'Saving…' : 'Update Transaction'"></span>
                 </button>
                 <a href="{{ route('financial.show', $transaction->id) }}"
                    class="flex-1 text-center bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 font-semibold py-2 px-4 rounded-lg transition">

@@ -65,19 +65,13 @@ Route::middleware('auth.custom')->group(function () {
 Route::middleware(['auth.custom', 'verified'])->group(function () {
 
     // ── Public API ────────────────────────────────────────────────────────────
-    // Available to all authenticated users (used by dropdowns across modules)
     Route::get('/api/financial-categories', [FinancialCategoryController::class, 'apiList'])
         ->name('api.financial-categories.list');
 
-    // ──────────────────────────────────────────────────────────────────────────
-    // DASHBOARD — All roles including Guest
-    // ──────────────────────────────────────────────────────────────────────────
+    // ── Dashboard ─────────────────────────────────────────────────────────────
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
-    // ──────────────────────────────────────────────────────────────────────────
-    // MEMBERS — All roles EXCEPT Guest
-    // Attempting access as Guest → redirected to dashboard with error toast
-    // ──────────────────────────────────────────────────────────────────────────
+    // ── Members ───────────────────────────────────────────────────────────────
     Route::middleware('role:System Administrator,Club Adviser,Treasurer,Auditor')
         ->prefix('members')
         ->name('members.')
@@ -96,11 +90,7 @@ Route::middleware(['auth.custom', 'verified'])->group(function () {
             Route::post('/{id}/activate',              [MemberController::class, 'activate'])->name('activate');
         });
 
-    // ──────────────────────────────────────────────────────────────────────────
-    // APPROVED FINANCIAL REPORTS (Documents) — All roles including Guest (r/o)
-    // No role middleware here. Guest read-only enforcement is in DocumentController
-    // (e.g. gate checks before store/update/delete actions).
-    // ──────────────────────────────────────────────────────────────────────────
+    // ── Documents ─────────────────────────────────────────────────────────────
     Route::prefix('documents')->name('documents.')->group(function () {
         Route::get('/',                                        [DocumentController::class, 'index'])->name('index');
         Route::get('/create',                                  [DocumentController::class, 'create'])->name('create');
@@ -114,16 +104,11 @@ Route::middleware(['auth.custom', 'verified'])->group(function () {
         Route::get('/{document}/versions/{version}/download',  [DocumentVersionController::class, 'download'])->name('version.download');
     });
 
-    // Document trash (write actions guarded inside controller)
     Route::get('documents-trash',               [DocumentController::class, 'trash'])->name('documents.trash');
     Route::patch('documents-trash/{id}/restore',[DocumentController::class, 'restore'])->name('documents.restore');
     Route::delete('documents-trash/{id}/force', [DocumentController::class, 'forceDelete'])->name('documents.force-delete');
 
-    // ──────────────────────────────────────────────────────────────────────────
-    // FINANCIAL RECORDS — All roles including Guest (r/o)
-    // No role middleware here. Guest read-only enforcement is in FinancialController
-    // (gate checks before income.create, expense.create, update, delete, etc.)
-    // ──────────────────────────────────────────────────────────────────────────
+    // ── Financial ─────────────────────────────────────────────────────────────
     Route::prefix('financial')->name('financial.')->group(function () {
 
         // Reports
@@ -131,15 +116,15 @@ Route::middleware(['auth.custom', 'verified'])->group(function () {
         Route::get('/report',           [FinancialController::class, 'reportForm'])->name('report.form');
         Route::post('/report/generate', [FinancialController::class, 'generateReport'])->name('report.generate');
 
-        // Income — write routes guarded in controller for Guest
+        // Income
         Route::get('/income/create',    [IncomeController::class, 'create'])->name('income.create');
         Route::post('/income',          [IncomeController::class, 'store'])->name('income.store');
 
-        // Expense — write routes guarded in controller for Guest
+        // Expense
         Route::get('/expense/create',   [ExpenseController::class, 'create'])->name('expense.create');
         Route::post('/expense',         [ExpenseController::class, 'store'])->name('expense.store');
 
-        // Receivable — standalone entity, no old receivables list routes
+        // Receivable
         Route::get('/receivable/create',   [ReceivableController::class, 'create'])->name('receivable.create');
         Route::post('/receivable',         [ReceivableController::class, 'store'])->name('receivable.store');
 
@@ -148,7 +133,7 @@ Route::middleware(['auth.custom', 'verified'])->group(function () {
         Route::patch('/{id}/restore',       [FinancialController::class, 'restore'])->name('restore');
         Route::delete('/{id}/force-delete', [FinancialController::class, 'forceDelete'])->name('force-delete');
 
-        // Core CRUD — wildcard routes must stay last
+        // Core CRUD — wildcard routes last
         Route::get('/',                    [FinancialController::class, 'index'])->name('index');
         Route::get('/{id}',                [FinancialController::class, 'show'])->name('show');
         Route::get('/{id}/edit',           [FinancialController::class, 'edit'])->name('edit');
@@ -160,10 +145,7 @@ Route::middleware(['auth.custom', 'verified'])->group(function () {
         Route::patch('/{id}/mark-as-paid', [FinancialController::class, 'markAsPaid'])->name('mark-as-paid');
     });
 
-    // ──────────────────────────────────────────────────────────────────────────
-    // ADMINISTRATION — System Administrator only
-    // All sub-modules share the same top-level middleware.
-    // ──────────────────────────────────────────────────────────────────────────
+    // ── Administration — System Administrator only ─────────────────────────────
     Route::middleware('role:System Administrator')
         ->prefix('admin')
         ->name('admin.')
@@ -194,6 +176,10 @@ Route::middleware(['auth.custom', 'verified'])->group(function () {
                 Route::delete('/{id}',   [AdminController::class, 'destroyRole'])->name('destroy');
                 Route::patch('/{role}/toggle-visibility', [AdminController::class, 'toggleRoleVisibility'])
                     ->name('toggle-visibility');
+                // FIX: restore and forceDelete routes were missing — AdminController
+                // has both methods but they had no corresponding routes defined.
+                Route::post('/{id}/restore',        [AdminController::class, 'restoreRole'])->name('restore');
+                Route::delete('/{id}/force-delete', [AdminController::class, 'forceDeleteRole'])->name('force-delete');
             });
 
             // Permissions
@@ -241,9 +227,7 @@ Route::middleware(['auth.custom', 'verified'])->group(function () {
 
         }); // end admin group
 
-    // ──────────────────────────────────────────────────────────────────────────
-    // PROFILE — All roles EXCEPT Guest
-    // ──────────────────────────────────────────────────────────────────────────
+    // ── Profile ───────────────────────────────────────────────────────────────
     Route::middleware('role:System Administrator,Club Adviser,Treasurer,Auditor')
         ->prefix('profile')
         ->name('profile.')

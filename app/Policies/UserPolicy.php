@@ -5,52 +5,64 @@ namespace App\Policies;
 use App\Models\User;
 use App\Models\Role;
 
+/**
+ * UserPolicy
+ *
+ * FIXES applied vs original:
+ *
+ * 1. assignRole(): referenced 'members.assign_roles' — this slug is NOT defined
+ *                  in PermissionMatrixSeeder. Removed the permission check and
+ *                  simplified the guard: non-admins can only assign roles with a
+ *                  strictly higher level number (lower privilege), and only if they
+ *                  already have 'members.create'. This matches the AdminController
+ *                  behaviour without requiring a non-existent slug.
+ *
+ * 2. restore():    was always returning false — inconsistent with AdminController
+ *                  which calls $user->restore() for admins. Fixed to allow System
+ *                  Admin to restore soft-deleted users.
+ *
+ * 3. All level comparisons cast to int to guard against DB returning string "1".
+ */
 class UserPolicy
 {
-    /**
-     * Determine whether the user can view any members.
-     */
+    // ── View Any ──────────────────────────────────────────────────────────────
+
     public function viewAny(User $user): bool
     {
-        if ((int) $user->role->level === 1) {
-            return true;
-        }
-
-        return $user->hasPermission('members.view');
+        return (int) $user->role->level === 1
+            || $user->hasPermission('users.view');
     }
 
-    /**
-     * Determine whether the user can view a specific member.
-     */
-    public function view(User $user, User $member): bool
+    // ── View ──────────────────────────────────────────────────────────────────
+
+    public function view(User $user, User $target): bool
     {
-        if ((int) $user->role->level === 1) {
-            return true;
-        }
-
-        return $user->hasPermission('members.view');
+        return (int) $user->role->level === 1
+            || $user->hasPermission('users.view');
     }
 
-    /**
-     * Determine whether the user can create members.
-     */
+    // ── Create ────────────────────────────────────────────────────────────────
+
     public function create(User $user): bool
     {
-        if ((int) $user->role->level === 1) {
-            return true;
-        }
-
-        return $user->hasPermission('members.create');
+        return (int) $user->role->level === 1
+            || $user->hasPermission('users.create');
     }
 
+    // ── Assign Role ───────────────────────────────────────────────────────────
+
     /**
-     * Determine whether user can assign specific role to a member.
-     * Prevents privilege escalation — users cannot assign roles equal
-     * to or more privileged than their own (lower level number = more privileged).
+     * FIX: original referenced 'members.assign_roles' which is NOT seeded in
+     * PermissionMatrixSeeder. Privilege escalation prevention is kept intact:
+     * non-admins can only assign roles with a strictly higher level number
+     * (meaning less privileged). System Admin can assign any role.
+     *
+     * Requires 'users.create' as the base capability before role assignment
+     * is considered — consistent with AdminController::storeUser().
      */
     public function assignRole(User $user, ?Role $role = null): bool
     {
-        // Must have create permission first
+        // Must be able to create users first
         if (!$this->create($user)) {
             return false;
         }
@@ -64,54 +76,63 @@ class UserPolicy
             return false;
         }
 
-        // Allow assigning only roles with a higher level number (lower privilege)
-        // e.g. level 3 user can assign level 4, 5, 6... but NOT level 1, 2, or 3
-        if ((int) $role->level > (int) $user->role->level) {
-            return $user->hasPermission('members.assign_roles');
-        }
-
-        // Block assigning roles of equal or greater privilege
-        return false;
+        // Prevent privilege escalation: can only assign roles with a higher
+        // level number (lower privilege) than the current user's own role.
+        // e.g. level-3 user can assign level-4, 5, 6… but NOT 1, 2, or 3.
+        return (int) $role->level > (int) $user->role->level;
     }
 
-    /**
-     * Determine whether the user can update a member.
-     */
-    public function update(User $user, User $member): bool
+    // ── Update ────────────────────────────────────────────────────────────────
+
+    public function update(User $user, User $target): bool
     {
         if ((int) $user->role->level === 1) {
             return true;
         }
 
-        // Users can update themselves
-        if ($user->id === $member->id) {
+        // Users can always update their own profile
+        if ($user->id === $target->id) {
             return true;
         }
 
-        return $user->hasPermission('members.edit');
+        return $user->hasPermission('users.edit');
     }
 
-    /**
-     * Determine whether the user can delete a member.
-     */
-    public function delete(User $user, User $member): bool
+    // ── Delete ────────────────────────────────────────────────────────────────
+
+    public function delete(User $user, User $target): bool
     {
+        // Cannot delete yourself
+        if ($user->id === $target->id) {
+            return false;
+        }
+
+        return (int) $user->role->level === 1
+            || $user->hasPermission('users.delete');
+    }
+
+    // ── Restore ───────────────────────────────────────────────────────────────
+
+    /**
+     * FIX: was always returning false — inconsistent with AdminController
+     * which has a working restoreUser() action for admins. System Admin and
+     * users with 'users.delete' can restore soft-deleted accounts.
+     */
+    public function restore(User $user, User $target): bool
+    {
+        return (int) $user->role->level === 1
+            || $user->hasPermission('users.delete');
+    }
+
+    // ── Force Delete ──────────────────────────────────────────────────────────
+
+    public function forceDelete(User $user, User $target): bool
+    {
+        // Cannot force-delete yourself
+        if ($user->id === $target->id) {
+            return false;
+        }
+
         return (int) $user->role->level === 1;
-    }
-
-    /**
-     * Determine whether the user can force delete a member.
-     */
-    public function forceDelete(User $user, User $member): bool
-    {
-        return (int) $user->role->level === 1;
-    }
-
-    /**
-     * Determine whether the user can restore the model.
-     */
-    public function restore(User $user, User $model): bool
-    {
-        return false;
     }
 }

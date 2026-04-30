@@ -4,107 +4,139 @@ namespace App\Policies;
 
 use App\Models\Document;
 use App\Models\User;
-use Illuminate\Auth\Access\Response;
 
+/**
+ * DocumentPolicy
+ *
+ * FIXES applied vs original:
+ *
+ * 1. view():   referenced 'documents.view_all' — this slug is NOT seeded in
+ *              PermissionMatrixSeeder. The seeder only defines 'documents.view'.
+ *              Fixed to: owner check OR 'documents.view' permission.
+ *
+ * 2. create(): was returning true for ALL authenticated users regardless of
+ *              permissions — inconsistent with the permission matrix which
+ *              grants 'documents.create' only to specific roles.
+ *              Fixed to: isAdmin OR 'documents.create' permission.
+ *
+ * 3. All methods cast role->level to int before strict comparison to prevent
+ *              silent failures when DB returns the level as a string "1".
+ *
+ * 4. Slugs verified against PermissionMatrixSeeder:
+ *              documents.view, documents.create, documents.edit,
+ *              documents.delete, documents.trash, documents.restore,
+ *              documents.force-delete  ← note the hyphen, not underscore
+ */
 class DocumentPolicy
 {
-    /**
-     * Determine whether the user can view any models.
-     */
+    // ── View Any ──────────────────────────────────────────────────────────────
+
     public function viewAny(User $user): bool
     {
-        return $user->hasPermission('documents.view') 
-            || $user->hasPermission('documents.trash')
-            || $user->hasPermission('documents.manage');
+        return (int) $user->role->level === 1
+            || $user->hasPermission('documents.view')
+            || $user->hasPermission('documents.trash');
     }
 
+    // ── View ──────────────────────────────────────────────────────────────────
+
     /**
-     * Determine whether the user can view the model.
+     * FIX: removed 'documents.view_all' — not a seeded permission slug.
+     * View access is granted to: System Admin, document owner, or anyone
+     * with 'documents.view'.
      */
     public function view(?User $user, Document $document): bool
     {
-        // System administrators (role level 1) can view any document
-        if ($user && $user->role->level === 1) {
-            return true;
-        }
-
-        // If no user (guest), they cannot view any document (since all docs are effectively public now? but we removed is_public)
-        // You may want to allow guests if needed, but we'll keep it restricted.
         if (!$user) {
             return false;
         }
 
-        // Owner can always view
+        if ((int) $user->role->level === 1) {
+            return true;
+        }
+
+        // Owner can always view their own document
         if ($document->owner_id === $user->id) {
             return true;
         }
 
-        // Users with 'documents.view_all' permission can view any document
-        if ($user->hasPermission('documents.view_all')) {
-            return true;
-        }
-
-        return false;
+        return $user->hasPermission('documents.view');
     }
 
+    // ── Create ────────────────────────────────────────────────────────────────
+
     /**
-     * Determine whether the user can create models.
+     * FIX: was returning true for all authenticated users — inconsistent with
+     * PermissionMatrixSeeder which only grants 'documents.create' to specific
+     * roles. Any role without this permission should not be able to upload.
      */
     public function create(User $user): bool
     {
-        return true; // any authenticated user can upload documents
+        return (int) $user->role->level === 1
+            || $user->hasPermission('documents.create');
     }
 
-    /**
-     * Determine whether the user can update the model.
-     */
+    // ── Update ────────────────────────────────────────────────────────────────
+
     public function update(User $user, Document $document): bool
     {
-        // System administrators can edit any document
-        if ($user->role->level === 1) {
+        if ((int) $user->role->level === 1) {
             return true;
         }
-        return $user->id === $document->owner_id;
+
+        // Owner with edit permission can update their own document
+        if ($document->owner_id === $user->id) {
+            return $user->hasPermission('documents.edit');
+        }
+
+        // Non-owners with edit permission can also update (e.g. admin staff)
+        return $user->hasPermission('documents.edit');
     }
 
-    /**
-     * Determine whether the user can download the model.
-     */
+    // ── Download ──────────────────────────────────────────────────────────────
+
     public function download(?User $user, Document $document): bool
     {
         return $this->view($user, $document);
     }
 
-    /**
-     * Determine whether the user can delete the model.
-     */
+    // ── Delete ────────────────────────────────────────────────────────────────
+
     public function delete(User $user, Document $document): bool
     {
-        // System administrators can delete any document
-        if ($user->role->level === 1) {
+        if ((int) $user->role->level === 1) {
             return true;
         }
-        return $user->id === $document->owner_id;
+
+        return $document->owner_id === $user->id
+            && $user->hasPermission('documents.delete');
     }
+
+    // ── Trash ─────────────────────────────────────────────────────────────────
 
     public function trash(User $user): bool
     {
-        return $user->hasPermission('documents.trash') 
-            || $user->hasPermission('documents.manage');
+        return (int) $user->role->level === 1
+            || $user->hasPermission('documents.trash');
     }
 
-    /**
-     * Determine whether the user can restore the model.
-     */
+    // ── Restore ───────────────────────────────────────────────────────────────
+
     public function restore(User $user, Document $document): bool
     {
-        return $user->hasPermission('documents.restore') 
-            || $user->hasPermission('documents.manage');
+        return (int) $user->role->level === 1
+            || $user->hasPermission('documents.restore');
     }
 
+    // ── Force Delete ──────────────────────────────────────────────────────────
+
+    /**
+     * Note: seeder uses 'documents.force-delete' (hyphen, not underscore).
+     * This matches the PermissionMatrixSeeder matrix definition exactly.
+     */
     public function forceDelete(User $user, Document $document): bool
     {
-        return $user->hasPermission('documents.force-delete') 
-            || $user->hasPermission('documents.manage');
+        return (int) $user->role->level === 1
+            || $user->hasPermission('documents.force-delete');
     }
 }
