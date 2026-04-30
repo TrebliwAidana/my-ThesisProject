@@ -29,11 +29,14 @@ class AdminController extends Controller
         if ($user->role->level !== 1 && ! $user->hasPermission('roles.view')) {
             abort(403, 'You do not have permission to view roles.');
         }
-
-        $query = Role::withCount('users')
-            ->with('permissions')
-            ->when(! $request->boolean('show_hidden'), fn ($q) => $q->where('is_visible', true));
-
+ 
+        // FIX: removed the unconditional is_visible filter on construction —
+        // it was being applied even when show_trashed=true, causing trashed
+        // hidden roles to never appear. Now the two modes are mutually exclusive:
+        // show_trashed → onlyTrashed() with no visibility filter (you want to
+        // see everything in the trash); otherwise → optional is_visible filter.
+        $query = Role::withCount('users')->with('permissions');
+ 
         if ($request->boolean('show_trashed')) {
             $query->onlyTrashed();
         } else {
@@ -42,11 +45,11 @@ class AdminController extends Controller
                 fn ($q) => $q->where('is_visible', true)
             );
         }
-
+ 
         $roles = $query->orderBy('level')->paginate(50);
         $showHidden = $request->boolean('show_hidden');
         $permissions = $this->getCachedPermissions();
-
+ 
         return view('admin.roles.index', compact('roles', 'permissions', 'showHidden'));
     }
 
@@ -187,9 +190,9 @@ class AdminController extends Controller
         if ($user->role->level !== 1 && ! $user->hasPermission('roles.delete')) {
             abort(403);
         }
-
+ 
         $role = Role::findOrFail($id);
-
+ 
         if ($role->id === 1) {
             return back()->with('error', '⚠️ Cannot delete the System Administrator role.');
         }
@@ -199,16 +202,20 @@ class AdminController extends Controller
         if ($role->is_predefined) {
             return back()->with('error', '⚠️ Cannot delete a predefined system role.');
         }
-        if ($role->users()->withTrashed()->exists()) {
-            return back()->with('error', '⚠️ Cannot delete a role that has users assigned to it.');
+ 
+        // FIX: was withTrashed() which blocked deletion even when all assigned
+        // users are themselves soft-deleted. Now only blocks if active (non-trashed)
+        // users exist — soft-deleted users no longer prevent a role soft-delete.
+        if ($role->users()->exists()) {
+            return back()->with('error', '⚠️ Cannot delete a role that has active users assigned to it.');
         }
-
+ 
         try {
             $roleName = $role->name;
             $role->delete();
-
+ 
             $this->flushPermissionCaches();
-
+ 
             return redirect()->route('admin.roles.index')
                 ->with('success', "✅ Role '{$roleName}' deleted successfully.");
         } catch (\Exception $e) {
