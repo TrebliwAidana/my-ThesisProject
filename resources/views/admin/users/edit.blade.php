@@ -1,340 +1,752 @@
-@extends('layouts.app')
+<?php
 
-@section('title', 'Edit User — VSULHS_SSLG')
-@section('page-title', 'Edit User')
+namespace App\Http\Controllers;
 
-@php
-    $validPositions  = \App\Models\Member::VALID_POSITIONS;
-    $nonStudentRoleIds = [1, 6, 8];
-@endphp
+use App\Models\Member;
+use App\Models\Permission;
+use App\Models\Role;
+use App\Models\User;
+use App\Notifications\NewUserWelcomeNotification;
+use App\Notifications\PasswordResetNotification;
+use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
-@section('content')
+class AdminController extends Controller
+{
+    // =========================================================================
+    // ROLES
+    // =========================================================================
 
-{{-- Header --}}
-<div class="relative overflow-hidden rounded-2xl bg-gradient-to-r from-primary-600 to-primary-700 dark:from-primary-800 dark:to-primary-900 p-6 mb-6">
-    <div class="relative z-10">
-        <h1 class="text-2xl font-bold text-white">Edit User</h1>
-        <p class="text-primary-100 text-sm mt-1">Update details for {{ $user->full_name }}</p>
-    </div>
-    <div class="absolute top-0 right-0 -mt-8 -mr-8 w-64 h-64 bg-white/5 rounded-full blur-3xl"></div>
-</div>
+    public function roles(Request $request)
+    {
+        $user = Auth::user();
+        if ($user->role->level !== 1 && ! $user->hasPermission('roles.view')) {
+            abort(403, 'You do not have permission to view roles.');
+        }
 
-{{-- Global validation errors --}}
-@if ($errors->any())
-    <div class="max-w-3xl mx-auto mb-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-sm text-red-700 dark:text-red-400">
-        <p class="font-semibold mb-1">Please fix the following errors:</p>
-        <ul class="list-disc list-inside space-y-0.5">
-            @foreach ($errors->all() as $error)
-                <li>{{ $error }}</li>
-            @endforeach
-        </ul>
-    </div>
-@endif
+        $query = Role::withCount('users')
+            ->with('permissions')
+            ->when(! $request->boolean('show_hidden'), fn ($q) => $q->where('is_visible', true));
 
-<div x-data="userEditForm()" x-init="init()" class="max-w-3xl mx-auto">
-    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 p-6">
-        <form method="POST" action="{{ route('admin.users.update', $user->id) }}">
-            @csrf
-            @method('PUT')
+        if ($request->boolean('show_trashed')) {
+            $query->onlyTrashed();
+        } else {
+            $query->when(
+                ! $request->boolean('show_hidden'),
+                fn ($q) => $q->where('is_visible', true)
+            );
+        }
 
-            {{-- First Name & Last Name --}}
-            <div class="grid grid-cols-2 gap-4 mb-4">
-                <div>
-                    <label for="first_name" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                        First Name <span class="text-red-500">*</span>
-                    </label>
-                    <input type="text" id="first_name" name="first_name"
-                           value="{{ old('first_name', $user->first_name) }}" required
-                           class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2 text-sm
-                                  @error('first_name') border-red-500 @enderror">
-                    @error('first_name')
-                        <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
-                    @enderror
-                </div>
-                <div>
-                    <label for="last_name" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                        Last Name <span class="text-red-500">*</span>
-                    </label>
-                    <input type="text" id="last_name" name="last_name"
-                           value="{{ old('last_name', $user->last_name) }}" required
-                           class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2 text-sm
-                                  @error('last_name') border-red-500 @enderror">
-                    @error('last_name')
-                        <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
-                    @enderror
-                </div>
-            </div>
+        $roles = $query->orderBy('level')->paginate(50);
+        $showHidden = $request->boolean('show_hidden');
+        $permissions = $this->getCachedPermissions();
 
-            {{-- Middle Name --}}
-            <div class="mb-4">
-                <label for="middle_name" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                    Middle Name <span class="text-gray-400">(Optional)</span>
-                </label>
-                <input type="text" id="middle_name" name="middle_name"
-                       value="{{ old('middle_name', $user->middle_name) }}"
-                       class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2 text-sm">
-            </div>
-
-            {{-- Gender --}}
-            <div class="mb-4">
-                <label for="gender" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                    Gender <span class="text-red-500">*</span>
-                </label>
-                <select id="gender" name="gender" required
-                        class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2 text-sm
-                               @error('gender') border-red-500 @enderror">
-                    <option value="">Select Gender</option>
-                    <option value="Male"   {{ old('gender', $user->gender) == 'Male'   ? 'selected' : '' }}>Male</option>
-                    <option value="Female" {{ old('gender', $user->gender) == 'Female' ? 'selected' : '' }}>Female</option>
-                    <option value="Other"  {{ old('gender', $user->gender) == 'Other'  ? 'selected' : '' }}>Other</option>
-                </select>
-                @error('gender')
-                    <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
-                @enderror
-            </div>
-
-            {{-- Birthday --}}
-            <div class="mb-4">
-                <label for="birthday" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Birthday</label>
-                <input type="date" id="birthday" name="birthday"
-                       value="{{ old('birthday', optional($user->birthday)->format('Y-m-d')) }}"
-                       class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2 text-sm">
-                @error('birthday')
-                    <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
-                @enderror
-            </div>
-
-            {{-- Phone Number --}}
-            <div class="mb-4">
-                <label for="phone" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Phone Number</label>
-                <div class="flex">
-                    <span class="inline-flex items-center px-3 rounded-l-lg border border-r-0 border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-500">+63</span>
-                    <input type="tel" id="phone" name="phone"
-                           value="{{ old('phone', $user->phone ? substr($user->phone, 3) : '') }}"
-                           maxlength="10" placeholder="9123456789"
-                           class="flex-1 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-r-lg px-4 py-2 text-sm
-                                  @error('phone') border-red-500 @enderror"
-                           oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0,10)">
-                </div>
-                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Enter 10-digit number (e.g., 9123456789). +63 will be added automatically.</p>
-                @error('phone')
-                    <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
-                @enderror
-            </div>
-
-            {{-- Email --}}
-            <div class="mb-4">
-                <label for="email" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                    Email <span class="text-red-500">*</span>
-                </label>
-                <input type="email" id="email" name="email"
-                       value="{{ old('email', $user->email) }}" required
-                       class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2 text-sm
-                              @error('email') border-red-500 @enderror">
-                @error('email')
-                    <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
-                @enderror
-            </div>
-
-            {{-- Role --}}
-            <div class="mb-4">
-                <label for="role_id" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                    Role <span class="text-red-500">*</span>
-                </label>
-                <select id="role_id" name="role_id" x-model="selectedRoleId" required
-                        class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2 text-sm
-                               @error('role_id') border-red-500 @enderror">
-                    <option value="">Select a role</option>
-                    @foreach($roles as $role)
-                        <option value="{{ $role->id }}" {{ old('role_id', $user->role_id) == $role->id ? 'selected' : '' }}>
-                            {{ $role->name }}
-                        </option>
-                    @endforeach
-                </select>
-                @error('role_id')
-                    <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
-                @enderror
-            </div>
-
-            {{-- Position --}}
-            <div class="mb-4">
-                <label for="position" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Position</label>
-                <select id="position" name="position" x-model="selectedPosition"
-                        class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2 text-sm">
-                    <option value="">Select Position</option>
-                    <template x-for="pos in positionOptions" :key="pos">
-                        <option :value="pos" x-text="pos"></option>
-                    </template>
-                </select>
-                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Positions are based on the selected role</p>
-                @error('position')
-                    <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
-                @enderror
-            </div>
-
-            {{-- Student ID --}}
-            <div class="mb-4">
-                <label for="student_id" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Student ID</label>
-                <input type="text" id="student_id" name="student_id"
-                       value="{{ old('student_id', $user->student_id) }}" placeholder="2020-12345"
-                       class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2 text-sm
-                              @error('student_id') border-red-500 @enderror">
-                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Format: YYYY-XXXXX (e.g., 2020-12345)</p>
-                @error('student_id')
-                    <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
-                @enderror
-            </div>
-
-            {{-- Year Level (conditional on role) --}}
-            <div class="mb-4">
-                <div x-show="isStudentRole" x-cloak>
-                    <label for="year_level_select" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Year Level</label>
-                    <select id="year_level_select" x-model="yearLevelValue"
-                            class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2 text-sm">
-                        <option value="">Select Year Level</option>
-                        @foreach(['Grade 7','Grade 8','Grade 9','Grade 10','Grade 11','Grade 12'] as $level)
-                            <option value="{{ $level }}" {{ old('year_level', $user->year_level) == $level ? 'selected' : '' }}>
-                                {{ $level }}
-                            </option>
-                        @endforeach
-                    </select>
-                    @error('year_level')
-                        <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
-                    @enderror
-                </div>
-                <input type="hidden" name="year_level" :value="yearLevelValue">
-                <div x-show="!isStudentRole" x-cloak class="text-sm text-gray-500 dark:text-gray-400 italic">
-                    Year level is not applicable for this role.
-                </div>
-            </div>
-
-            {{-- Change Password --}}
-            <div class="mb-4">
-                <label class="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" x-model="changePassword" class="rounded border-gray-300 text-primary-600"
-                           @change="if (!changePassword) { $refs.password.value = ''; $refs.passwordConfirm.value = ''; }">
-                    <span class="text-sm text-gray-700 dark:text-gray-300">Change Password</span>
-                </label>
-                <div x-show="changePassword" x-cloak class="mt-2 space-y-3">
-                    {{-- New Password --}}
-                    <div>
-                        <label for="password" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">New Password</label>
-                        <div class="relative">
-                            <input :type="showPassword ? 'text' : 'password'"
-                                   id="password" name="password"
-                                   x-ref="password"
-                                   class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2 text-sm pr-10
-                                          @error('password') border-red-500 @enderror">
-                            <button type="button" @click="showPassword = !showPassword"
-                                    :aria-label="showPassword ? 'Hide password' : 'Show password'"
-                                    class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200">
-                                <svg x-show="!showPassword" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0z" />
-                                </svg>
-                                <svg x-show="showPassword" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" />
-                                </svg>
-                            </button>
-                        </div>
-                        @error('password')
-                            <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
-                        @enderror
-                    </div>
-
-                    {{-- Confirm Password --}}
-                    <div>
-                        <label for="password_confirmation" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Confirm Password</label>
-                        <div class="relative">
-                            <input :type="showPasswordConfirm ? 'text' : 'password'"
-                                   id="password_confirmation" name="password_confirmation"
-                                   x-ref="passwordConfirm"
-                                   class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2 text-sm pr-10">
-                            <button type="button" @click="showPasswordConfirm = !showPasswordConfirm"
-                                    :aria-label="showPasswordConfirm ? 'Hide password' : 'Show password'"
-                                    class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200">
-                                <svg x-show="!showPasswordConfirm" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0z" />
-                                </svg>
-                                <svg x-show="showPasswordConfirm" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" />
-                                </svg>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Leave blank to keep current password.</p>
-            </div>
-
-            {{-- Account Status --}}
-            <div class="mb-6">
-                <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Account Status</label>
-                <div class="flex gap-4">
-                    <label class="flex items-center gap-1.5 cursor-pointer">
-                        <input type="radio" name="is_active" value="1" {{ old('is_active', $user->is_active) == 1 ? 'checked' : '' }}> Active
-                    </label>
-                    <label class="flex items-center gap-1.5 cursor-pointer">
-                        <input type="radio" name="is_active" value="0" {{ old('is_active', $user->is_active) == 0 ? 'checked' : '' }}> Inactive
-                    </label>
-                </div>
-            </div>
-
-            <div class="flex gap-3">
-                <button type="submit" class="flex-1 bg-primary-600 hover:bg-gold-500 text-white font-semibold py-2 px-4 rounded-lg transition">
-                    Update User
-                </button>
-                <a href="{{ route('admin.users.index') }}"
-                   class="flex-1 text-center bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 font-semibold py-2 px-4 rounded-lg transition">
-                    Cancel
-                </a>
-            </div>
-        </form>
-    </div>
-</div>
-
-<script>
-    const validPositions   = @json(\App\Models\Member::VALID_POSITIONS);
-    const nonStudentRoleIds = @json($nonStudentRoleIds);
-
-    function userEditForm() {
-        return {
-            selectedRoleId:    '{{ old('role_id', $user->role_id) }}',
-            selectedPosition:  '{{ old('position', $user->position) }}',
-            positionOptions:   [],
-            changePassword:    false,
-            isStudentRole:     true,
-            yearLevelValue:    '{{ old('year_level', $user->year_level) }}',
-            showPassword:      false,
-            showPasswordConfirm: false,
-
-            init() {
-                this.updatePositionOptions();
-                this.checkIfStudentRole();
-                this.$watch('selectedRoleId', () => {
-                    this.updatePositionOptions();
-                    this.checkIfStudentRole();
-                });
-            },
-            updatePositionOptions() {
-                const roleId = this.selectedRoleId;
-                if (roleId && validPositions[roleId]) {
-                    this.positionOptions = validPositions[roleId];
-                } else {
-                    this.positionOptions = [];
-                }
-                if (this.selectedPosition && !this.positionOptions.includes(this.selectedPosition)) {
-                    this.selectedPosition = '';
-                }
-            },
-            checkIfStudentRole() {
-                const roleId = parseInt(this.selectedRoleId);
-                this.isStudentRole = !nonStudentRoleIds.includes(roleId);
-                if (!this.isStudentRole) {
-                    this.yearLevelValue = '';
-                }
-            }
-        };
+        return view('admin.roles.index', compact('roles', 'permissions', 'showHidden'));
     }
-</script>
-@endsection
+
+    public function createRole()
+    {
+        $user = Auth::user();
+        if ($user->role_id !== 1 && ! $user->hasPermission('roles.create')) {
+            abort(403, 'You do not have permission to create roles.');
+        }
+
+        $roles = $this->getCachedVisibleRoles();
+
+        return view('admin.roles.create', compact('roles'));
+    }
+
+    public function editRole(int $id)
+    {
+        $user = Auth::user();
+        if ($user->role->level !== 1 && ! $user->hasPermission('roles.edit')) {
+            abort(403, 'You do not have permission to edit roles.');
+        }
+
+        $role = Role::with('permissions')->findOrFail($id);
+        if (! $role->is_visible) {
+            return redirect()->route('admin.roles.index')->with('error', 'This role is hidden.');
+        }
+
+        $permissions = $this->getCachedPermissions();
+        $rolePermissionIds = $role->permissions->pluck('id')->toArray();
+
+        return view('admin.roles.edit', compact('role', 'permissions', 'rolePermissionIds'));
+    }
+
+    public function storeRole(Request $request)
+    {
+        $user = Auth::user();
+        if ($user->role_id !== 1 && ! $user->hasPermission('roles.create')) {
+            abort(403);
+        }
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:100', 'unique:roles,name'],
+            'abbreviation' => ['nullable', 'string', 'max:10'],
+            'desc' => ['nullable', 'string', 'max:500'],
+            'level' => ['required', 'integer', 'min:1', 'max:10'],
+            'is_system' => ['nullable', 'boolean'],
+            'parent_id' => ['nullable', 'exists:roles,id'],
+        ]);
+
+        if ($validated['level'] == 1 && ! ($validated['is_system'] ?? false)) {
+            return back()->with('error', 'Level 1 is reserved for system roles only.')->withInput();
+        }
+
+        try {
+            $role = Role::create([
+                'name' => $validated['name'],
+                'abbreviation' => $validated['abbreviation'] ?? null,
+                'desc' => $validated['desc'] ?? null,
+                'level' => $validated['level'],
+                'is_system' => $validated['is_system'] ?? false,
+                'parent_id' => $validated['parent_id'] ?? null,
+                'is_visible' => true,
+            ]);
+
+            if ($request->has('permissions')) {
+                $role->permissions()->sync($request->input('permissions', []));
+            }
+
+            $this->flushPermissionCaches($role);
+
+            return redirect()->route('admin.roles.index')
+                ->with('success', "✅ Role '{$role->name}' created successfully.");
+        } catch (\Exception $e) {
+            return back()->with('error', '❌ Failed to create role: '.$e->getMessage())->withInput();
+        }
+    }
+
+    public function updateRole(Request $request, int $id)
+    {
+        $user = Auth::user();
+        if ($user->role->level !== 1 && ! $user->hasPermission('roles.edit')) {
+            abort(403);
+        }
+
+        $role = Role::findOrFail($id);
+
+        if (! $role->is_visible) {
+            return redirect()->route('admin.roles.index')->with('error', 'Cannot edit hidden role.');
+        }
+
+        if ($role->is_predefined) {
+            $validated = $request->validate([
+                'level' => ['required', 'integer', 'min:1', 'max:10'],
+            ]);
+            $role->update($validated);
+
+            if ($request->has('permissions')) {
+                $role->permissions()->sync($request->input('permissions', []));
+                $role->users()->each(fn ($u) => cache()->forget("user_perms_{$u->id}"));
+            }
+
+            $this->flushPermissionCaches($role);
+
+            return redirect()->route('admin.roles.index')->with('success', 'Role updated.');
+        }
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:100', Rule::unique('roles', 'name')->ignore($id)],
+            'abbreviation' => ['nullable', 'string', 'max:10'],
+            'desc' => ['nullable', 'string', 'max:500'],
+            'level' => ['required', 'integer', 'min:1', 'max:10'],
+            'is_system' => ['nullable', 'boolean'],
+        ]);
+
+        if ($validated['level'] == 1 && ! ($validated['is_system'] ?? false)) {
+            return back()->with('error', 'Level 1 is reserved for system roles only.')->withInput();
+        }
+
+        try {
+            $role->update($validated);
+            $role->permissions()->sync($request->input('permissions', []));
+            $role->users()->each(fn ($u) => cache()->forget("user_perms_{$u->id}"));
+
+            $this->flushPermissionCaches($role);
+
+            return redirect()->route('admin.roles.index')
+                ->with('success', "✅ Role '{$role->name}' updated successfully.");
+        } catch (\Exception $e) {
+            return back()->with('error', '❌ Failed to update role: '.$e->getMessage())->withInput();
+        }
+    }
+
+    public function destroyRole(int $id)
+    {
+        $user = Auth::user();
+        if ($user->role->level !== 1 && ! $user->hasPermission('roles.delete')) {
+            abort(403);
+        }
+
+        $role = Role::findOrFail($id);
+
+        if ($role->id === 1) {
+            return back()->with('error', '⚠️ Cannot delete the System Administrator role.');
+        }
+        if (! $role->is_visible) {
+            return back()->with('error', 'Cannot delete a hidden role.');
+        }
+        if ($role->is_predefined) {
+            return back()->with('error', '⚠️ Cannot delete a predefined system role.');
+        }
+        if ($role->users()->withTrashed()->exists()) {
+            return back()->with('error', '⚠️ Cannot delete a role that has users assigned to it.');
+        }
+
+        try {
+            $roleName = $role->name;
+            $role->delete();
+
+            $this->flushPermissionCaches();
+
+            return redirect()->route('admin.roles.index')
+                ->with('success', "✅ Role '{$roleName}' deleted successfully.");
+        } catch (\Exception $e) {
+            return back()->with('error', '❌ Failed to delete role: '.$e->getMessage());
+        }
+    }
+
+    public function restoreRole(int $id)
+    {
+        $user = Auth::user();
+        if ($user->role_id !== 1 && ! $user->hasPermission('roles.delete')) {
+            abort(403);
+        }
+
+        $role = Role::withTrashed()->findOrFail($id);
+        $role->restore();
+
+        $this->flushPermissionCaches();
+
+        return redirect()->route('admin.roles.index')
+            ->with('success', "Role '{$role->name}' restored successfully.");
+    }
+
+    public function forceDeleteRole(int $id)
+    {
+        $user = Auth::user();
+        if ($user->role_id !== 1 && ! $user->hasPermission('roles.delete')) {
+            abort(403);
+        }
+
+        $role = Role::withTrashed()->findOrFail($id);
+
+        if ($role->users()->withTrashed()->exists()) {
+            return back()->with('error', '⚠️ Cannot permanently delete a role that has users assigned to it.');
+        }
+
+        $roleName = $role->name;
+        $role->forceDelete();
+
+        $this->flushPermissionCaches();
+
+        return redirect()->route('admin.roles.index')
+            ->with('success', "Role '{$roleName}' permanently deleted.");
+    }
+
+    public function toggleRoleVisibility(Role $role)
+    {
+        $user = Auth::user();
+        if ($user->role->level !== 1 && ! $user->hasPermission('roles.edit')) {
+            abort(403, 'You do not have permission to edit roles.');
+        }
+
+        if ($role->id === 1) {
+            return back()->with('error', 'Cannot toggle visibility of System Administrator role.');
+        }
+
+        if ($user->role_id == $role->id && $role->is_visible) {
+            return back()->with('error', 'Cannot hide your own current role.');
+        }
+
+        $role->update(['is_visible' => ! $role->is_visible]);
+        $status = $role->is_visible ? 'visible' : 'hidden';
+
+        $this->flushPermissionCaches();
+
+        return redirect()->route('admin.roles.index', ['show_hidden' => request()->boolean('show_hidden')])
+            ->with('success', "Role is now {$status}.");
+    }
+
+    // =========================================================================
+    // USERS
+    // =========================================================================
+
+    public function users(Request $request)
+    {
+        $authUser = Auth::user();
+        if ($authUser->role->level !== 1 && ! $authUser->hasPermission('users.view')) {
+            abort(403, 'You do not have permission to view users.');
+        }
+
+        $query = User::with('role:id,name');
+
+        if ($request->boolean('trashed')) {
+            $query->withTrashed();
+        }
+
+        if ($request->filled('search')) {
+            $search = $request->input('search');
+            $query->where(function ($q) use ($search) {
+                $q->where('full_name', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->filled('role')) {
+            $query->whereHas('role', fn ($q) => $q->where('name', $request->input('role')));
+        }
+
+        if ($request->filled('status')) {
+            $query->where('is_active', $request->input('status') === 'active');
+        }
+
+        if ($request->filled('verification')) {
+            if ($request->input('verification') === 'verified') {
+                $query->whereNotNull('email_verified_at');
+            } elseif ($request->input('verification') === 'unverified') {
+                $query->whereNull('email_verified_at');
+            }
+        }
+
+        $users = $query->paginate(20)->appends($request->except('page'));
+
+        $stats = DB::table('users')
+            ->selectRaw('
+                COUNT(*) as total,
+                SUM(CASE WHEN is_active = true THEN 1 ELSE 0 END) as active,
+                SUM(CASE WHEN email_verified_at IS NOT NULL THEN 1 ELSE 0 END) as verified,
+                SUM(CASE WHEN last_login_at >= ? THEN 1 ELSE 0 END) as recent_logins
+            ', [now()->subDays(7)])
+            ->first();
+
+        $roles = $this->getCachedVisibleRoles();
+
+        return view('admin.users.index', compact('users', 'roles', 'stats'));
+    }
+
+    public function createUser()
+    {
+        $authUser = Auth::user();
+        if ($authUser->role->level !== 1 && ! $authUser->hasPermission('users.create')) {
+            abort(403, 'You do not have permission to create users.');
+        }
+
+        // FIX: was inline Cache::remember with 'roles_visible_ordered' key storing
+        // Eloquent models. Now uses getCachedVisibleRoles() so the shape is consistent
+        // with editUser() and the cache key is managed in one place.
+        $roles = $this->getCachedVisibleRoles();
+
+        return view('admin.users.create', compact('roles'));
+    }
+
+    public function storeUser(Request $request)
+    {
+        $authUser = Auth::user();
+        if ($authUser->role->level !== 1 && ! $authUser->hasPermission('users.create')) {
+            abort(403);
+        }
+
+        $validated = $this->validateUserRequest($request);
+
+        $selectedRole = $this->resolveVisibleRole($validated['role_id']);
+        if (! $selectedRole) {
+            return back()->withErrors(['role_id' => 'The selected role is not available.'])->withInput();
+        }
+
+        if (! empty($validated['phone'])) {
+            $validated['phone'] = $this->normalizePhone($validated['phone']);
+        }
+
+        $validated['position'] = $this->resolvePosition($selectedRole, $validated['position'] ?? '');
+        if ($validated['position'] === false) {
+            return back()->withErrors(['position' => 'Position is required for this role.'])->withInput();
+        }
+
+        if ($this->shouldClearYearLevel($selectedRole->id, $validated['position'] ?? '')) {
+            $validated['year_level'] = null;
+        }
+
+        $password = ! empty($validated['password']) ? $validated['password'] : Str::random(10);
+
+        $user = User::create([
+            'first_name' => $validated['first_name'],
+            'middle_name' => $validated['middle_name'] ?? null,
+            'last_name' => $validated['last_name'],
+            'full_name' => $this->buildFullName($validated),
+            'email' => $validated['email'],
+            'password' => Hash::make($password),
+            'role_id' => $validated['role_id'],
+            'position' => $validated['position'],
+            'student_id' => $validated['student_id'] ?? null,
+            'year_level' => $validated['year_level'] ?? null,
+            'gender' => $validated['gender'],
+            'phone' => $validated['phone'] ?? null,
+            'birthday' => $validated['birthday'] ?? null,
+            'is_active' => $validated['is_active'] ?? true,
+            'email_verified_at' => now(),
+        ]);
+
+        $emailSent = false;
+        try {
+            $user->notify(new NewUserWelcomeNotification($password));
+            $emailSent = true;
+        } catch (\Exception $e) {
+            \Log::warning("Welcome email failed for user {$user->id}: ".$e->getMessage());
+        }
+
+        $message = "User '{$user->full_name}' created successfully.";
+        $message .= $emailSent
+            ? ' A welcome email has been sent.'
+            : ' ⚠️ Welcome email could not be sent — please share credentials manually or resend from the user list.';
+
+        return redirect()->route('admin.users.index')->with('success', $message);
+    }
+
+    public function editUser(int $id)
+    {
+        $authUser = Auth::user();
+        if ($authUser->role->level !== 1 && ! $authUser->hasPermission('users.edit')) {
+            abort(403);
+        }
+
+        $user = User::findOrFail($id);
+
+        // FIX: was Cache::remember('roles_visible_ordered', ..., fn() => ->get())
+        // which stored raw Eloquent models under a key also written by other paths
+        // as plain arrays — causing "Attempt to read property id on string" in the
+        // view. Now delegates to getCachedVisibleRoles() which always normalises
+        // the stored value to a plain array and casts each item back to stdClass,
+        // giving $role->id a consistent shape regardless of which method primed
+        // the cache. Also drops the stale 'roles_visible_ordered' key on first hit.
+        Cache::forget('roles_visible_ordered');
+        $roles = $this->getCachedVisibleRoles();
+
+        return view('admin.users.edit', compact('user', 'roles'));
+    }
+
+    public function updateUser(Request $request, int $id)
+    {
+        $authUser = Auth::user();
+        if ($authUser->role->level !== 1 && ! $authUser->hasPermission('users.edit')) {
+            abort(403);
+        }
+
+        $user = User::findOrFail($id);
+        $validated = $this->validateUserRequest($request, $id);
+
+        $selectedRole = $this->resolveVisibleRole($validated['role_id']);
+        if (! $selectedRole) {
+            return back()->withErrors(['role_id' => 'The selected role is not available.'])->withInput();
+        }
+
+        if (! empty($validated['phone'])) {
+            $validated['phone'] = $this->normalizePhone($validated['phone']);
+        }
+
+        $validated['position'] = $this->resolvePosition($selectedRole, $validated['position'] ?? '');
+        if ($validated['position'] === false) {
+            return back()->withErrors(['position' => 'Position is required for this role.'])->withInput();
+        }
+
+        if ($this->shouldClearYearLevel($selectedRole->id, $validated['position'] ?? '')) {
+            $validated['year_level'] = null;
+        }
+
+        if ($user->role_id != $validated['role_id'] && $user->role_id === 1) {
+            if (User::where('role_id', 1)->count() <= 1) {
+                return back()->with('error', '⚠️ Cannot change the role of the last System Administrator.');
+            }
+        }
+
+        $data = [
+            'first_name' => $validated['first_name'],
+            'middle_name' => $validated['middle_name'] ?? null,
+            'last_name' => $validated['last_name'],
+            'full_name' => $this->buildFullName($validated),
+            'email' => $validated['email'],
+            'student_id' => $validated['student_id'] ?? null,
+            'phone' => $validated['phone'] ?? null,
+            'gender' => $validated['gender'],
+            'birthday' => $validated['birthday'] ?? null,
+            'role_id' => $validated['role_id'],
+            'position' => $validated['position'] ?? null,
+            'year_level' => $validated['year_level'] ?? null,
+            'is_active' => $validated['is_active'] ?? true,
+        ];
+
+        if (! empty($validated['password'])) {
+            $data['password'] = Hash::make($validated['password']);
+        }
+
+        $user->update($data);
+
+        cache()->forget("user_perms_{$user->id}");
+
+        return redirect()->route('admin.users.index')
+            ->with('success', "✅ User '{$user->full_name}' updated successfully.");
+    }
+
+    public function destroyUser(int $id)
+    {
+        $authUser = Auth::user();
+        if ($authUser->role_id !== 1 && ! $authUser->hasPermission('users.delete')) {
+            abort(403);
+        }
+
+        $user = User::with('role')->findOrFail($id);
+
+        if ($user->id === $authUser->id) {
+            return back()->with('error', 'You cannot delete your own account.');
+        }
+        if ($user->email === 'guest@gmail.com') {
+            return back()->with('error', 'The shared guest account cannot be deleted.');
+        }
+        if ($user->role && $user->role->id === 1 && User::where('role_id', 1)->count() <= 1) {
+            return back()->with('error', '⚠️ Cannot delete the last System Administrator.');
+        }
+
+        $userName = $user->full_name;
+        $user->delete();
+
+        return redirect()->route('admin.users.index')
+            ->with('success', "User '{$userName}' deleted successfully.");
+    }
+
+    public function resetPassword(int $id)
+    {
+        $authUser = Auth::user();
+        if ($authUser->role->level !== 1 && ! $authUser->hasPermission('users.edit')) {
+            abort(403);
+        }
+
+        $user = User::findOrFail($id);
+        $newPassword = Str::random(10);
+        $user->password = Hash::make($newPassword);
+        $user->save();
+
+        $user->notify(new PasswordResetNotification($newPassword));
+
+        return redirect()->route('admin.users.index')
+            ->with('success', "Password for '{$user->full_name}' reset. An email has been sent.");
+    }
+
+    public function sendVerificationEmail(int $id)
+    {
+        $authUser = Auth::user();
+        if ($authUser->role->level !== 1 && ! $authUser->hasPermission('users.edit')) {
+            abort(403);
+        }
+
+        $user = User::findOrFail($id);
+
+        if ($user->hasVerifiedEmail()) {
+            if (request()->expectsJson()) {
+                return response()->json(['success' => false, 'message' => 'Email already verified.'], 400);
+            }
+
+            return back()->with('error', 'Email already verified.');
+        }
+
+        $user->sendEmailVerificationNotification();
+
+        if (request()->expectsJson()) {
+            return response()->json(['success' => true, 'message' => 'Verification email sent.']);
+        }
+
+        return back()->with('success', 'Verification email sent.');
+    }
+
+    public function verifyEmailManually(int $id)
+    {
+        $authUser = Auth::user();
+        if ($authUser->role->level !== 1 && ! $authUser->hasPermission('users.edit')) {
+            abort(403);
+        }
+
+        $user = User::findOrFail($id);
+
+        if ($user->hasVerifiedEmail()) {
+            return back()->with('info', 'User already verified.');
+        }
+
+        $user->markEmailAsVerified();
+
+        return back()->with('success', "Email for {$user->full_name} has been verified.");
+    }
+
+    public function restoreUser(int $id)
+    {
+        $authUser = Auth::user();
+        if ($authUser->role->level !== 1 && ! $authUser->hasPermission('users.delete')) {
+            abort(403);
+        }
+
+        $user = User::withTrashed()->findOrFail($id);
+        $user->restore();
+
+        return redirect()->route('admin.users.index')
+            ->with('success', "User '{$user->full_name}' restored successfully.");
+    }
+
+    public function forceDeleteUser(int $id)
+    {
+        $authUser = Auth::user();
+        if ($authUser->role->level !== 1 && ! $authUser->hasPermission('users.delete')) {
+            abort(403);
+        }
+
+        $user = User::withTrashed()->findOrFail($id);
+        $userName = $user->full_name;
+        $user->forceDelete();
+
+        return redirect()->route('admin.users.index')
+            ->with('success', "User '{$userName}' permanently deleted.");
+    }
+
+    // =========================================================================
+    // Private Helpers
+    // =========================================================================
+
+    private function validateUserRequest(Request $request, ?int $userId = null): array
+    {
+        $emailRule = $userId
+            ? Rule::unique('users', 'email')->whereNot('id', $userId)
+            : Rule::unique('users', 'email');
+
+        $studentIdRule = $userId
+            ? Rule::unique('users', 'student_id')->whereNot('id', $userId)
+            : Rule::unique('users', 'student_id');
+
+        $phoneRule = $userId
+            ? Rule::unique('users', 'phone')->whereNot('id', $userId)
+            : Rule::unique('users', 'phone');
+
+        return $request->validate([
+            'first_name' => ['required', 'string', 'max:255'],
+            'middle_name' => ['nullable', 'string', 'max:255'],
+            'last_name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'string', 'email', 'max:255', $emailRule],
+            'role_id' => ['required', 'exists:roles,id'],
+            'position' => ['nullable', 'string', 'max:255'],
+            'student_id' => ['nullable', 'string', 'max:20', $studentIdRule],
+            'year_level' => ['nullable', 'string', 'max:20'],
+            'gender' => ['required', 'string', 'in:Male,Female,Other'],
+            'phone' => ['nullable', 'string', 'max:20', $phoneRule],
+            'birthday' => ['nullable', 'date'],
+            'password' => ['nullable', 'string', 'min:8', 'confirmed'],
+            'is_active' => ['boolean'],
+        ], [
+            'email.unique' => 'This email is already registered.',
+            'student_id.unique' => 'This student ID is already assigned.',
+            'phone.unique' => 'This phone number is already in use.',
+        ]);
+    }
+
+    private function normalizePhone(string $phone): string
+    {
+        $phone = preg_replace('/[^0-9]/', '', $phone);
+        if (str_starts_with($phone, '63')) {
+            $phone = substr($phone, 2);
+        }
+        if (str_starts_with($phone, '0')) {
+            $phone = substr($phone, 1);
+        }
+
+        return '+63'.substr($phone, 0, 10);
+    }
+
+    private function resolveVisibleRole(int $roleId): ?Role
+    {
+        return Role::where('id', $roleId)->where('is_visible', true)->first();
+    }
+
+    private function buildFullName(array $validated): string
+    {
+        return trim(
+            $validated['first_name'].' '.
+            (! empty($validated['middle_name']) ? $validated['middle_name'].' ' : '').
+            $validated['last_name']
+        );
+    }
+
+    private function getCachedPermissions(): Collection
+    {
+        $array = Cache::remember(
+            'permissions_all',
+            3600,
+            fn () => Permission::all()->toArray()
+        );
+
+        return collect($array);
+    }
+
+    private function getCachedVisibleRoles(): Collection
+    {
+        $array = Cache::remember(
+            'roles_visible',
+            3600,
+            fn () => Role::where('is_visible', true)->orderBy('level')->get(['id', 'name'])->toArray()
+        );
+
+        return collect($array)->map(fn ($r) => (object) $r);
+    }
+
+    /**
+     * Central cache flush for all role/permission write operations.
+     */
+    private function flushPermissionCaches(?Role $role = null): void
+    {
+        Cache::forget('permissions_all');
+        Cache::forget('roles_visible');
+        Cache::forget('roles_visible_ordered');
+
+        if ($role) {
+            $role->users()->each(fn ($u) => cache()->forget("user_perms_{$u->id}"));
+        }
+    }
+
+    private function resolvePosition(Role $role, string $position): string|null|false
+    {
+        $allowed = Member::VALID_POSITIONS[$role->id] ?? [];
+
+        if (empty($allowed)) {
+            return null;
+        }
+
+        if (empty($position)) {
+            return false;
+        }
+
+        if (! in_array($position, $allowed, true)) {
+            return null;
+        }
+
+        return $position;
+    }
+
+    private function shouldClearYearLevel(int $roleId, ?string $position): bool
+    {
+        $positionsForRole = Member::VALID_POSITIONS[$roleId] ?? [];
+
+        if (empty($positionsForRole)) {
+            return true;
+        }
+
+        $nonStudent = Member::NON_STUDENT_POSITIONS;
+
+        if (array_diff($positionsForRole, $nonStudent) === []) {
+            return true;
+        }
+
+        return $position !== null && in_array($position, $nonStudent, true);
+    }
+}
