@@ -291,3 +291,7 @@ Route::get('/secure-avatar/{filename}', function ($filename) {
     return response(Storage::disk('public')->get($path))
         ->header('Content-Type', Storage::disk('public')->mimeType($path));
 })->where('filename', '.*');
+
+Route::get('/debug-zip', function () {
+    return ['zip_available' => class_exists('ZipArchive')];
+});
