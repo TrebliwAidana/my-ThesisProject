@@ -73,7 +73,7 @@
                             @click="if (busy) { $event.preventDefault(); $event.stopImmediatePropagation(); return; } busy = true;"
                             :disabled="busy"
                             :class="busy ? 'opacity-60 cursor-not-allowed' : ''"
-                            class="..." class="bg-emerald-600 hover:bg-gold-500 text-white px-6 py-2 rounded-lg transition">Upload</button>
+                            class="bg-emerald-600 hover:bg-gold-500 text-white px-6 py-2 rounded-lg transition">Upload</button>
                     <a href="{{ route('documents.index') }}" class="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg transition">Cancel</a>
                 </div>
             </form>
