@@ -37,7 +37,8 @@
             <span class="text-xs text-gray-400 dark:text-gray-500">Cash received now</span>
         </div>
 
-        <form method="POST" action="{{ route('financial.income.store') }}" enctype="multipart/form-data" id="income-form">
+        {{-- CHANGED: added @submit.prevent="handleSubmit" --}}
+        <form method="POST" action="{{ route('financial.income.store') }}" enctype="multipart/form-data" id="income-form" @submit.prevent="handleSubmit">
             @csrf
 
             {{-- Category --}}
@@ -143,9 +144,14 @@
 
             {{-- Buttons --}}
             <div class="flex gap-3">
-                <button type="submit"
-                        class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2 px-4 rounded-lg transition shadow-sm">
-                    Save Income
+                {{-- CHANGED: disabled state, dynamic label, and cursor via Alpine --}}
+                <button
+                    type="submit"
+                    :disabled="submitting"
+                    :class="submitting ? 'opacity-50 cursor-not-allowed' : 'hover:bg-emerald-700'"
+                    class="flex-1 bg-emerald-600 text-white font-semibold py-2 px-4 rounded-lg transition shadow-sm"
+                >
+                    <span x-text="submitting ? 'Saving...' : 'Save Income'"></span>
                 </button>
                 <a href="{{ route('financial.index') }}"
                    class="flex-1 text-center bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 font-semibold py-2 px-4 rounded-lg transition shadow-sm">
@@ -167,6 +173,7 @@ function incomeForm() {
         category:          @json(old('category_final', '')),
         categories:        [],
         loadingCategories: true,
+        submitting:        false, // ADDED: guard flag
 
         init() {
             fetch('{{ route('api.financial-categories.list') }}?type=income')
@@ -178,6 +185,13 @@ function incomeForm() {
                 .catch(() => {
                     this.loadingCategories = false;
                 });
+        },
+
+        // ADDED: single-submission handler
+        handleSubmit() {
+            if (this.submitting) return;
+            this.submitting = true;
+            document.getElementById('income-form').submit();
         },
     };
 }
