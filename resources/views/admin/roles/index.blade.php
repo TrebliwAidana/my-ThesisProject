@@ -3,11 +3,6 @@
 
 @section('content')
 
-{{--
-    Role color and level label maps are defined ONCE here, not inside the loop.
-    Keys align to the 5 predefined roles in Member::VALID_POSITIONS.
-    The fallback handles any custom roles created via the Add New Role form.
---}}
 @php
     $roleColorMap = [
         'System Administrator' => 'bg-gold-100 text-gold-700 dark:bg-gold-900/50 dark:text-gold-300',
@@ -54,21 +49,41 @@
                 </svg>
             </div>
 
-            <div class="flex items-center gap-2">
-                @if ($showHidden)
+            <div class="flex items-center gap-2 flex-wrap">
+
+                {{-- FIX: active mode badges --}}
+                @if ($showTrashed)
+                    <span class="inline-flex items-center gap-1.5 text-xs font-medium text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 px-2.5 py-1 rounded-full">
+                        <span class="w-1.5 h-1.5 rounded-full bg-red-500 inline-block"></span>
+                        Showing deleted roles
+                    </span>
+                @elseif ($showHidden)
                     <span class="inline-flex items-center gap-1.5 text-xs font-medium text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 px-2.5 py-1 rounded-full">
                         <span class="w-1.5 h-1.5 rounded-full bg-amber-500 inline-block"></span>
                         Showing hidden roles
                     </span>
                 @endif
 
-                <a href="{{ route('admin.roles.index', $showHidden ? [] : ['show_hidden' => 1]) }}"
+                {{-- FIX: show hidden toggle — hidden when viewing trash --}}
+                @unless ($showTrashed)
+                    <a href="{{ route('admin.roles.index', $showHidden ? [] : ['show_hidden' => 1]) }}"
+                       class="text-xs font-medium px-3 py-1.5 rounded-lg border transition-all duration-200
+                              {{ $showHidden
+                                  ? 'text-gray-600 border-gray-300 hover:bg-gray-100 dark:text-gray-400 dark:border-gray-600 dark:hover:bg-gray-700'
+                                  : 'text-amber-600 border-amber-200 hover:bg-amber-50 dark:text-amber-400 dark:border-amber-800 dark:hover:bg-amber-900/30' }}">
+                        {{ $showHidden ? '← Hide hidden roles' : 'Show hidden roles' }}
+                    </a>
+                @endunless
+
+                {{-- FIX: trash toggle link — was completely missing from the blade --}}
+                <a href="{{ route('admin.roles.index', $showTrashed ? [] : ['show_trashed' => 1]) }}"
                    class="text-xs font-medium px-3 py-1.5 rounded-lg border transition-all duration-200
-                          {{ $showHidden
+                          {{ $showTrashed
                               ? 'text-gray-600 border-gray-300 hover:bg-gray-100 dark:text-gray-400 dark:border-gray-600 dark:hover:bg-gray-700'
-                              : 'text-amber-600 border-amber-200 hover:bg-amber-50 dark:text-amber-400 dark:border-amber-800 dark:hover:bg-amber-900/30' }}">
-                    {{ $showHidden ? '← Hide hidden roles' : 'Show hidden roles' }}
+                              : 'text-red-600 border-red-200 hover:bg-red-50 dark:text-red-400 dark:border-red-800 dark:hover:bg-red-900/30' }}">
+                    {{ $showTrashed ? '← Back to active roles' : 'Show deleted roles' }}
                 </a>
+
             </div>
         </div>
 
@@ -92,12 +107,15 @@
                             $isPredefined = (bool) ($role->is_predefined ?? false);
                             $isHidden     = ! $role->is_visible;
                             $isOwnRole    = ($authRoleId === $role->id);
+                            $isTrashed    = ! is_null($role->deleted_at);
                         @endphp
 
                         <tr class="transition-all duration-150 role-row
-                                   {{ $isHidden
-                                       ? 'opacity-50 bg-gray-50 dark:bg-gray-800/40'
-                                       : 'hover:bg-gray-50 dark:hover:bg-gray-700/50' }}"
+                                   {{ $isTrashed
+                                       ? 'opacity-60 bg-red-50/50 dark:bg-red-900/10'
+                                       : ($isHidden
+                                           ? 'opacity-50 bg-gray-50 dark:bg-gray-800/40'
+                                           : 'hover:bg-gray-50 dark:hover:bg-gray-700/50') }}"
                             data-name="{{ strtolower($role->name) }}"
                             data-abbr="{{ strtolower($role->abbreviation ?? '') }}">
 
@@ -109,9 +127,16 @@
                                         {{ strtoupper(substr($role->name, 0, 1)) }}
                                     </div>
                                     <div>
-                                        <span class="font-semibold text-gray-900 dark:text-white role-name">{{ $role->name }}</span>
+                                        <span class="font-semibold text-gray-900 dark:text-white role-name {{ $isTrashed ? 'line-through text-gray-400 dark:text-gray-500' : '' }}">
+                                            {{ $role->name }}
+                                        </span>
 
-                                        @if ($isHidden)
+                                        {{-- FIX: deleted badge --}}
+                                        @if ($isTrashed)
+                                            <span class="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400">deleted</span>
+                                        @endif
+
+                                        @if ($isHidden && ! $isTrashed)
                                             <span class="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400">hidden</span>
                                         @endif
 
@@ -145,14 +170,14 @@
                                 </span>
                             </td>
 
-                            {{-- Users count (pre-aggregated via withCount — no extra query) --}}
+                            {{-- Users count --}}
                             <td class="px-5 py-3">
                                 <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs font-semibold">
                                     {{ $role->users_count }}
                                 </span>
                             </td>
 
-                            {{-- Permissions count (eager-loaded collection — no extra query) --}}
+                            {{-- Permissions count --}}
                             <td class="px-5 py-3 text-gray-600 dark:text-gray-400">
                                 {{ $role->permissions->count() }}
                             </td>
@@ -161,70 +186,97 @@
                             <td class="px-5 py-3 text-right">
                                 <div class="flex items-center justify-end gap-1.5">
 
-                                    {{-- Hide / Unhide --}}
-                                    @if ($role->id === 1)
-                                        {{-- System Administrator is never hideable --}}
-                                        <span class="text-xs text-gray-400 dark:text-gray-500 italic" title="System Administrator cannot be hidden">Protected</span>
+                                    {{-- FIX: trash mode shows restore + force delete only --}}
+                                    @if ($isTrashed)
 
-                                    @elseif ($isOwnRole && $role->is_visible)
-                                        {{-- Prevent hiding your own active role --}}
-                                        <button disabled
-                                                class="text-xs font-medium px-2.5 py-1 rounded-lg border border-gray-300 text-gray-400 cursor-not-allowed bg-gray-50 dark:bg-gray-800"
-                                                title="Cannot hide your own current role.">
-                                            Hide
-                                        </button>
-
-                                    @elseif ($role->is_visible && $role->users_count > 0)
-                                        {{-- Cannot hide a role with active users --}}
-                                        <button disabled
-                                                class="text-xs font-medium px-2.5 py-1 rounded-lg border border-gray-300 text-gray-400 cursor-not-allowed bg-gray-50 dark:bg-gray-800"
-                                                title="Cannot hide — {{ $role->users_count }} user(s) assigned.">
-                                            Hide
-                                        </button>
-
-                                    @else
                                         <form method="POST"
-                                              action="{{ route('admin.roles.toggle-visibility', $role->id) }}?show_hidden={{ $showHidden ? '1' : '0' }}"
-                                              onsubmit="return confirm('{{ $role->is_visible ? 'Hide' : 'Unhide' }} the role &quot;{{ addslashes($role->name) }}&quot;?')">
+                                              action="{{ route('admin.roles.restore', $role->id) }}"
+                                              class="inline">
                                             @csrf
                                             @method('PATCH')
                                             <button type="submit"
-                                                    class="text-xs font-medium px-2.5 py-1 rounded-lg border transition-all duration-200
-                                                           {{ $isHidden
-                                                               ? 'text-emerald-600 border-emerald-200 hover:bg-emerald-50 dark:text-emerald-400 dark:border-emerald-800 dark:hover:bg-emerald-900/30'
-                                                               : 'text-amber-600 border-amber-200 hover:bg-amber-50 dark:text-amber-400 dark:border-amber-800 dark:hover:bg-amber-900/30' }}">
-                                                {{ $isHidden ? 'Unhide' : 'Hide' }}
+                                                    class="text-xs font-medium text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 border border-emerald-200 dark:border-emerald-800 px-2.5 py-1 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-900/30 transition-all duration-200">
+                                                Restore
                                             </button>
                                         </form>
-                                    @endif
 
-                                    {{-- Edit — visible roles only --}}
-                                    @if (! $isHidden)
-                                        <a href="{{ route('admin.roles.edit', $role->id) }}"
-                                           class="text-xs font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 border border-blue-200 dark:border-blue-800 px-2.5 py-1 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-all duration-200">
-                                            Edit
-                                        </a>
-                                    @endif
-
-                                    {{-- Delete --}}
-                                    @if (! $isPredefined && $role->users_count === 0 && ! $isHidden)
                                         <form method="POST"
-                                              action="{{ route('admin.roles.destroy', $role->id) }}"
-                                              onsubmit="return confirm('⚠️ Delete role &quot;{{ addslashes($role->name) }}&quot;?\n\nThis action cannot be undone.')"
+                                              action="{{ route('admin.roles.force-delete', $role->id) }}"
+                                              onsubmit="return confirm('⚠️ Permanently delete &quot;{{ addslashes($role->name) }}&quot;?\n\nThis cannot be undone.')"
                                               class="inline">
                                             @csrf
                                             @method('DELETE')
                                             <button type="submit"
                                                     class="text-xs font-medium text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 border border-red-200 dark:border-red-800 px-2.5 py-1 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 transition-all duration-200">
-                                                Delete
+                                                Delete permanently
                                             </button>
                                         </form>
 
-                                    @elseif ($isPredefined && ! $isHidden)
-                                        <span class="text-xs text-gray-400 dark:text-gray-500 italic" title="Predefined roles cannot be deleted">Predefined</span>
+                                    @else
 
-                                    @elseif ($role->users_count > 0 && ! $isHidden)
-                                        <span class="text-xs text-gray-400 dark:text-gray-500 italic" title="Role has {{ $role->users_count }} assigned user(s)">In use</span>
+                                        {{-- Hide / Unhide --}}
+                                        @if ($role->id === 1)
+                                            <span class="text-xs text-gray-400 dark:text-gray-500 italic" title="System Administrator cannot be hidden">Protected</span>
+
+                                        @elseif ($isOwnRole && $role->is_visible)
+                                            <button disabled
+                                                    class="text-xs font-medium px-2.5 py-1 rounded-lg border border-gray-300 text-gray-400 cursor-not-allowed bg-gray-50 dark:bg-gray-800"
+                                                    title="Cannot hide your own current role.">
+                                                Hide
+                                            </button>
+
+                                        @elseif ($role->is_visible && $role->users_count > 0)
+                                            <button disabled
+                                                    class="text-xs font-medium px-2.5 py-1 rounded-lg border border-gray-300 text-gray-400 cursor-not-allowed bg-gray-50 dark:bg-gray-800"
+                                                    title="Cannot hide — {{ $role->users_count }} user(s) assigned.">
+                                                Hide
+                                            </button>
+
+                                        @else
+                                            <form method="POST"
+                                                  action="{{ route('admin.roles.toggle-visibility', $role->id) }}?show_hidden={{ $showHidden ? '1' : '0' }}"
+                                                  onsubmit="return confirm('{{ $role->is_visible ? 'Hide' : 'Unhide' }} the role &quot;{{ addslashes($role->name) }}&quot;?')">
+                                                @csrf
+                                                @method('PATCH')
+                                                <button type="submit"
+                                                        class="text-xs font-medium px-2.5 py-1 rounded-lg border transition-all duration-200
+                                                               {{ $isHidden
+                                                                   ? 'text-emerald-600 border-emerald-200 hover:bg-emerald-50 dark:text-emerald-400 dark:border-emerald-800 dark:hover:bg-emerald-900/30'
+                                                                   : 'text-amber-600 border-amber-200 hover:bg-amber-50 dark:text-amber-400 dark:border-amber-800 dark:hover:bg-amber-900/30' }}">
+                                                    {{ $isHidden ? 'Unhide' : 'Hide' }}
+                                                </button>
+                                            </form>
+                                        @endif
+
+                                        {{-- Edit --}}
+                                        @if (! $isHidden)
+                                            <a href="{{ route('admin.roles.edit', $role->id) }}"
+                                               class="text-xs font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 border border-blue-200 dark:border-blue-800 px-2.5 py-1 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-all duration-200">
+                                                Edit
+                                            </a>
+                                        @endif
+
+                                        {{-- Delete (soft) --}}
+                                        @if (! $isPredefined && $role->users_count === 0 && ! $isHidden)
+                                            <form method="POST"
+                                                  action="{{ route('admin.roles.destroy', $role->id) }}"
+                                                  onsubmit="return confirm('⚠️ Delete role &quot;{{ addslashes($role->name) }}&quot;?\n\nIt will be moved to trash and can be restored later.')"
+                                                  class="inline">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit"
+                                                        class="text-xs font-medium text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 border border-red-200 dark:border-red-800 px-2.5 py-1 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 transition-all duration-200">
+                                                    Delete
+                                                </button>
+                                            </form>
+
+                                        @elseif ($isPredefined && ! $isHidden)
+                                            <span class="text-xs text-gray-400 dark:text-gray-500 italic" title="Predefined roles cannot be deleted">Predefined</span>
+
+                                        @elseif ($role->users_count > 0 && ! $isHidden)
+                                            <span class="text-xs text-gray-400 dark:text-gray-500 italic" title="Role has {{ $role->users_count }} assigned user(s)">In use</span>
+                                        @endif
+
                                     @endif
 
                                 </div>
@@ -234,7 +286,7 @@
                     @empty
                         <tr>
                             <td colspan="6" class="px-5 py-10 text-center text-sm text-gray-400 dark:text-gray-500">
-                                No roles found.
+                                {{ $showTrashed ? 'No deleted roles found.' : 'No roles found.' }}
                             </td>
                         </tr>
                     @endforelse
@@ -251,8 +303,9 @@
     </div>
 
     {{-- ------------------------------------------------------------------ --}}
-    {{-- Add New Role                                                        --}}
+    {{-- Add New Role — hidden when viewing trash (irrelevant context)       --}}
     {{-- ------------------------------------------------------------------ --}}
+    @unless ($showTrashed)
     <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gold-200 dark:border-gold-800 p-6 shadow-sm">
         <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4 pb-2 border-b border-gray-100 dark:border-gold-800">
             Add New Role
@@ -328,10 +381,9 @@
             </div>
 
             <div class="flex items-center gap-3">
-                <button type="submit"
-                        class="bg-primary-600 hover:bg-gold-500 text-white text-sm font-semibold px-5 py-2 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md transform hover:scale-[1.02]">
+                <x-submit-button class="bg-primary-600 hover:bg-gold-500 text-white text-sm font-semibold px-5 py-2 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md transform hover:scale-[1.02]">
                     Create Role
-                </button>
+                </x-submit-button>
                 <button type="reset"
                         class="text-gray-600 dark:text-gray-400 text-sm font-medium px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 transition">
                     Reset
@@ -339,11 +391,9 @@
             </div>
         </form>
     </div>
+    @endunless
 
 </div>
-
-
-
 
 {{-- ------------------------------------------------------------------ --}}
 {{-- Info card                                                           --}}
@@ -366,6 +416,10 @@
             <p class="text-xs text-blue-700 dark:text-blue-400">
                 <strong>Hiding a role</strong> removes it from all user creation and editing forms.
                 Roles with active users cannot be hidden until those users are reassigned.
+            </p>
+            <p class="text-xs text-blue-700 dark:text-blue-400">
+                <strong>Deleted roles</strong> are soft-deleted and can be restored from the "Show deleted roles" view.
+                Permanently deleted roles cannot be recovered.
             </p>
         </div>
     </div>

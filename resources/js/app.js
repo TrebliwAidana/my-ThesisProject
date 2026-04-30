@@ -23,6 +23,38 @@ document.addEventListener('alpine:init', () => {
 
     Alpine.store('theme').init();
 
+    // ── submitOnce component ─────────────────────────────────────────────
+    // Global single-submission guard. Attach with x-data="submitOnce()"
+    // directly on a submit button, or use the <x-submit-button> Blade
+    // component which wires this up automatically.
+    Alpine.data('submitOnce', () => ({
+        submitting: false,
+
+        handle(event) {
+            if (this.submitting) {
+                event.preventDefault();
+                return;
+            }
+
+            const form = event.target.closest('form');
+            if (!form) return;
+
+            this.submitting = true;
+
+            // Wait for Alpine's :disabled binding to render before submitting
+            this.$nextTick(() => {
+                try {
+                    // requestSubmit() fires the form's submit event correctly,
+                    // respecting any Alpine @submit handlers on the form.
+                    form.requestSubmit(event.target);
+                } catch {
+                    // Fallback for old Safari which lacks requestSubmit()
+                    form.submit();
+                }
+            });
+        },
+    }));
+
     // ── positionChangeHandler component ──────────────────────────────────
     Alpine.data('positionChangeHandler', (memberData = {}) => ({
         memberId: memberData.id || null,
