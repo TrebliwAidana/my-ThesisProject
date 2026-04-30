@@ -29,28 +29,25 @@ class AdminController extends Controller
         if ($user->role->level !== 1 && ! $user->hasPermission('roles.view')) {
             abort(403, 'You do not have permission to view roles.');
         }
- 
-        // FIX: removed the unconditional is_visible filter on construction —
-        // it was being applied even when show_trashed=true, causing trashed
-        // hidden roles to never appear. Now the two modes are mutually exclusive:
-        // show_trashed → onlyTrashed() with no visibility filter (you want to
-        // see everything in the trash); otherwise → optional is_visible filter.
+
+        $showTrashed = $request->boolean('show_trashed'); // ← was declared inline but never assigned to a variable
+        $showHidden  = $request->boolean('show_hidden');
+
         $query = Role::withCount('users')->with('permissions');
- 
-        if ($request->boolean('show_trashed')) {
+
+        if ($showTrashed) {
             $query->onlyTrashed();
         } else {
             $query->when(
-                ! $request->boolean('show_hidden'),
+                ! $showHidden,
                 fn ($q) => $q->where('is_visible', true)
             );
         }
- 
-        $roles = $query->orderBy('level')->paginate(50);
-        $showHidden = $request->boolean('show_hidden');
+
+        $roles       = $query->orderBy('level')->paginate(50);
         $permissions = $this->getCachedPermissions();
- 
-        return view('admin.roles.index', compact('roles', 'permissions', 'showHidden'));
+
+        return view('admin.roles.index', compact('roles', 'permissions', 'showTrashed', 'showHidden'));
     }
 
     public function createRole()
