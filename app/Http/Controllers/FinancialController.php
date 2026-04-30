@@ -31,7 +31,9 @@ class FinancialController extends Controller
                 ->with('error', 'Guest accounts cannot view financial records.');
         }
 
-        if ($user->role->level !== 1 && !$user->hasPermission('view_financial_transactions')) {
+        // FIX: was 'view_financial_transactions' — slug does not exist in DB.
+        // Correct slug from PermissionMatrixSeeder is 'financial.view'.
+        if ($user->role->level !== 1 && !$user->hasPermission('financial.view')) {
             abort(403, 'You do not have permission to view financial records.');
         }
 
@@ -100,7 +102,8 @@ class FinancialController extends Controller
                 ->with('error', 'Guest accounts cannot view financial records.');
         }
 
-        if ($user->role->level !== 1 && !$user->hasPermission('view_financial_transactions')) {
+        // FIX: was 'view_financial_transactions' — correct slug is 'financial.view'.
+        if ($user->role->level !== 1 && !$user->hasPermission('financial.view')) {
             abort(403);
         }
 
@@ -115,6 +118,7 @@ class FinancialController extends Controller
 
     public function edit(int $id)
     {
+        // authorizeFinancialAction maps 'edit' → 'financial.edit' (fixed in trait)
         if ($response = $this->authorizeFinancialAction('edit')) return $response;
 
         $transaction = FinancialTransaction::with('documents')->findOrFail($id);
@@ -128,6 +132,7 @@ class FinancialController extends Controller
 
     public function update(Request $request, int $id)
     {
+        // authorizeFinancialAction maps 'edit' → 'financial.edit' (fixed in trait)
         if ($response = $this->authorizeFinancialAction('edit')) return $response;
 
         $transaction = FinancialTransaction::with('documents')->findOrFail($id);
@@ -173,7 +178,11 @@ class FinancialController extends Controller
                 ->with('error', 'Guest accounts cannot perform this action.');
         }
 
-        if (!$user->hasPermission('view_financial_transactions') && $user->role->level !== 1) {
+        // FIX 1: was using 'view_financial_transactions' — correct slug is 'financial.audit'.
+        //         Auditors have 'financial.audit' assigned, not 'financial.view' only.
+        // FIX 2: condition was '&& ' (AND) — should be '||' (OR) so that EITHER
+        //         non-admin OR missing permission is enough to block access.
+        if ($user->role->level !== 1 && !$user->hasPermission('financial.audit')) {
             return back()->with('error', 'You do not have permission to audit transactions.');
         }
 
@@ -205,6 +214,7 @@ class FinancialController extends Controller
 
     public function approve(int $id)
     {
+        // authorizeFinancialAction maps 'approve' → 'financial.approve' (fixed in trait)
         if ($response = $this->authorizeFinancialAction('approve')) return $response;
 
         $transaction = FinancialTransaction::with(['user', 'auditor', 'documents'])
@@ -249,6 +259,7 @@ class FinancialController extends Controller
 
     public function reject(int $id)
     {
+        // authorizeFinancialAction maps 'approve' → 'financial.approve' (fixed in trait)
         if ($response = $this->authorizeFinancialAction('approve')) return $response;
 
         $transaction = FinancialTransaction::findOrFail($id);
@@ -274,6 +285,7 @@ class FinancialController extends Controller
 
     public function markAsPaid(int $id)
     {
+        // authorizeFinancialAction maps 'approve' → 'financial.approve' (fixed in trait)
         if ($response = $this->authorizeFinancialAction('approve')) return $response;
 
         $transaction = FinancialTransaction::with(['user', 'approver', 'auditor', 'documents'])
@@ -290,7 +302,7 @@ class FinancialController extends Controller
         DB::transaction(function () use ($transaction) {
             $transaction->update([
                 'status'      => 'paid',
-                'approved_by' => Auth::id(), // person who confirmed payment
+                'approved_by' => Auth::id(),
                 'approved_at' => now(),
             ]);
             $transaction->refresh();
@@ -313,6 +325,7 @@ class FinancialController extends Controller
 
     public function destroy(int $id)
     {
+        // authorizeFinancialAction maps 'delete' → 'financial.delete' (fixed in trait)
         if ($response = $this->authorizeFinancialAction('delete')) return $response;
 
         $transaction = FinancialTransaction::with('documents')->findOrFail($id);
@@ -341,7 +354,11 @@ class FinancialController extends Controller
     {
         $user = Auth::user();
 
-        if ($user->role->level !== 1 && !$user->hasPermission('manage_all')) {
+        // FIX: was 'manage_all' — this slug is not seeded anywhere in the DB.
+        // Trash access is restricted to roles with 'financial.delete' permission
+        // (Club Adviser does not have this; only System Admin and roles explicitly
+        // granted financial.delete will reach this screen — which is correct).
+        if ($user->role->level !== 1 && !$user->hasPermission('financial.delete')) {
             abort(403);
         }
 
@@ -357,7 +374,10 @@ class FinancialController extends Controller
     {
         $user = Auth::user();
 
-        if ($user->role->level !== 1 && !$user->hasPermission('manage_all')) {
+        // FIX: was 'manage_all' — correct slug is 'financial.delete'.
+        // Restore is a destructive/privileged action; gating it behind
+        // financial.delete keeps it consistent with who can delete records.
+        if ($user->role->level !== 1 && !$user->hasPermission('financial.delete')) {
             abort(403);
         }
 
@@ -377,7 +397,8 @@ class FinancialController extends Controller
     {
         $user = Auth::user();
 
-        if ($user->role->level !== 1 && !$user->hasPermission('manage_all')) {
+        // FIX: was 'manage_all' — correct slug is 'financial.delete'.
+        if ($user->role->level !== 1 && !$user->hasPermission('financial.delete')) {
             abort(403);
         }
 
@@ -406,7 +427,9 @@ class FinancialController extends Controller
     {
         $this->checkGuest();
 
-        if (!auth()->user()->hasPermission('approve_financial_transactions') && auth()->user()->role->level !== 1) {
+        // FIX: was 'approve_financial_transactions' — correct slug is 'financial.approve'.
+        // Reports are gated behind approve because only advisers/admins generate them.
+        if ($user = Auth::user() and $user->role->level !== 1 && !$user->hasPermission('financial.approve')) {
             abort(403);
         }
 
@@ -417,7 +440,8 @@ class FinancialController extends Controller
     {
         $this->checkGuest();
 
-        if (!auth()->user()->hasPermission('approve_financial_transactions') && auth()->user()->role->level !== 1) {
+        // FIX: was 'approve_financial_transactions' — correct slug is 'financial.approve'.
+        if ($user = Auth::user() and $user->role->level !== 1 && !$user->hasPermission('financial.approve')) {
             abort(403);
         }
 
@@ -439,7 +463,8 @@ class FinancialController extends Controller
     {
         $this->checkGuest();
 
-        if (!auth()->user()->hasPermission('approve_financial_transactions') && auth()->user()->role->level !== 1) {
+        // FIX: was 'approve_financial_transactions' — correct slug is 'financial.approve'.
+        if ($user = Auth::user() and $user->role->level !== 1 && !$user->hasPermission('financial.approve')) {
             abort(403);
         }
 

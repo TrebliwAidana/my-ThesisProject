@@ -51,8 +51,12 @@
     <div class="bg-white dark:bg-gray-800 rounded-2xl shadow border border-gold-200 dark:border-gold-800 p-5">
         @php
             $user = auth()->user();
-            $canCreate     = $user->hasPermission('submit_financial_transactions') || $user->role->level === 1;
-            $canViewReports = $user->hasPermission('approve_financial_transactions')   || $user->role->level === 1;
+            $isAdmin = $user->role->level === 1;
+
+            // FIX: all slugs now match PermissionMatrixSeeder exactly (dot-notation)
+            $canCreate      = $isAdmin || $user->hasPermission('financial.create');
+            $canViewReports = $isAdmin || $user->hasPermission('financial.approve');  // FIX: was 'approve_financial_transactions'
+            $canViewTrash   = $isAdmin || $user->hasPermission('financial.delete');   // FIX: was 'manage_all' (never seeded)
         @endphp
 
         <div class="flex flex-wrap gap-3 mb-4">
@@ -87,7 +91,8 @@
                 </a>
             @endif
 
-            @if($user->role->level === 1 || $user->hasPermission('manage_all'))
+            {{-- FIX: was checking 'manage_all' which is not a seeded permission --}}
+            @if($canViewTrash)
                 <a href="{{ route('financial.trash') }}"
                    class="inline-flex items-center gap-1.5 bg-gray-600 hover:bg-gray-700 text-white text-sm font-semibold px-3 py-2 rounded-lg transition">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -145,7 +150,6 @@
             </div>
         </form>
 
-        {{-- Suggestion 4 — Context hint below filter bar --}}
         @if(!request('show_approved'))
             <p class="text-xs text-gray-400 dark:text-gray-500 mt-2">
                 Showing active records only (pending, audited, rejected).
@@ -185,11 +189,20 @@
                 <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
                     @forelse($transactions as $tx)
                     @php
-                        $user      = auth()->user();
-                        $canEdit   = ($user->hasPermission('submit_financial_transactions')   || $user->role->level === 1) && $tx->status === 'pending';
-                        $canDelete = ($user->hasPermission('submit_financial_transactions') || $user->role->level === 1);
-                        $canAudit  = ($user->hasPermission('view_financial_transactions')  || $user->role->level === 1) && $tx->status === 'pending';
-                        $canApprove = ($user->hasPermission('approve_financial_transactions') || $user->role->level === 1) && $tx->status === 'audited';
+                        $user    = auth()->user();
+                        $isAdmin = $user->role->level === 1;
+
+                        // FIX: all per-row permission checks now use correct dot-notation slugs
+                        // that match PermissionMatrixSeeder exactly.
+                        //
+                        // Old → New:
+                        //   'submit_financial_transactions'  → 'financial.create' / 'financial.edit' / 'financial.delete'
+                        //   'view_financial_transactions'    → 'financial.audit'   (Audit button was ALWAYS hidden for Auditor)
+                        //   'approve_financial_transactions' → 'financial.approve'
+                        $canEdit    = ($isAdmin || $user->hasPermission('financial.edit'))   && $tx->status === 'pending';
+                        $canDelete  = ($isAdmin || $user->hasPermission('financial.delete'));
+                        $canAudit   = ($isAdmin || $user->hasPermission('financial.audit'))  && $tx->status === 'pending';
+                        $canApprove = ($isAdmin || $user->hasPermission('financial.approve')) && $tx->status === 'audited';
                         $canReject  = $canApprove;
 
                         $statusColors = [
@@ -295,12 +308,16 @@
         <div class="md:hidden divide-y divide-gray-100 dark:divide-gray-700">
             @forelse($transactions as $tx)
             @php
-                $user       = auth()->user();
-                $canEdit    = ($user->hasPermission('submit_financial_transactions')    || $user->role->level === 1) && $tx->status === 'pending';
-                $canDelete  = ($user->hasPermission('submit_financial_transactions')  || $user->role->level === 1);
-                $canAudit   = ($user->hasPermission('view_financial_transactions')   || $user->role->level === 1) && $tx->status === 'pending';
-                $canApprove = ($user->hasPermission('approve_financial_transactions') || $user->role->level === 1) && $tx->status === 'audited';
+                $user    = auth()->user();
+                $isAdmin = $user->role->level === 1;
+
+                // FIX: same slug corrections as desktop table above
+                $canEdit    = ($isAdmin || $user->hasPermission('financial.edit'))    && $tx->status === 'pending';
+                $canDelete  = ($isAdmin || $user->hasPermission('financial.delete'));
+                $canAudit   = ($isAdmin || $user->hasPermission('financial.audit'))   && $tx->status === 'pending';
+                $canApprove = ($isAdmin || $user->hasPermission('financial.approve')) && $tx->status === 'audited';
                 $canReject  = $canApprove;
+
                 $statusColors = [
                     'pending'  => 'bg-amber-100 text-amber-700',
                     'audited'  => 'bg-blue-100 text-blue-700',
@@ -352,28 +369,33 @@
                 <div class="flex flex-wrap gap-2 pt-1 border-t border-gray-100 dark:border-gray-700">
                     <a href="{{ route('financial.show', $tx->id) }}"
                        class="text-xs bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-3 py-1 rounded-full font-medium">View</a>
+
                     @if($canEdit)
                         <a href="{{ route('financial.edit', $tx->id) }}"
                            class="text-xs bg-gold-50 dark:bg-gold-900/30 text-gold-700 dark:text-gold-300 px-3 py-1 rounded-full font-medium">Edit</a>
                     @endif
+
                     @if($canAudit)
                         <form method="POST" action="{{ route('financial.audit', $tx->id) }}" class="inline">
                             @csrf @method('PATCH')
                             <button type="submit" class="text-xs bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-3 py-1 rounded-full font-medium">Audit</button>
                         </form>
                     @endif
+
                     @if($canApprove)
                         <form method="POST" action="{{ route('financial.approve', $tx->id) }}" class="inline">
                             @csrf @method('PATCH')
                             <button type="submit" class="text-xs bg-emerald-50 text-emerald-700 px-3 py-1 rounded-full font-medium">Approve</button>
                         </form>
                     @endif
+
                     @if($canReject)
                         <form method="POST" action="{{ route('financial.reject', $tx->id) }}" class="inline">
                             @csrf @method('PATCH')
                             <button type="submit" class="text-xs bg-red-50 text-red-700 px-3 py-1 rounded-full font-medium">Reject</button>
                         </form>
                     @endif
+
                     @if($canDelete)
                         <form method="POST" action="{{ route('financial.destroy', $tx->id) }}" class="inline"
                               onsubmit="return confirm('Delete this transaction?')">
@@ -397,4 +419,4 @@
     </div>
 
 </div>
-@endsection
+@endsection 

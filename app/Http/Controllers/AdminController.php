@@ -9,13 +9,13 @@ use App\Models\User;
 use App\Notifications\NewUserWelcomeNotification;
 use App\Notifications\PasswordResetNotification;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
-
 
 class AdminController extends Controller
 {
@@ -30,12 +30,10 @@ class AdminController extends Controller
             abort(403, 'You do not have permission to view roles.');
         }
 
-        // OPTIMIZED: withCount('users') for count only, cache permissions
         $query = Role::withCount('users')
             ->with('permissions')
             ->when(! $request->boolean('show_hidden'), fn ($q) => $q->where('is_visible', true));
 
-        // Show soft-deleted roles when requested
         if ($request->boolean('show_trashed')) {
             $query->onlyTrashed();
         } else {
@@ -59,7 +57,6 @@ class AdminController extends Controller
             abort(403, 'You do not have permission to create roles.');
         }
 
-        // FIX: use cache instead of raw query
         $roles = $this->getCachedVisibleRoles();
 
         return view('admin.roles.create', compact('roles'));
@@ -71,19 +68,15 @@ class AdminController extends Controller
         if ($user->role->level !== 1 && ! $user->hasPermission('roles.edit')) {
             abort(403, 'You do not have permission to edit roles.');
         }
-    
+
         $role = Role::with('permissions')->findOrFail($id);
         if (! $role->is_visible) {
             return redirect()->route('admin.roles.index')->with('error', 'This role is hidden.');
         }
-    
+
         $permissions = $this->getCachedPermissions();
-    
-        // Plain int[] of IDs this role already has — used in blade with in_array().
-        // Avoids calling ->contains() on a plain-array Collection which doesn't
-        // behave the same as an Eloquent Collection's key-aware contains().
         $rolePermissionIds = $role->permissions->pluck('id')->toArray();
-    
+
         return view('admin.roles.edit', compact('role', 'permissions', 'rolePermissionIds'));
     }
 
@@ -95,12 +88,12 @@ class AdminController extends Controller
         }
 
         $validated = $request->validate([
-            'name'         => ['required', 'string', 'max:100', 'unique:roles,name'],
+            'name' => ['required', 'string', 'max:100', 'unique:roles,name'],
             'abbreviation' => ['nullable', 'string', 'max:10'],
-            'desc'         => ['nullable', 'string', 'max:500'],
-            'level'        => ['required', 'integer', 'min:1', 'max:10'],
-            'is_system'    => ['nullable', 'boolean'],
-            'parent_id'    => ['nullable', 'exists:roles,id'],
+            'desc' => ['nullable', 'string', 'max:500'],
+            'level' => ['required', 'integer', 'min:1', 'max:10'],
+            'is_system' => ['nullable', 'boolean'],
+            'parent_id' => ['nullable', 'exists:roles,id'],
         ]);
 
         if ($validated['level'] == 1 && ! ($validated['is_system'] ?? false)) {
@@ -109,28 +102,25 @@ class AdminController extends Controller
 
         try {
             $role = Role::create([
-                'name'         => $validated['name'],
+                'name' => $validated['name'],
                 'abbreviation' => $validated['abbreviation'] ?? null,
-                'desc'         => $validated['desc'] ?? null,
-                'level'        => $validated['level'],
-                'is_system'    => $validated['is_system'] ?? false,
-                'parent_id'    => $validated['parent_id'] ?? null,
-                'is_visible'   => true,
+                'desc' => $validated['desc'] ?? null,
+                'level' => $validated['level'],
+                'is_system' => $validated['is_system'] ?? false,
+                'parent_id' => $validated['parent_id'] ?? null,
+                'is_visible' => true,
             ]);
 
-            // sync() is already atomic — no transaction wrapper needed
             if ($request->has('permissions')) {
                 $role->permissions()->sync($request->input('permissions', []));
             }
 
-            Cache::forget('permissions_all');
-            Cache::forget('roles_visible');
-            Cache::forget('roles_visible_ordered');
+            $this->flushPermissionCaches($role);
 
             return redirect()->route('admin.roles.index')
                 ->with('success', "✅ Role '{$role->name}' created successfully.");
         } catch (\Exception $e) {
-            return back()->with('error', '❌ Failed to create role: ' . $e->getMessage())->withInput();
+            return back()->with('error', '❌ Failed to create role: '.$e->getMessage())->withInput();
         }
     }
 
@@ -155,12 +145,11 @@ class AdminController extends Controller
 
             if ($request->has('permissions')) {
                 $role->permissions()->sync($request->input('permissions', []));
+                // FIX: cache key must match User::hasPermission() exactly → "user_perms_{id}"
+                $role->users()->each(fn ($u) => cache()->forget("user_perms_{$u->id}"));
             }
 
-            // OPTIMIZED: invalidate caches after role/permission changes
-            Cache::forget('permissions_all');
-            Cache::forget('roles_visible');
-            Cache::forget('roles_visible_ordered');
+            $this->flushPermissionCaches($role);
 
             return redirect()->route('admin.roles.index')->with('success', 'Role updated.');
         }
@@ -180,11 +169,10 @@ class AdminController extends Controller
         try {
             $role->update($validated);
             $role->permissions()->sync($request->input('permissions', []));
+            // FIX: cache key must match User::hasPermission() exactly → "user_perms_{id}"
+            $role->users()->each(fn ($u) => cache()->forget("user_perms_{$u->id}"));
 
-            // OPTIMIZED: invalidate caches after role/permission changes
-            Cache::forget('permissions_all');
-            Cache::forget('roles_visible');
-            Cache::forget('roles_visible_ordered');
+            $this->flushPermissionCaches($role);
 
             return redirect()->route('admin.roles.index')
                 ->with('success', "✅ Role '{$role->name}' updated successfully.");
@@ -202,7 +190,6 @@ class AdminController extends Controller
 
         $role = Role::findOrFail($id);
 
-        // Prevent deletion of System Administrator role
         if ($role->id === 1) {
             return back()->with('error', '⚠️ Cannot delete the System Administrator role.');
         }
@@ -212,7 +199,6 @@ class AdminController extends Controller
         if ($role->is_predefined) {
             return back()->with('error', '⚠️ Cannot delete a predefined system role.');
         }
-        // OPTIMIZED: exists() instead of count() - only checks if record exists
         if ($role->users()->withTrashed()->exists()) {
             return back()->with('error', '⚠️ Cannot delete a role that has users assigned to it.');
         }
@@ -221,10 +207,7 @@ class AdminController extends Controller
             $roleName = $role->name;
             $role->delete();
 
-            // OPTIMIZED: invalidate caches after role deletion
-            Cache::forget('permissions_all');
-            Cache::forget('roles_visible');
-            Cache::forget('roles_visible_ordered');
+            $this->flushPermissionCaches();
 
             return redirect()->route('admin.roles.index')
                 ->with('success', "✅ Role '{$roleName}' deleted successfully.");
@@ -232,6 +215,7 @@ class AdminController extends Controller
             return back()->with('error', '❌ Failed to delete role: '.$e->getMessage());
         }
     }
+
     public function restoreRole(int $id)
     {
         $user = Auth::user();
@@ -242,8 +226,7 @@ class AdminController extends Controller
         $role = Role::withTrashed()->findOrFail($id);
         $role->restore();
 
-        Cache::forget('roles_visible');
-        Cache::forget('roles_visible_ordered');
+        $this->flushPermissionCaches();
 
         return redirect()->route('admin.roles.index')
             ->with('success', "Role '{$role->name}' restored successfully.");
@@ -265,9 +248,7 @@ class AdminController extends Controller
         $roleName = $role->name;
         $role->forceDelete();
 
-        Cache::forget('permissions_all');
-        Cache::forget('roles_visible');
-        Cache::forget('roles_visible_ordered');
+        $this->flushPermissionCaches();
 
         return redirect()->route('admin.roles.index')
             ->with('success', "Role '{$roleName}' permanently deleted.");
@@ -291,9 +272,7 @@ class AdminController extends Controller
         $role->update(['is_visible' => ! $role->is_visible]);
         $status = $role->is_visible ? 'visible' : 'hidden';
 
-        // OPTIMIZED: invalidate cache after role visibility changes
-        Cache::forget('roles_visible');
-        Cache::forget('roles_visible_ordered');
+        $this->flushPermissionCaches();
 
         return redirect()->route('admin.roles.index', ['show_hidden' => request()->boolean('show_hidden')])
             ->with('success', "Role is now {$status}.");
@@ -310,7 +289,6 @@ class AdminController extends Controller
             abort(403, 'You do not have permission to view users.');
         }
 
-        // OPTIMIZED: load only id + name from role (view only uses role->name)
         $query = User::with('role:id,name');
 
         if ($request->boolean('trashed')) {
@@ -343,7 +321,6 @@ class AdminController extends Controller
 
         $users = $query->paginate(20)->appends($request->except('page'));
 
-        // Stats query remains optimal
         $stats = DB::table('users')
             ->selectRaw('
                 COUNT(*) as total,
@@ -353,7 +330,6 @@ class AdminController extends Controller
             ', [now()->subDays(7)])
             ->first();
 
-        // OPTIMIZED: cache visible roles for filter dropdown
         $roles = $this->getCachedVisibleRoles();
 
         return view('admin.users.index', compact('users', 'roles', 'stats'));
@@ -366,7 +342,6 @@ class AdminController extends Controller
             abort(403, 'You do not have permission to create users.');
         }
 
-        // OPTIMIZED: cache visible roles with ordering
         $roles = Cache::remember('roles_visible_ordered', 3600, fn () => Role::where('is_visible', true)->orderBy('level')->get());
 
         return view('admin.users.create', compact('roles'));
@@ -399,11 +374,8 @@ class AdminController extends Controller
             $validated['year_level'] = null;
         }
 
-        // Use the admin-supplied password if provided, otherwise generate a random one.
-        // Alpine clears the fields when the checkbox is unchecked, so empty = no custom password.
         $password = ! empty($validated['password']) ? $validated['password'] : Str::random(10);
 
-        // Admin-created accounts are pre-verified. If email fails, admin can manually verify.
         $user = User::create([
             'first_name' => $validated['first_name'],
             'middle_name' => $validated['middle_name'] ?? null,
@@ -422,8 +394,6 @@ class AdminController extends Controller
             'email_verified_at' => now(),
         ]);
 
-        // Attempt to send welcome email. If it fails, the user still exists and
-        // the admin can resend or manually verify from the users index.
         $emailSent = false;
         try {
             $user->notify(new NewUserWelcomeNotification($password));
@@ -448,7 +418,6 @@ class AdminController extends Controller
         }
 
         $user = User::findOrFail($id);
-        // OPTIMIZED: cache visible roles with ordering
         $roles = Cache::remember('roles_visible_ordered', 3600, fn () => Role::where('is_visible', true)->orderBy('level')->get());
 
         return view('admin.users.edit', compact('user', 'roles'));
@@ -482,7 +451,6 @@ class AdminController extends Controller
             $validated['year_level'] = null;
         }
 
-        // Prevent demoting the last System Administrator
         if ($user->role_id != $validated['role_id'] && $user->role_id === 1) {
             if (User::where('role_id', 1)->count() <= 1) {
                 return back()->with('error', '⚠️ Cannot change the role of the last System Administrator.');
@@ -511,6 +479,9 @@ class AdminController extends Controller
 
         $user->update($data);
 
+        // FIX: clear the user's own permission cache when their role changes
+        cache()->forget("user_perms_{$user->id}");
+
         return redirect()->route('admin.users.index')
             ->with('success', "✅ User '{$user->full_name}' updated successfully.");
     }
@@ -518,7 +489,7 @@ class AdminController extends Controller
     public function destroyUser(int $id)
     {
         $authUser = Auth::user();
-        if ($authUser->role_id !== 1 && !$authUser->hasPermission('users.delete')){
+        if ($authUser->role_id !== 1 && ! $authUser->hasPermission('users.delete')) {
             abort(403);
         }
 
@@ -636,11 +607,6 @@ class AdminController extends Controller
     // Private Helpers
     // =========================================================================
 
-    /**
-     * Shared validation rules for both store and update.
-     * Pass $userId when updating so unique rules exclude the current record.
-     * Uses Rule::unique() fluent syntax to avoid type-casting issues with string IDs.
-     */
     private function validateUserRequest(Request $request, ?int $userId = null): array
     {
         $emailRule = $userId
@@ -676,9 +642,6 @@ class AdminController extends Controller
         ]);
     }
 
-    /**
-     * Normalize a phone input to +63XXXXXXXXXX format.
-     */
     private function normalizePhone(string $phone): string
     {
         $phone = preg_replace('/[^0-9]/', '', $phone);
@@ -692,17 +655,11 @@ class AdminController extends Controller
         return '+63'.substr($phone, 0, 10);
     }
 
-    /**
-     * Find a role by ID that is also visible.
-     */
     private function resolveVisibleRole(int $roleId): ?Role
     {
         return Role::where('id', $roleId)->where('is_visible', true)->first();
     }
 
-    /**
-     * Build the full name string from validated data.
-     */
     private function buildFullName(array $validated): string
     {
         return trim(
@@ -712,60 +669,65 @@ class AdminController extends Controller
         );
     }
 
-    /**
-     * Get all permissions from cache or database.
-     * Permissions rarely change, so cache for 1 hour.
-     */
-    private function getCachedPermissions(): \Illuminate\Support\Collection
+    private function getCachedPermissions(): Collection
     {
-        // getCachedPermissions() — temporary key bump to force cache miss
+        // FIX: aligned cache key — was 'permissions_all_v2', now consistent.
+        // flushPermissionCaches() centralises all Cache::forget() calls so
+        // every write path (store/update/destroy/toggle) forgets the same key.
         $array = Cache::remember(
-            'permissions_all_v2',   // ← bump version suffix
+            'permissions_all',
             3600,
             fn () => Permission::all()->toArray()
         );
-    
+
         return collect($array);
     }
 
-    /**
-     * Get visible roles from cache for dropdowns.
-     * Cache for 1 hour since role visibility changes infrequently.
-     */
-    private function getCachedVisibleRoles(): \Illuminate\Support\Collection
+    private function getCachedVisibleRoles(): Collection
     {
         $array = Cache::remember(
             'roles_visible',
             3600,
             fn () => Role::where('is_visible', true)->get(['id', 'name'])->toArray()
         );
-    
+
         return collect($array)->map(fn ($r) => (object) $r);
     }
 
     /**
-     * Resolve and validate a position against Member::VALID_POSITIONS.
+     * Central cache flush for all role/permission write operations.
      *
-     * Returns:
-     *   - string  : the valid position
-     *   - null    : role has no positions (e.g. System Administrator) — caller clears the field
-     *   - false   : position is required for this role but was not supplied
+     * FIX: previously each method called Cache::forget() individually with
+     * inconsistent key names (e.g. 'permissions_all' vs 'permissions_all_v2').
+     * This single method is the only place those keys are listed, guaranteeing
+     * every write path flushes the same set of keys.
+     *
+     * Also clears per-user permission caches for all users in the affected role.
+     * Key "user_perms_{id}" matches User::hasPermission() exactly.
      */
+    private function flushPermissionCaches(?Role $role = null): void
+    {
+        Cache::forget('permissions_all');
+        Cache::forget('roles_visible');
+        Cache::forget('roles_visible_ordered');
+
+        if ($role) {
+            $role->users()->each(fn ($u) => cache()->forget("user_perms_{$u->id}"));
+        }
+    }
+
     private function resolvePosition(Role $role, string $position): string|null|false
     {
         $allowed = Member::VALID_POSITIONS[$role->id] ?? [];
 
-        // Role has no position list — clear whatever was submitted
         if (empty($allowed)) {
             return null;
         }
 
-        // Position is required for this role but missing
         if (empty($position)) {
             return false;
         }
 
-        // Submitted value is not in the allowed list — treat as unset
         if (! in_array($position, $allowed, true)) {
             return null;
         }
@@ -773,18 +735,6 @@ class AdminController extends Controller
         return $position;
     }
 
-    /**
-     * Whether year_level should be cleared for the given role + position.
-     *
-     * Derived entirely from Member::NON_STUDENT_POSITIONS and Member::VALID_POSITIONS.
-     * No hardcoded role IDs or position strings — adding a new non-student role only
-     * requires updating the Member model constants.
-     *
-     * Clears year_level when:
-     *   (a) the role has no positions defined at all, OR
-     *   (b) every position the role allows is a non-student position, OR
-     *   (c) the specific resolved position is itself a non-student position.
-     */
     private function shouldClearYearLevel(int $roleId, ?string $position): bool
     {
         $positionsForRole = Member::VALID_POSITIONS[$roleId] ?? [];
@@ -795,12 +745,10 @@ class AdminController extends Controller
 
         $nonStudent = Member::NON_STUDENT_POSITIONS;
 
-        // All positions for this role are non-student
         if (array_diff($positionsForRole, $nonStudent) === []) {
             return true;
         }
 
-        // The specific resolved position is non-student
         return $position !== null && in_array($position, $nonStudent, true);
     }
 }

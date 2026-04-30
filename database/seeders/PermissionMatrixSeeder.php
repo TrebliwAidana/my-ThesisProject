@@ -44,6 +44,9 @@ class PermissionMatrixSeeder extends Seeder
 
         // Permissions – view + edit
         'permissions' => ['view', 'edit'],
+
+        // Backups – view, create (download/export), restore, delete
+        'backups'   => ['view', 'create', 'restore', 'delete'],
     ];
 
     /**
@@ -110,6 +113,12 @@ class PermissionMatrixSeeder extends Seeder
         // Permissions
         'permissions.view' => 'View Permissions',
         'permissions.edit' => 'Edit Permissions',
+
+        // Backups
+        'backups.view'    => 'View Backups',
+        'backups.create'  => 'Create Backups',
+        'backups.restore' => 'Restore Backups',
+        'backups.delete'  => 'Delete Backups',
     ];
 
     public function run(): void
@@ -143,14 +152,16 @@ class PermissionMatrixSeeder extends Seeder
         $all = Permission::pluck('id', 'slug');
 
         $matrix = [
+            // System Administrator gets every permission
             'System Administrator' => $all->keys()->toArray(),
 
+            // Supreme Admin — everything except role/permission management
             'Supreme Admin' => $all->except([
                 'roles.create', 'roles.edit', 'roles.delete',
                 'permissions.edit',
             ])->keys()->toArray(),
 
-
+            // Club Adviser — oversight + approval, no data entry
             'Club Adviser' => [
                 'members.view',
                 'documents.view', 'documents.trash', 'documents.restore',
@@ -160,24 +171,26 @@ class PermissionMatrixSeeder extends Seeder
                 'reports.view',
                 'audit.view',
                 'activities.monitor',
+                'backups.view',
             ],
 
+            // Treasurer — financial data entry + reporting
             'Treasurer' => [
                 'financial.view', 'financial.create', 'financial.edit', 'financial.delete',
                 'reports.view', 'reports.generate',
             ],
 
+            // Auditor — read-only financial review + audit trail
             'Auditor' => [
                 'financial.view', 'financial.audit', 'financial.review',
                 'reports.view',
                 'audit.view', 'audit.remarks',
             ],
-      
+
+            // Guest — public reports only
             'Guest' => [
                 'reports.public',
             ],
-
-
         ];
 
         foreach ($matrix as $roleName => $slugs) {

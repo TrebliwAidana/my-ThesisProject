@@ -215,32 +215,29 @@
         ════════════════════════════════════════════════════════════ */
         html.dark .sidebar-link,
         html.dark .sidebar-sub-link {
-            color: #F1F5F9 !important;        /* Bright, high-contrast slate-50 */
+            color: #F1F5F9 !important;
             font-weight: 500;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
             text-rendering: geometricPrecision;
-            letter-spacing: -0.01em;           /* subtle crispness */
+            letter-spacing: -0.01em;
         }
 
-        /* Section labels (Main, Records, Account, Administration) */
         html.dark .sidebar-section-label {
-            color: #A5B4FC !important;        /* Soft indigo tint for readability */
+            color: #A5B4FC !important;
             font-weight: 600;
             letter-spacing: 0.07em;
             opacity: 1;
             -webkit-font-smoothing: antialiased;
         }
 
-        /* Keep hover/active states consistent (gold or emerald backgrounds, white text) */
         .sidebar-link:hover,
         .sidebar-sub-link:hover,
         .sidebar-link.active,
         .sidebar-sub-link.active {
-            color: white !important;            /* override any dark text on hover/active */
+            color: white !important;
         }
 
-        /* Additional safeguard for any text spans inside sidebar */
         html.dark .sidebar-link span,
         html.dark .sidebar-sub-link span,
         html.dark .sidebar-link svg + span,
@@ -303,35 +300,11 @@
         @php
             $user = auth()->user();
 
-            /*
-             | ─────────────────────────────────────────────────────────────────
-             | HOW SIDEBAR VISIBILITY WORKS
-             | ─────────────────────────────────────────────────────────────────
-             | Every item calls $user->hasPermission('slug') which:
-             |   • Auto-returns true  for System Administrator (role.level === 1)
-             |   • Checks role->permissions (cached 5 min) for everyone else
-             |   • Accepts 'module.manage' as a wildcard that covers 'module.*'
-             |
-             | This means:
-             |   - Giving a role 'members.view'  → shows Members link
-             |   - Removing that permission      → link disappears automatically
-             |   - No code changes needed when permissions change in the DB
-             |
-             | Guest detection: we block the guest account at the hasPermission
-             | level — guests have no permissions assigned, so everything returns
-             | false except items explicitly set to `$user && !$isGuest`.
-             | ─────────────────────────────────────────────────────────────────
-             */
-
             $isGuest = $user && (
                 ($user->is_guest ?? false) ||
                 strtolower($user->email) === 'guest@gmail.com'
             );
 
-            /*
-             | Eager-load role + permissions in one query so hasPermission()
-             | hits the cache on every subsequent call — no N+1 in the sidebar.
-             */
             if ($user && ! $user->relationLoaded('role')) {
                 $user->load('role.permissions');
             }
@@ -339,66 +312,66 @@
             $isActive = fn(string $r) => Route::is($r) || Route::is($r . '.*');
 
             /*
-             | Admin sub-item visibility — each item is independently
-             | permission-gated so a partial admin (if you ever create one)
-             | only sees the items their role has permission for.
+             | ─────────────────────────────────────────────────────────────────
+             | FIX: All 'perm' slugs now match the exact slugs defined in
+             | PermissionMatrixSeeder. Previously they used 'admin.*' prefixes
+             | which don't exist in the permissions table, causing all non-SA
+             | users to be denied every admin sidebar item regardless of what
+             | was assigned via the Permission Matrix.
+             | ─────────────────────────────────────────────────────────────────
              */
             $adminItems = $user ? [
                 [
-                    'label'   => 'User Management',
-                    'route'   => 'admin.users.index',
-                    'match'   => 'admin.users',
-                    'perm'    => 'admin.users',        // hasPermission('admin.users')
-                    'icon'    => 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z',
+                    'label' => 'User Management',
+                    'route' => 'admin.users.index',
+                    'match' => 'admin.users',
+                    'perm'  => 'users.view',                  // FIX: was 'admin.users'
+                    'icon'  => 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z',
                 ],
                 [
-                    'label'   => 'Roles',
-                    'route'   => 'admin.roles.index',
-                    'match'   => 'admin.roles',
-                    'perm'    => 'admin.roles',
-                    'icon'    => 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z',
+                    'label' => 'Roles',
+                    'route' => 'admin.roles.index',
+                    'match' => 'admin.roles',
+                    'perm'  => 'roles.view',                  // FIX: was 'admin.roles'
+                    'icon'  => 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z',
                 ],
                 [
-                    'label'   => 'Permissions',
-                    'route'   => 'admin.permissions.index',
-                    'match'   => 'admin.permissions',
-                    'perm'    => 'admin.permissions',
-                    'icon'    => 'M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z',
+                    'label' => 'Permissions',
+                    'route' => 'admin.permissions.index',
+                    'match' => 'admin.permissions',
+                    'perm'  => 'permissions.view',            // FIX: was 'admin.permissions'
+                    'icon'  => 'M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z',
                 ],
                 [
-                    'label'   => 'Audit Logs',
-                    'route'   => 'admin.auditlogs.index',
-                    'match'   => 'admin.auditlogs',
-                    'perm'    => 'admin.audit',
-                    'icon'    => 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z',
+                    'label' => 'Audit Logs',
+                    'route' => 'admin.auditlogs.index',
+                    'match' => 'admin.auditlogs',
+                    'perm'  => 'audit.view',                  // FIX: was 'admin.audit'
+                    'icon'  => 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z',
                 ],
                 [
-                    'label'   => 'Backup & Restore',
-                    'route'   => 'admin.document-backups.index',
-                    'match'   => 'admin.document-backups',
-                    'perm'    => 'admin.document-categories', // reuses same permission
-                    'icon'    => 'M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10',
+                    'label' => 'Backup & Restore',
+                    'route' => 'admin.document-backups.index',
+                    'match' => 'admin.document-backups',
+                    'perm'  => 'backups.view',                // FIX: now uses dedicated backups module slug
+                    'icon'  => 'M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10',
                 ],
                 [
-                    'label'   => 'Doc Categories',
-                    'route'   => 'admin.document-categories.index',
-                    'match'   => 'admin.document-categories',
-                    'perm'    => 'admin.document-categories',
-                    'icon'    => 'M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a2 2 0 012-2h2z',
+                    'label' => 'Doc Categories',
+                    'route' => 'admin.document-categories.index',
+                    'match' => 'admin.document-categories',
+                    'perm'  => 'categories.view',             // FIX: was 'admin.document-categories'
+                    'icon'  => 'M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a2 2 0 012-2h2z',
                 ],
                 [
-                    'label'   => 'Financial Categories',
-                    'route'   => 'admin.financial-categories.index',
-                    'match'   => 'admin.financial-categories',
-                    'perm'    => 'financial_categories.manage',
-                    'icon'    => 'M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a2 2 0 012-2h2z',
+                    'label' => 'Financial Categories',
+                    'route' => 'admin.financial-categories.index',
+                    'match' => 'admin.financial-categories',
+                    'perm'  => 'financial_categories.manage', // already correct
+                    'icon'  => 'M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a2 2 0 012-2h2z',
                 ],
             ] : [];
 
-            /*
-             | Filter admin items to only those the current user can see.
-             | collect() so we can call ->isNotEmpty() cleanly.
-             */
             $visibleAdminItems = collect($adminItems)
                 ->filter(fn($item) => $user && $user->hasPermission($item['perm']));
         @endphp
@@ -408,11 +381,6 @@
             {{-- ── MAIN ─────────────────────────────────────────────────────── --}}
             <div x-show="!sidebarCollapsed" class="sidebar-section-label">Main</div>
 
-            {{--
-                Dashboard — all authenticated users.
-                hasPermission is NOT used here intentionally: every logged-in
-                user (including Guest) should always be able to reach the dashboard.
-            --}}
             <a href="{{ route('dashboard') }}"
                class="sidebar-link {{ $isActive('dashboard') ? 'active' : '' }}"
                aria-current="{{ $isActive('dashboard') ? 'page' : 'false' }}"
@@ -425,11 +393,6 @@
                 <span x-show="sidebarCollapsed" class="sidebar-tooltip" aria-hidden="true">Dashboard</span>
             </a>
 
-            {{--
-                Members — shown only when user has 'members.view' permission.
-                hasPermission() auto-grants for SA (level 1), checks role->permissions
-                for everyone else. Guests have no permissions → hidden automatically.
-            --}}
             @if($user->hasPermission('members.view'))
                 <a href="{{ route('members.index') }}"
                    class="sidebar-link {{ $isActive('members') ? 'active' : '' }}"
@@ -445,15 +408,16 @@
             @endif
 
             {{-- ── RECORDS ──────────────────────────────────────────────────── --}}
-            @if($user->hasPermission('documents.view') || $user->hasPermission('financial_transactions.view'))
+            {{--
+                FIX: Changed second permission check from 'financial_transactions.view'
+                to 'financial.view' to match the slug generated by PermissionMatrixSeeder.
+                ('financial' => ['view',...]) generates slug 'financial.view', NOT
+                'financial_transactions.view'.
+            --}}
+            @if($user->hasPermission('documents.view') || $user->hasPermission('financial.view'))
                 <div x-show="!sidebarCollapsed" class="sidebar-section-label">Records</div>
             @endif
 
-            {{--
-                Approved Financial Reports (Documents).
-                Permission: 'documents.view'
-                Guests can see this if their role has documents.view assigned.
-            --}}
             @if($user->hasPermission('documents.view'))
                 <a href="{{ route('documents.index') }}"
                    class="sidebar-link {{ $isActive('documents') ? 'active' : '' }}"
@@ -468,12 +432,8 @@
                 </a>
             @endif
 
-            {{--
-                Financial Records.
-                Permission: 'financial_transactions.view'
-                Matches the slug used in hasPermission() and routePermissionMap.
-            --}}
-            @if($user->hasPermission('financial_transactions.view'))
+            {{-- FIX: was 'financial_transactions.view' — slug doesn't exist in seeder --}}
+            @if($user->hasPermission('financial.view'))
                 <a href="{{ route('financial.index') }}"
                    class="sidebar-link {{ $isActive('financial') ? 'active' : '' }}"
                    aria-current="{{ $isActive('financial') ? 'page' : 'false' }}"
@@ -488,11 +448,6 @@
             @endif
 
             {{-- ── ACCOUNT ──────────────────────────────────────────────────── --}}
-            {{--
-                My Profile — hidden for guests (no meaningful profile to edit).
-                Not permission-gated because profile access isn't a DB permission;
-                it's purely a guest-vs-real-user distinction.
-            --}}
             @if(!$isGuest)
                 <div x-show="!sidebarCollapsed" class="sidebar-section-label">Account</div>
 
@@ -510,12 +465,6 @@
             @endif
 
             {{-- ── ADMINISTRATION ───────────────────────────────────────────── --}}
-            {{--
-                The entire Administration section only renders when the user has
-                at least one admin permission. $visibleAdminItems is pre-filtered
-                above using hasPermission() per item — so even if the section
-                appears, only permitted sub-items show inside it.
-            --}}
             @if($visibleAdminItems->isNotEmpty())
                 <div x-show="!sidebarCollapsed" class="sidebar-section-label">Administration</div>
 
@@ -901,13 +850,6 @@
         }
     };
 
-    /*
-     | Flash message bootstrapper.
-     | Reads the single <meta name="flash-data"> tag written by the layout's
-     | @php block above and fires one toast per flash key.
-     | Child views must NOT render their own session() HTML blocks — this is
-     | the only place flash messages are displayed.
-     */
     document.addEventListener('DOMContentLoaded', function () {
         var meta = document.querySelector('meta[name="flash-data"]');
         if (!meta) return;

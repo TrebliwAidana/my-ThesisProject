@@ -28,6 +28,13 @@ trait FinancialHelperTrait
     /**
      * Returns a RedirectResponse if the user is unauthorized, or null if OK.
      * Usage:  if ($response = $this->authorizeFinancialAction('create')) return $response;
+     *
+     * FIX: The previous $map used non-existent underscore slugs:
+     *   'submit_financial_transactions'  → does not exist in permissions table
+     *   'approve_financial_transactions' → does not exist in permissions table
+     *
+     * All slugs now match PermissionMatrixSeeder exactly (dot-notation format).
+     * Cache key "user_perms_{id}" confirmed to match User::hasPermission().
      */
     protected function authorizeFinancialAction(string $action): ?RedirectResponse
     {
@@ -38,12 +45,12 @@ trait FinancialHelperTrait
                 ->with('error', 'Guest accounts cannot perform financial actions.');
         }
 
-        // Map action → actual permission slug from the permissions table
+        // Map action → permission slug (must match PermissionMatrixSeeder exactly)
         $map = [
-            'create'  => 'submit_financial_transactions',
-            'edit'    => 'submit_financial_transactions',
-            'delete'  => 'submit_financial_transactions',
-            'approve' => 'approve_financial_transactions',
+            'create'  => 'financial.create',   // FIX: was 'submit_financial_transactions'
+            'edit'    => 'financial.edit',      // FIX: was 'submit_financial_transactions'
+            'delete'  => 'financial.delete',    // FIX: was 'submit_financial_transactions'
+            'approve' => 'financial.approve',   // FIX: was 'approve_financial_transactions'
         ];
 
         $permission = $map[$action] ?? null;

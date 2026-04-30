@@ -40,28 +40,47 @@ class PermissionController extends Controller
 
         // If the requested role_id is not among visible roles, fallback to the first visible role
         if (!$selectedRole && $roles->isNotEmpty()) {
-            $selectedRole = $roles->first();
+            $selectedRole   = $roles->first();
             $selectedRoleId = $selectedRole->id;
         }
 
-        // Define logical display order — core features first, system last.
+        /*
+         | ─────────────────────────────────────────────────────────────────────
+         | MODULE DISPLAY ORDER
+         | ─────────────────────────────────────────────────────────────────────
+         | Defines the order modules appear in the Permission Matrix UI.
+         | Any module slug NOT listed here is appended alphabetically at the end.
+         |
+         | FIX: Added 'categories', 'financial_categories', and 'backups' which
+         | were present in the seeder's $matrix but missing here, causing those
+         | modules to be sorted alphabetically at the bottom instead of grouped
+         | logically — and making them easy to overlook when assigning perms.
+         | ─────────────────────────────────────────────────────────────────────
+         */
         $moduleOrder = [
+            // ── Core records ──────────────────────────────
             'members',
             'documents',
-            'financial',    
+            'categories',           // document categories
+            // ── Financial ─────────────────────────────────
+            'financial',
+            'financial_categories',
+            // ── Reporting ─────────────────────────────────
             'reports',
-            'organization',
+            // ── System / Infrastructure ───────────────────
+            'backups',              // Backup & Restore
             'users',
             'roles',
             'permissions',
-            'admin',
-            'audit',          
-            'activities', 
+            // ── Monitoring ────────────────────────────────
+            'audit',
+            'activities',
         ];
 
         $allPerms = Permission::all();
         $grouped  = $allPerms->groupBy('module')->toArray();
 
+        // Build sorted map: listed modules first (in order), then any unlisted ones alphabetically
         $sorted = [];
         foreach ($moduleOrder as $module) {
             if (isset($grouped[$module])) {
@@ -69,14 +88,15 @@ class PermissionController extends Controller
                 unset($grouped[$module]);
             }
         }
+        // Append any remaining modules not in $moduleOrder, sorted alphabetically
         ksort($grouped);
         foreach ($grouped as $module => $perms) {
             $sorted[$module] = $perms;
         }
 
-        $permissions = collect($sorted)->map(fn($perms) => collect($perms)->map(
-            fn($perm) => (object) $perm
-        ));
+        $permissions = collect($sorted)->map(
+            fn($perms) => collect($perms)->map(fn($perm) => (object) $perm)
+        );
 
         $modules = $permissions->keys();
 
@@ -109,7 +129,34 @@ class PermissionController extends Controller
 
         $role->permissions()->sync($grantedIds);
 
-        $role->users()->each(fn($u) => cache()->forget("user_perms_{$u->id}"));
+        /*
+         | ─────────────────────────────────────────────────────────────────────
+         | CACHE INVALIDATION
+         | ─────────────────────────────────────────────────────────────────────
+         | CRITICAL: The cache key used here MUST exactly match the key used
+         | inside User::hasPermission(). A mismatch means saved permission
+         | changes are ignored until the cache naturally expires, causing users
+         | to get stale 403s even after being granted access.
+         |
+         | Common mismatch example:
+         |   hasPermission() stores  → "user_permissions_{id}"
+         |   This line cleared       → "user_perms_{id}"          ← BUG
+         |
+         | Check your User model's hasPermission() method and align the key
+         | below to match it exactly. Both patterns are shown — keep only one:
+         |
+         |   Pattern A (short key):  "user_perms_{$u->id}"
+         |   Pattern B (long key):   "user_permissions_{$u->id}"
+         |
+         | If you are still getting 403s after saving permissions, this cache
+         | mismatch is almost certainly the cause.
+         | ─────────────────────────────────────────────────────────────────────
+         */
+        $role->users()->each(function ($u) {
+            // ── Adjust this key to match User::hasPermission() exactly ──
+            cache()->forget("user_perms_{$u->id}");        // Pattern A
+            cache()->forget("user_permissions_{$u->id}");  // Pattern B (belt-and-suspenders)
+        });
 
         if ($request->expectsJson() || $request->wantsJson()) {
             return response()->json([
