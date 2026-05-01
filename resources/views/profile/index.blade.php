@@ -143,7 +143,7 @@
                 </div>
 
                 <div class="flex gap-3">
-                    <button type="submit" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-6 py-2 rounded-lg transition shadow-sm">
+                    <button type="submit"  class="bg-emerald-600 hover:bg-gold-500 text-white px-6 py-2 rounded-lg transition">
                         Save Changes
                     </button>
                     <button type="reset" class="bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 font-semibold px-6 py-2 rounded-lg transition">
@@ -214,7 +214,7 @@
                     @enderror
                 </div>
 
-                <button type="submit" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-6 py-2 rounded-lg transition shadow-sm">
+                <button type="submit"  class="bg-emerald-600 hover:bg-gold-500 text-white px-6 py-2 rounded-lg transition">
                     Update Password
                 </button>
             </form>
