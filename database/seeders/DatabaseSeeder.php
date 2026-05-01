@@ -23,6 +23,7 @@ class DatabaseSeeder extends Seeder
             MemberSeeder::class,
             DocumentSeeder::class,
             DocumentCategorySeeder::class,
+            FinancialCategorySeeder::class,
         ]);
     }
 }

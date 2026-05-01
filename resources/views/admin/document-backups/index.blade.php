@@ -1,582 +1,887 @@
 @extends('layouts.app')
 
-@section('title', 'Document Backups')
+@section('title', 'Document Backups — VSULHS SSLG')
 @section('page-title', 'Document Backup & Restore')
 
-@section('content')
-
+@push('styles')
 <style>
-.loader {
-    border-width: 2px;
-    border-style: solid;
-    border-color: #10b981 transparent transparent transparent;
-    animation: spin 0.8s linear infinite;
-    border-radius: 9999px;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
+/* ════════════════════════════════════════════════
+   DOCUMENT BACKUPS — Emerald & Gold Luxury Theme
+   Matching all other management views
+════════════════════════════════════════════════ */
 
-/* Category checkbox grid */
-.cat-item input[type="checkbox"]:checked ~ .cat-label {
-    color: #065f46;
+/* ── Hero Section ── */
+.backups-hero {
+    position: relative;
+    overflow: hidden;
+    border-radius: 1.25rem;
+    padding: 1.75rem 2rem;
+    isolation: isolate;
+    background: linear-gradient(135deg, #064E3B 0%, #065F46 35%, #047857 60%, #0A3A28 100%);
+}
+.backups-hero::before {
+    content: '';
+    position: absolute; inset: 0;
+    background-image: radial-gradient(circle at 1px 1px, rgba(255,255,255,1) 1px, transparent 0);
+    background-size: 28px 28px;
+    opacity: 0.04; z-index: 0;
+}
+.backups-hero::after {
+    content: '';
+    position: absolute;
+    top: -60px; right: -60px;
+    width: 280px; height: 280px;
+    background: radial-gradient(circle, rgba(212,175,55,0.35), transparent 65%);
+    filter: blur(48px); z-index: 0;
+}
+.backups-hero-content { position: relative; z-index: 1; }
+
+.backups-hero-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(1.5rem, 3.5vw, 2.2rem);
+    color: #fff;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+}
+.backups-hero-title span {
+    background: linear-gradient(90deg, #F0CC55, #D4AF37);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+.backups-hero-pill {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    padding: 0.3rem 0.75rem;
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(212,175,55,0.28);
+    border-radius: 999px;
+    font-size: 0.72rem; font-weight: 600;
+    color: rgba(255,255,255,0.88);
+    font-family: 'DM Mono', monospace;
+}
+
+/* ── Flash Messages ── */
+.flash-success {
+    background: rgba(5,150,105,0.1);
+    border: 1px solid rgba(5,150,105,0.25);
+    color: #047857;
+    border-radius: 1rem;
+    padding: 1rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+html.dark .flash-success {
+    background: rgba(16,185,129,0.15);
+    color: #6ee7b7;
+    border-color: rgba(16,185,129,0.3);
+}
+.flash-error {
+    background: rgba(220,38,38,0.1);
+    border: 1px solid rgba(220,38,38,0.25);
+    color: #dc2626;
+    border-radius: 1rem;
+    padding: 1rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+html.dark .flash-error {
+    background: rgba(248,113,113,0.15);
+    color: #fca5a5;
+    border-color: rgba(248,113,113,0.3);
+}
+
+/* ── Cards ── */
+.backups-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 1.25rem;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+}
+html.dark .backups-card { box-shadow: 0 4px 20px rgba(0,0,0,0.22); }
+
+.backups-card-header {
+    padding: 0.875rem 1.25rem;
+    border-bottom: 1px solid var(--border);
+}
+.backups-card-header-emerald {
+    background: linear-gradient(135deg, #064E3B 0%, #047857 60%, #065F46 100%);
+}
+.backups-card-header-amber {
+    background: rgba(217,119,6,0.15);
+    border-bottom-color: rgba(217,119,6,0.3);
+}
+html.dark .backups-card-header-amber {
+    background: rgba(217,119,6,0.08);
+}
+.backups-card-title {
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    font-family: 'DM Mono', monospace;
+}
+.backups-card-title-emerald { color: rgba(255,255,255,0.85); }
+.backups-card-title-amber { color: #d97706; }
+html.dark .backups-card-title-amber { color: #fbbf24; }
+
+/* ── Form Elements ── */
+.backups-label {
+    display: block;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--text-3);
+    margin-bottom: 0.35rem;
+    font-family: 'DM Mono', monospace;
+}
+.backups-select {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8rem;
+    background: var(--surface-2);
+    border: 1.5px solid var(--border);
+    border-radius: 0.75rem;
+    color: var(--text);
+    font-family: 'Outfit', sans-serif;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.backups-select:focus {
+    outline: none;
+    border-color: var(--gold);
+    box-shadow: 0 0 0 3px rgba(212,175,55,0.12);
+}
+.backups-input {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8rem;
+    background: var(--surface-2);
+    border: 1.5px solid var(--border);
+    border-radius: 0.75rem;
+    color: var(--text);
+    font-family: 'Outfit', sans-serif;
+    transition: all 0.2s ease;
+}
+.backups-input:focus {
+    outline: none;
+    border-color: var(--gold);
+    box-shadow: 0 0 0 3px rgba(212,175,55,0.12);
+    background: var(--surface);
+}
+.backups-file-input {
+    width: 100%;
+    font-size: 0.7rem;
+    color: var(--text-3);
+    padding: 0.375rem;
+    background: var(--surface-2);
+    border: 1.5px solid var(--border);
+    border-radius: 0.75rem;
+}
+.backups-file-input::-webkit-file-upload-button {
+    margin-right: 0.75rem;
+    padding: 0.375rem 0.75rem;
+    border-radius: 0.5rem;
+    border: none;
+    font-size: 0.65rem;
+    font-weight: 600;
+    background: rgba(5,150,105,0.15);
+    color: #047857;
+    cursor: pointer;
+}
+html.dark .backups-file-input::-webkit-file-upload-button {
+    background: rgba(16,185,129,0.2);
+    color: #34d399;
+}
+
+/* ── Buttons ── */
+.btn-emerald {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.6rem 1rem;
+    font-size: 0.8rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--emerald), var(--emerald-dark));
+    color: #fff;
+    border: none;
+    border-radius: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: 'Outfit', sans-serif;
+}
+.btn-emerald:hover:not(:disabled) {
+    background: linear-gradient(135deg, var(--gold), var(--gold-dark));
+    color: #0f172a;
+    transform: translateY(-1px);
+}
+.btn-emerald:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+.btn-amber {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.6rem 1rem;
+    font-size: 0.8rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, #d97706, #b45309);
+    color: #fff;
+    border: none;
+    border-radius: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: 'Outfit', sans-serif;
+}
+.btn-amber:hover {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    transform: translateY(-1px);
+}
+.btn-blue {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 0.875rem;
+    font-size: 0.7rem;
+    font-weight: 700;
+    background: rgba(59,130,246,0.1);
+    color: #2563eb;
+    border: 1px solid rgba(59,130,246,0.25);
+    border-radius: 0.5rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    text-decoration: none;
+}
+.btn-blue:hover {
+    background: rgba(59,130,246,0.2);
+    border-color: rgba(59,130,246,0.4);
+}
+.btn-red {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 0.875rem;
+    font-size: 0.7rem;
+    font-weight: 700;
+    background: rgba(220,38,38,0.1);
+    color: #dc2626;
+    border: 1px solid rgba(220,38,38,0.25);
+    border-radius: 0.5rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+.btn-red:hover {
+    background: rgba(220,38,38,0.2);
+    border-color: rgba(220,38,38,0.4);
+}
+
+/* ── Checkbox List ── */
+.backups-checkbox-list {
+    max-height: 12rem;
+    overflow-y: auto;
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    background: var(--surface-2);
+}
+.backups-checkbox-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 0.75rem;
+    cursor: pointer;
+    transition: background 0.15s ease;
+    border-bottom: 1px solid var(--border);
+}
+.backups-checkbox-item:last-child {
+    border-bottom: none;
+}
+.backups-checkbox-item:hover {
+    background: rgba(212,175,55,0.05);
+}
+.backups-checkbox-item input[type="checkbox"] {
+    width: 1rem;
+    height: 1rem;
+    border-radius: 0.25rem;
+    border: 1.5px solid var(--border);
+    accent-color: var(--emerald);
+    cursor: pointer;
+}
+.backups-checkbox-label {
+    flex: 1;
+    font-size: 0.75rem;
     font-weight: 500;
+    color: var(--text-2);
+    cursor: pointer;
 }
+.backups-checkbox-count {
+    font-size: 0.65rem;
+    padding: 0.125rem 0.5rem;
+    background: var(--surface-3);
+    border-radius: 9999px;
+    color: var(--text-3);
+    font-family: 'DM Mono', monospace;
+}
+
+/* ── Stat Grid ── */
+.backups-stat-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.75rem;
+    margin-top: 0.75rem;
+}
+.backups-stat-item {
+    background: var(--surface-2);
+    border-radius: 0.75rem;
+    padding: 0.5rem 0.75rem;
+}
+.backups-stat-label {
+    font-size: 0.6rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--text-3);
+    margin-bottom: 0.25rem;
+    font-family: 'DM Mono', monospace;
+}
+.backups-stat-value {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+}
+
+/* ── Filter Chips ── */
+.filter-chip {
+    padding: 0.25rem 0.75rem;
+    font-size: 0.7rem;
+    border-radius: 9999px;
+    border: 1.5px solid var(--border);
+    background: transparent;
+    color: var(--text-3);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+.filter-chip:hover {
+    border-color: rgba(212,175,55,0.4);
+    color: var(--gold-dark);
+}
+.filter-chip.active {
+    background: linear-gradient(135deg, var(--emerald), var(--emerald-dark));
+    border-color: transparent;
+    color: #fff;
+}
+.sort-btn {
+    padding: 0.25rem 0.65rem;
+    font-size: 0.65rem;
+    border-radius: 9999px;
+    border: 1.5px solid var(--border);
+    background: transparent;
+    color: var(--text-3);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+.sort-btn:hover {
+    border-color: rgba(212,175,55,0.4);
+    color: var(--gold-dark);
+}
+.sort-btn.active {
+    background: linear-gradient(135deg, var(--emerald), var(--emerald-dark));
+    border-color: transparent;
+    color: #fff;
+}
+
+/* ── Backup Row ── */
+.backup-row {
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.15s ease;
+}
+.backup-row:last-child {
+    border-bottom: none;
+}
+.backup-row:hover {
+    background: rgba(212,175,55,0.025);
+    box-shadow: inset 3px 0 0 var(--gold);
+}
+.backup-icon {
+    width: 2.5rem;
+    height: 2.5rem;
+    background: rgba(5,150,105,0.1);
+    border-radius: 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    flex-shrink: 0;
+}
+.backup-filename {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    margin-bottom: 0.25rem;
+}
+.backup-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.375rem;
+}
+.backup-meta-date {
+    font-size: 0.65rem;
+    color: var(--text-3);
+    font-family: 'DM Mono', monospace;
+}
+.backup-meta-size {
+    font-size: 0.65rem;
+    padding: 0.125rem 0.5rem;
+    background: rgba(5,150,105,0.1);
+    color: #047857;
+    border-radius: 9999px;
+    font-weight: 600;
+}
+html.dark .backup-meta-size {
+    background: rgba(16,185,129,0.15);
+    color: #6ee7b7;
+}
+.backup-badge {
+    font-size: 0.6rem;
+    padding: 0.125rem 0.5rem;
+    border-radius: 9999px;
+    font-weight: 600;
+}
+.backup-badge-all {
+    background: var(--surface-3);
+    color: var(--text-3);
+}
+.backup-badge-category {
+    background: rgba(20,184,166,0.1);
+    color: #0d9488;
+    border: 1px solid rgba(20,184,166,0.2);
+}
+.backup-badge-filetype {
+    background: rgba(139,92,246,0.1);
+    color: #7c3aed;
+    border: 1px solid rgba(139,92,246,0.2);
+}
+
+/* ── Progress Loader ── */
+.backups-loader {
+    width: 1.25rem;
+    height: 1.25rem;
+    border: 2px solid #10b981;
+    border-top-color: transparent;
+    border-radius: 9999px;
+    animation: spin 0.8s linear infinite;
+}
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* ── Info Box ── */
+.backups-info {
+    margin-top: 1rem;
+    background: rgba(59,130,246,0.05);
+    border: 1px solid rgba(59,130,246,0.15);
+    border-radius: 1rem;
+    padding: 1rem;
+}
+html.dark .backups-info {
+    background: rgba(59,130,246,0.08);
+    border-color: rgba(59,130,246,0.2);
+}
+.backups-info-title {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #2563eb;
+    margin-bottom: 0.5rem;
+}
+html.dark .backups-info-title { color: #60a5fa; }
+.backups-info-list {
+    font-size: 0.65rem;
+    color: #1e40af;
+    list-style: none;
+    padding-left: 0;
+}
+html.dark .backups-info-list { color: #93c5fd; }
+.backups-info-list li {
+    margin-bottom: 0.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* ── Animations ── */
+@keyframes fadeUp {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+.anim-1 { animation: fadeUp 0.38s ease 0.04s both; }
+.anim-2 { animation: fadeUp 0.38s ease 0.10s both; }
+.anim-3 { animation: fadeUp 0.38s ease 0.16s both; }
+.anim-4 { animation: fadeUp 0.38s ease 0.22s both; }
 </style>
+@endpush
 
-{{-- ─── Header ─────────────────────────────────────────────────────────────── --}}
-<div class="relative overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-600 to-emerald-700
-            dark:from-emerald-800 dark:to-emerald-900 p-6 mb-6">
-    <div class="relative z-10">
-        <h1 class="text-2xl font-bold text-white">Document Backup & Restore</h1>
-        <p class="text-emerald-100 text-sm mt-1">Create, download, and restore document backups</p>
+@section('content')
+<div class="space-y-5">
+
+    {{-- ── HERO SECTION ── --}}
+    <div class="backups-hero anim-1">
+        <div class="backups-hero-content">
+            <p class="text-emerald-300/70 text-[10px] font-bold tracking-[0.2em] uppercase mb-2"
+               style="font-family:'DM Mono',monospace;">
+                {{ now()->format('F Y') }} · Data Protection
+            </p>
+            <h1 class="backups-hero-title mb-3">Document<br><span>Backup & Restore</span></h1>
+            <div class="flex flex-wrap gap-2">
+                <span class="backups-hero-pill">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                    </svg>
+                    Create & Download Backups
+                </span>
+                <span class="backups-hero-pill">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                    </svg>
+                    Restore from ZIP
+                </span>
+            </div>
+        </div>
     </div>
-    <div class="absolute top-0 right-0 -mt-8 -mr-8 w-64 h-64 bg-white/5 rounded-full blur-3xl"></div>
-</div>
 
-{{-- ─── Flash messages ──────────────────────────────────────────────────────── --}}
-@if(session('success'))
-    <div class="mb-4 p-4 bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300
-                rounded-xl border border-green-200 dark:border-green-700 flex items-start gap-3">
+    {{-- ── Flash Messages ── --}}
+    @if(session('success'))
+    <div class="flash-success anim-2">
         <span class="text-lg">✅</span>
         <p class="text-sm font-medium">{{ session('success') }}</p>
     </div>
-@endif
-@if(session('error'))
-    <div class="mb-4 p-4 bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300
-                rounded-xl border border-red-200 dark:border-red-700 flex items-start gap-3">
+    @endif
+    @if(session('error'))
+    <div class="flash-error anim-2">
         <span class="text-lg">❌</span>
         <p class="text-sm font-medium">{{ session('error') }}</p>
     </div>
-@endif
+    @endif
 
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-    {{-- ════════════════════════════════════════════════════════════════════════
-         LEFT COLUMN — Actions
-    ════════════════════════════════════════════════════════════════════════ --}}
-    <div class="lg:col-span-1 flex flex-col gap-6">
+        {{-- ════════════════════════════════════════════════════════════════════════
+             LEFT COLUMN — Actions
+        ════════════════════════════════════════════════════════════════════════ --}}
+        <div class="lg:col-span-1 flex flex-col gap-6">
 
-        {{-- ── Create Backup ──────────────────────────────────────────────── --}}
-        <div class="bg-white dark:bg-gray-800 rounded-xl border border-gold-200 dark:border-gold-800
-                    shadow-sm overflow-hidden">
-            <div class="px-5 py-4 border-b border-gold-100 dark:border-gold-800
-                        bg-emerald-50 dark:bg-emerald-900/20">
-                <h2 class="text-sm font-semibold text-emerald-800 dark:text-emerald-300
-                           flex items-center gap-2">
-                    <span>💾</span> Create New Backup
-                </h2>
-            </div>
-
-            <div class="p-5">
-                <p class="text-xs text-gray-500 dark:text-gray-400 mb-4">
-                    Generates a ZIP archive containing document metadata, categories,
-                    version history, and physical files.
-                </p>
-
-                <form id="backup-form"
-                      method="POST"
-                      action="{{ route('admin.document-backups.create') }}">
-                    @csrf
-
-                    {{-- ── Category multi-select ──────────────────────────── --}}
-                    <div class="mb-4">
-                        <div class="flex items-center justify-between mb-1">
-                            <label class="text-xs font-semibold text-gray-600 dark:text-gray-400">
-                                Document Categories
-                            </label>
-                            <span id="cat-count"
-                                  class="text-xs text-gray-400 dark:text-gray-500">
-                                0 selected
-                            </span>
-                        </div>
-
-                        {{-- Quick-select shortcuts --}}
-                        <div class="flex flex-wrap gap-1.5 mb-2">
-                            <button type="button" onclick="catSelectAll()"
-                                    class="text-xs px-2.5 py-1 rounded-full border
-                                           border-gray-200 dark:border-gray-600
-                                           text-gray-500 dark:text-gray-400
-                                           hover:bg-gray-50 dark:hover:bg-gray-700 transition">
-                                Select all
-                            </button>
-                            <button type="button" onclick="catClearAll()"
-                                    class="text-xs px-2.5 py-1 rounded-full border
-                                           border-red-200 dark:border-red-800
-                                           text-red-500 dark:text-red-400
-                                           hover:bg-red-50 dark:hover:bg-red-900/20 transition">
-                                Clear
-                            </button>
-                        </div>
-
-                        {{-- Scrollable checkbox list --}}
-                        <div class="max-h-48 overflow-y-auto border
-                                    border-gold-200 dark:border-gold-700 rounded-lg
-                                    divide-y divide-gray-100 dark:divide-gray-700">
-                            @foreach($categories as $cat)
-                            <label class="cat-item flex items-center gap-3 px-3 py-2 cursor-pointer
-                                          hover:bg-gray-50 dark:hover:bg-gray-700/40 transition
-                                          has-[:checked]:bg-emerald-50
-                                          has-[:checked]:dark:bg-emerald-900/20">
-                                <input type="checkbox"
-                                       name="category_ids[]"
-                                       value="{{ $cat->id }}"
-                                       class="cat-cb rounded text-emerald-600
-                                              focus:ring-emerald-500
-                                              border-gray-300 dark:border-gray-600
-                                              dark:bg-gray-700"
-                                       onchange="syncCatUI()">
-                                <span class="cat-label text-xs text-gray-700
-                                             dark:text-gray-300 flex-1">
-                                    {{ $cat->name }}
-                                </span>
-                                <span class="text-xs bg-gray-100 dark:bg-gray-700
-                                             text-gray-500 dark:text-gray-400
-                                             px-1.5 py-0.5 rounded-full tabular-nums">
-                                    {{ $cat->documents_count }}
-                                </span>
-                            </label>
-                            @endforeach
-                        </div>
-
-                        {{-- Live selection preview --}}
-                        <div id="cat-preview"
-                             class="mt-2 flex flex-wrap gap-1 min-h-[20px]">
-                            <span class="text-xs text-gray-400 dark:text-gray-500 italic">
-                                None selected — backs up all categories
-                            </span>
-                        </div>
-                    </div>
-
-                    {{-- ── File-type filter ───────────────────────────────── --}}
-                    <div class="mb-4">
-                        <label class="block text-xs font-semibold text-gray-600
-                                      dark:text-gray-400 mb-1">
-                            File Type
-                        </label>
-                        <select name="file_type"
-                                class="w-full px-3 py-2 text-sm border
-                                       border-gold-200 dark:border-gold-700 rounded-lg
-                                       dark:bg-gray-700 dark:text-white
-                                       focus:outline-none focus:ring-2 focus:ring-emerald-500">
-                            @foreach($fileTypeGroups as $key)
-                                <option value="{{ $key }}">
-                                    {{ Str::title($key === 'all' ? 'All file types' : $key) }}
-                                </option>
-                            @endforeach
-                        </select>
-                    </div>
-
-                    <button type="submit" id="backup-btn"
-                            class="w-full bg-emerald-600 hover:bg-emerald-700
-                                   text-white text-sm font-semibold px-4 py-2.5
-                                   rounded-lg transition flex items-center justify-center gap-2">
-                        <span id="backup-icon">💾</span>
-                        <span id="backup-text">Create Backup Now</span>
-                    </button>
-                </form>
-
-                {{-- Progress area (hidden initially) --}}
-                <div id="backup-progress" class="hidden mt-4">
-                    <div class="flex items-center gap-2">
-                        <div class="loader w-5 h-5"></div>
-                        <span id="backup-status"
-                              class="text-sm text-gray-600 dark:text-gray-300">
-                            Creating backup…
-                        </span>
-                    </div>
-                    <div id="backup-time"
-                         class="text-xs text-gray-400 mt-1"></div>
-                </div>
-
-                <p class="text-xs text-gray-400 dark:text-gray-500 mt-3 text-center">
-                    ⚠️ Large document libraries may take a moment.
-                </p>
-            </div>
-        </div>
-
-        {{-- ── Restore from ZIP ───────────────────────────────────────────── --}}
-        <div class="bg-white dark:bg-gray-800 rounded-xl border border-gold-200 dark:border-gold-800
-                    shadow-sm overflow-hidden">
-            <div class="px-5 py-4 border-b border-gold-100 dark:border-gold-800
-                        bg-amber-50 dark:bg-amber-900/20">
-                <h2 class="text-sm font-semibold text-amber-800 dark:text-amber-300
-                           flex items-center gap-2">
-                    <span>📤</span> Restore from Backup
-                </h2>
-            </div>
-
-            <div class="p-5">
-                <div class="mb-4 p-3 bg-amber-50 dark:bg-amber-900/20
-                            border border-amber-200 dark:border-amber-700 rounded-lg">
-                    <p class="text-xs text-amber-800 dark:text-amber-300 font-medium">⚠️ Warning</p>
-                    <p class="text-xs text-amber-700 dark:text-amber-400 mt-1">
-                        Restoring will re-import documents and files. Existing records
-                        are skipped or overwritten based on your chosen mode.
-                    </p>
-                </div>
-
-                <form method="POST"
-                      action="{{ route('admin.document-backups.restore') }}"
-                      enctype="multipart/form-data"
-                      id="restore-form">
-                    @csrf
-
-                    <div class="mb-3">
-                        <label class="block text-xs font-semibold text-gray-600
-                                      dark:text-gray-400 mb-1">
-                            Backup ZIP File
-                        </label>
-                        <input type="file"
-                               name="backup_file"
-                               accept=".zip"
-                               required
-                               class="w-full text-xs text-gray-600 dark:text-gray-300
-                                      file:mr-3 file:py-1.5 file:px-3 file:rounded-lg
-                                      file:border-0 file:text-xs file:font-semibold
-                                      file:bg-emerald-100 file:text-emerald-700
-                                      hover:file:bg-emerald-200
-                                      dark:file:bg-emerald-900/40 dark:file:text-emerald-300
-                                      border border-gold-200 dark:border-gold-700
-                                      rounded-lg p-1.5 bg-white dark:bg-gray-700">
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="block text-xs font-semibold text-gray-600
-                                      dark:text-gray-400 mb-1">
-                            Restore Mode
-                        </label>
-                        <select name="mode"
-                                class="w-full px-3 py-2 text-sm border
-                                       border-gold-200 dark:border-gold-700 rounded-lg
-                                       dark:bg-gray-700 dark:text-white
-                                       focus:outline-none focus:ring-2 focus:ring-emerald-500">
-                            <option value="skip">Skip existing (safe — keep current data)</option>
-                            <option value="merge">Merge / overwrite existing</option>
-                        </select>
-                    </div>
-
-                    {{-- Force-restore — exposed in UI (was hidden/missing before) --}}
-                    <label class="flex items-center gap-2 mb-4 cursor-pointer group">
-                        <input type="checkbox"
-                               name="force_restore"
-                               value="1"
-                               class="rounded text-amber-500 border-gray-300
-                                      dark:border-gray-600 dark:bg-gray-700
-                                      focus:ring-amber-400">
-                        <span class="text-xs text-gray-600 dark:text-gray-400
-                                     group-hover:text-gray-800 dark:group-hover:text-gray-200
-                                     transition">
-                            Force restore (override duplicate guard)
-                        </span>
-                    </label>
-
-                    <button type="button"
-                            onclick="confirmRestore()"
-                            class="w-full bg-amber-600 hover:bg-amber-700
-                                   text-white text-sm font-semibold px-4 py-2.5
-                                   rounded-lg transition flex items-center justify-center gap-2">
-                        📤 Restore Backup
-                    </button>
-
-                    {{-- Inline confirm (replaces window.confirm) --}}
-                    <div id="restore-confirm"
-                         class="hidden mt-3 p-3 bg-red-50 dark:bg-red-900/20
-                                border border-red-200 dark:border-red-700 rounded-lg">
-                        <p class="text-xs font-semibold text-red-800 dark:text-red-300 mb-1">
-                            Confirm restore?
-                        </p>
-                        <p class="text-xs text-red-700 dark:text-red-400 mb-3">
-                            This will re-import all documents and files from the ZIP.
-                            Make sure you've selected the correct restore mode.
-                        </p>
-                        <div class="flex gap-2">
-                            <button type="submit"
-                                    class="flex-1 bg-red-600 hover:bg-red-700
-                                           text-white text-xs font-semibold
-                                           px-3 py-1.5 rounded-lg transition">
-                                Yes, restore
-                            </button>
-                            <button type="button"
-                                    onclick="cancelRestore()"
-                                    class="flex-1 border border-gray-200 dark:border-gray-600
-                                           text-gray-600 dark:text-gray-400 text-xs font-semibold
-                                           px-3 py-1.5 rounded-lg hover:bg-gray-50
-                                           dark:hover:bg-gray-700 transition">
-                                Cancel
-                            </button>
-                        </div>
-                    </div>
-                </form>
-            </div>
-        </div>
-
-    </div>
-
-    {{-- ════════════════════════════════════════════════════════════════════════
-         RIGHT COLUMN — Backup list
-    ════════════════════════════════════════════════════════════════════════ --}}
-    <div class="lg:col-span-2">
-        <div class="bg-white dark:bg-gray-800 rounded-xl border border-gold-200 dark:border-gold-800
-                    shadow-sm overflow-hidden">
-
-            {{-- Header + summary stats --}}
-            <div class="px-5 py-4 border-b border-gold-100 dark:border-gold-800">
-                <div class="flex items-center justify-between mb-3">
-                    <h2 class="text-sm font-semibold text-gray-800 dark:text-white
-                               flex items-center gap-2">
-                        <span>🗂️</span> Saved Backups
-                        <span class="ml-1 bg-emerald-100 dark:bg-emerald-900/40
-                                     text-emerald-700 dark:text-emerald-300
-                                     text-xs font-bold px-2 py-0.5 rounded-full">
-                            {{ $stats['count'] }}
-                        </span>
+            {{-- ── Create Backup Card ── --}}
+            <div class="backups-card anim-2">
+                <div class="backups-card-header backups-card-header-emerald">
+                    <h2 class="backups-card-title backups-card-title-emerald flex items-center gap-2">
+                        <span>💾</span> Create New Backup
                     </h2>
-                    <p class="text-xs text-gray-400 dark:text-gray-500">
-                        Stored on server · private disk
+                </div>
+
+                <div class="p-5">
+                    <p class="text-xs text-text-3 mb-4">
+                        Generates a ZIP archive containing document metadata, categories,
+                        version history, and physical files.
                     </p>
-                </div>
 
-                {{-- Summary stat bar --}}
-                @if($stats['count'] > 0)
-                <div class="grid grid-cols-4 gap-2">
-                    @foreach([
-                        ['label' => 'Total backups',  'value' => $stats['count']],
-                        ['label' => 'Storage used',   'value' => $stats['total_size']],
-                        ['label' => 'Latest',         'value' => $stats['latest']],
-                        ['label' => 'Oldest',         'value' => $stats['oldest']],
-                    ] as $stat)
-                    <div class="bg-gray-50 dark:bg-gray-700/40 rounded-lg px-3 py-2">
-                        <p class="text-xs text-gray-400 dark:text-gray-500 mb-0.5">
-                            {{ $stat['label'] }}
-                        </p>
-                        <p class="text-sm font-semibold text-gray-800 dark:text-white truncate">
-                            {{ $stat['value'] }}
-                        </p>
-                    </div>
-                    @endforeach
-                </div>
-                @endif
-            </div>
+                    <form id="backup-form"
+                          method="POST"
+                          action="{{ route('admin.document-backups.create') }}">
+                        @csrf
 
-            {{-- Filter + sort bar --}}
-            @if($stats['count'] > 0)
-            <div class="px-5 py-3 border-b border-gray-100 dark:border-gray-700
-                        flex items-center gap-3 flex-wrap">
-                {{-- Filter chips --}}
-                <div class="flex flex-wrap gap-1.5 flex-1" id="filter-chips">
-                    <button onclick="setFilter('all')"
-                            data-filter="all"
-                            class="filter-chip active text-xs px-3 py-1 rounded-full border
-                                   border-emerald-300 dark:border-emerald-700
-                                   bg-emerald-50 dark:bg-emerald-900/30
-                                   text-emerald-700 dark:text-emerald-300 transition">
-                        All
-                    </button>
-                    @foreach(array_unique(array_column($backups, 'filetype_slug')) as $typeSlug)
-                        @if($typeSlug !== 'all')
-                        <button onclick="setFilter('type:{{ $typeSlug }}')"
-                                data-filter="type:{{ $typeSlug }}"
-                                class="filter-chip text-xs px-3 py-1 rounded-full border
-                                       border-gray-200 dark:border-gray-600
-                                       text-gray-500 dark:text-gray-400
-                                       hover:border-emerald-300 hover:text-emerald-700
-                                       dark:hover:text-emerald-300 transition">
-                            {{ Str::title($typeSlug) }}
-                        </button>
-                        @endif
-                    @endforeach
-                    @foreach(array_unique(array_column($backups, 'category_slug')) as $catSlug)
-                        @if($catSlug !== 'all')
-                        <button onclick="setFilter('cat:{{ $catSlug }}')"
-                                data-filter="cat:{{ $catSlug }}"
-                                class="filter-chip text-xs px-3 py-1 rounded-full border
-                                       border-gray-200 dark:border-gray-600
-                                       text-gray-500 dark:text-gray-400
-                                       hover:border-emerald-300 hover:text-emerald-700
-                                       dark:hover:text-emerald-300 transition">
-                            {{ Str::title(str_replace(['__', '_', '--'], [', ', ' ', ', '], $catSlug)) }}
-                        </button>
-                        @endif
-                    @endforeach
-                </div>
-
-                {{-- Sort --}}
-                <div class="flex items-center gap-1 flex-shrink-0">
-                    <button onclick="setSort('newest')" data-sort="newest"
-                            class="sort-btn active text-xs px-2.5 py-1 rounded-full border
-                                   border-emerald-300 bg-emerald-50 dark:bg-emerald-900/30
-                                   text-emerald-700 dark:text-emerald-300 transition">
-                        Newest
-                    </button>
-                    <button onclick="setSort('oldest')" data-sort="oldest"
-                            class="sort-btn text-xs px-2.5 py-1 rounded-full border
-                                   border-gray-200 dark:border-gray-600
-                                   text-gray-500 dark:text-gray-400
-                                   hover:border-emerald-300 transition">
-                        Oldest
-                    </button>
-                    <button onclick="setSort('largest')" data-sort="largest"
-                            class="sort-btn text-xs px-2.5 py-1 rounded-full border
-                                   border-gray-200 dark:border-gray-600
-                                   text-gray-500 dark:text-gray-400
-                                   hover:border-emerald-300 transition">
-                        Largest
-                    </button>
-                </div>
-            </div>
-            @endif
-
-            {{-- Backup rows --}}
-            @if(count($backups) === 0)
-                <div class="px-5 py-16 text-center">
-                    <div class="text-5xl mb-4">📭</div>
-                    <p class="text-gray-500 dark:text-gray-400 text-sm font-medium">No backups yet</p>
-                    <p class="text-gray-400 dark:text-gray-500 text-xs mt-1">
-                        Create your first backup using the panel on the left.
-                    </p>
-                </div>
-            @else
-                <div id="backup-list" class="divide-y divide-gray-100 dark:divide-gray-700">
-                    @foreach($backups as $backup)
-                    <div class="backup-row px-5 py-4 hover:bg-gray-50 dark:hover:bg-gray-700/40 transition"
-                         data-category="{{ $backup['category_slug'] }}"
-                         data-filetype="{{ $backup['filetype_slug'] }}"
-                         data-ts="{{ $backup['created_ts'] }}"
-                         data-size="{{ $backup['size_bytes'] }}">
-
-                        <div class="flex items-center gap-4">
-
-                            <div class="flex-shrink-0 w-10 h-10 bg-emerald-100 dark:bg-emerald-900/30
-                                        rounded-lg flex items-center justify-center text-xl">
-                                🗜️
+                        {{-- Category multi-select --}}
+                        <div class="mb-4">
+                            <div class="flex items-center justify-between mb-1">
+                                <label class="backups-label">Document Categories</label>
+                                <span id="cat-count" class="text-xs text-text-3">0 selected</span>
                             </div>
 
-                            <div class="flex-1 min-w-0">
-                                <p class="text-sm font-semibold text-gray-800 dark:text-white
-                                          truncate font-mono">
-                                    {{ $backup['filename'] }}
-                                </p>
+                            <div class="flex flex-wrap gap-1.5 mb-2">
+                                <button type="button" onclick="catSelectAll()"
+                                        class="filter-chip">Select all</button>
+                                <button type="button" onclick="catClearAll()"
+                                        class="filter-chip">Clear</button>
+                            </div>
 
-                                {{-- Scope tags + metadata --}}
-                                <div class="flex items-center flex-wrap gap-1.5 mt-1">
-                                    <span class="text-xs text-gray-400 dark:text-gray-500">
-                                        {{ $backup['created_at'] }}
-                                    </span>
-                                    <span class="text-xs text-emerald-600 dark:text-emerald-400
-                                                 font-medium bg-emerald-50 dark:bg-emerald-900/20
-                                                 px-2 py-0.5 rounded-full">
-                                        {{ $backup['size'] }}
-                                    </span>
-                                    @if($backup['category_slug'] !== 'all')
-                                        <span class="text-xs bg-teal-50 dark:bg-teal-900/20
-                                                     text-teal-700 dark:text-teal-300
-                                                     border border-teal-200 dark:border-teal-700
-                                                     px-2 py-0.5 rounded-full">
-                                            {{ Str::title(str_replace(['__', '_', '--'], [', ', ' ', ', '], $backup['category_slug'])) }}
-                                        </span>
-                                    @else
-                                        <span class="text-xs bg-gray-100 dark:bg-gray-700
-                                                     text-gray-500 dark:text-gray-400
-                                                     px-2 py-0.5 rounded-full">
-                                            All categories
-                                        </span>
-                                    @endif
-                                    @if($backup['filetype_slug'] !== 'all')
-                                        <span class="text-xs bg-purple-50 dark:bg-purple-900/20
-                                                     text-purple-700 dark:text-purple-300
-                                                     border border-purple-200 dark:border-purple-700
-                                                     px-2 py-0.5 rounded-full">
-                                            {{ Str::title($backup['filetype_slug']) }} only
-                                        </span>
-                                    @endif
+                            <div class="backups-checkbox-list">
+                                @foreach($categories as $cat)
+                                <label class="backups-checkbox-item">
+                                    <input type="checkbox"
+                                           name="category_ids[]"
+                                           value="{{ $cat->id }}"
+                                           class="cat-cb"
+                                           onchange="syncCatUI()">
+                                    <span class="backups-checkbox-label">{{ $cat->name }}</span>
+                                    <span class="backups-checkbox-count">{{ $cat->documents_count }}</span>
+                                </label>
+                                @endforeach
+                            </div>
+
+                            <div id="cat-preview" class="mt-2 flex flex-wrap gap-1 min-h-[20px]">
+                                <span class="text-xs text-text-3 italic">None selected — backs up all categories</span>
+                            </div>
+                        </div>
+
+                        {{-- File-type filter --}}
+                        <div class="mb-4">
+                            <label class="backups-label">File Type</label>
+                            <select name="file_type" class="backups-select">
+                                @foreach($fileTypeGroups as $key)
+                                    <option value="{{ $key }}">
+                                        {{ Str::title($key === 'all' ? 'All file types' : $key) }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <button type="submit" id="backup-btn" class="btn-emerald">
+                            <span id="backup-icon">💾</span>
+                            <span id="backup-text">Create Backup Now</span>
+                        </button>
+                    </form>
+
+                    <div id="backup-progress" class="hidden mt-4">
+                        <div class="flex items-center gap-2">
+                            <div class="backups-loader"></div>
+                            <span id="backup-status" class="text-sm text-text-2">Creating backup…</span>
+                        </div>
+                        <div id="backup-time" class="text-xs text-text-3 mt-1"></div>
+                    </div>
+
+                    <p class="text-xs text-text-3 text-center mt-3">⚠️ Large document libraries may take a moment.</p>
+                </div>
+            </div>
+
+            {{-- ── Restore from ZIP Card ── --}}
+            <div class="backups-card anim-3">
+                <div class="backups-card-header backups-card-header-amber">
+                    <h2 class="backups-card-title backups-card-title-amber flex items-center gap-2">
+                        <span>📤</span> Restore from Backup
+                    </h2>
+                </div>
+
+                <div class="p-5">
+                    <div class="mb-4 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                        <p class="text-xs font-semibold text-amber-800 dark:text-amber-300">⚠️ Warning</p>
+                        <p class="text-xs text-amber-700 dark:text-amber-400 mt-1">
+                            Restoring will re-import documents and files. Existing records
+                            are skipped or overwritten based on your chosen mode.
+                        </p>
+                    </div>
+
+                    <form method="POST"
+                          action="{{ route('admin.document-backups.restore') }}"
+                          enctype="multipart/form-data"
+                          id="restore-form">
+                        @csrf
+
+                        <div class="mb-3">
+                            <label class="backups-label">Backup ZIP File</label>
+                            <input type="file"
+                                   name="backup_file"
+                                   accept=".zip"
+                                   required
+                                   class="backups-file-input">
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="backups-label">Restore Mode</label>
+                            <select name="mode" class="backups-select">
+                                <option value="skip">Skip existing (safe — keep current data)</option>
+                                <option value="merge">Merge / overwrite existing</option>
+                            </select>
+                        </div>
+
+                        <label class="flex items-center gap-2 mb-4 cursor-pointer group">
+                            <input type="checkbox"
+                                   name="force_restore"
+                                   value="1"
+                                   class="rounded border-border accent-amber-500">
+                            <span class="text-xs text-text-3 group-hover:text-text-2 transition">
+                                Force restore (override duplicate guard)
+                            </span>
+                        </label>
+
+                        <button type="button" onclick="confirmRestore()" class="btn-amber">
+                            📤 Restore Backup
+                        </button>
+
+                        <div id="restore-confirm" class="hidden mt-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                            <p class="text-xs font-semibold text-red-800 dark:text-red-300 mb-1">Confirm restore?</p>
+                            <p class="text-xs text-red-700 dark:text-red-400 mb-3">
+                                This will re-import all documents and files from the ZIP.
+                                Make sure you've selected the correct restore mode.
+                            </p>
+                            <div class="flex gap-2">
+                                <button type="submit" class="flex-1 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition">Yes, restore</button>
+                                <button type="button" onclick="cancelRestore()" class="flex-1 border border-gray-200 dark:border-gray-600 text-text-3 text-xs font-semibold px-3 py-1.5 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition">Cancel</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+        </div>
+
+        {{-- ════════════════════════════════════════════════════════════════════════
+             RIGHT COLUMN — Backup list
+        ════════════════════════════════════════════════════════════════════════ --}}
+        <div class="lg:col-span-2">
+            <div class="backups-card anim-4">
+                <div class="backups-card-header border-b border-border">
+                    <div class="flex items-center justify-between mb-3">
+                        <h2 class="backups-card-title text-text-2 flex items-center gap-2">
+                            <span>🗂️</span> Saved Backups
+                            <span class="ml-1 bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 text-xs font-bold px-2 py-0.5 rounded-full">
+                                {{ $stats['count'] }}
+                            </span>
+                        </h2>
+                        <p class="text-xs text-text-3">Stored on server · private disk</p>
+                    </div>
+
+                    @if($stats['count'] > 0)
+                    <div class="backups-stat-grid">
+                        <div class="backups-stat-item">
+                            <p class="backups-stat-label">Total backups</p>
+                            <p class="backups-stat-value">{{ $stats['count'] }}</p>
+                        </div>
+                        <div class="backups-stat-item">
+                            <p class="backups-stat-label">Storage used</p>
+                            <p class="backups-stat-value">{{ $stats['total_size'] }}</p>
+                        </div>
+                        <div class="backups-stat-item">
+                            <p class="backups-stat-label">Latest</p>
+                            <p class="backups-stat-value truncate">{{ $stats['latest'] }}</p>
+                        </div>
+                        <div class="backups-stat-item">
+                            <p class="backups-stat-label">Oldest</p>
+                            <p class="backups-stat-value truncate">{{ $stats['oldest'] }}</p>
+                        </div>
+                    </div>
+                    @endif
+                </div>
+
+                @if($stats['count'] > 0)
+                <div class="px-5 py-3 border-b border-border flex items-center gap-3 flex-wrap">
+                    <div class="flex flex-wrap gap-1.5 flex-1" id="filter-chips">
+                        <button onclick="setFilter('all')" data-filter="all" class="filter-chip active">All</button>
+                        @foreach(array_unique(array_column($backups, 'filetype_slug')) as $typeSlug)
+                            @if($typeSlug !== 'all')
+                            <button onclick="setFilter('type:{{ $typeSlug }}')" data-filter="type:{{ $typeSlug }}" class="filter-chip">{{ Str::title($typeSlug) }}</button>
+                            @endif
+                        @endforeach
+                        @foreach(array_unique(array_column($backups, 'category_slug')) as $catSlug)
+                            @if($catSlug !== 'all')
+                            <button onclick="setFilter('cat:{{ $catSlug }}')" data-filter="cat:{{ $catSlug }}" class="filter-chip">{{ Str::title(str_replace(['__', '_', '--'], [', ', ' ', ', '], $catSlug)) }}</button>
+                            @endif
+                        @endforeach
+                    </div>
+
+                    <div class="flex items-center gap-1 flex-shrink-0">
+                        <button onclick="setSort('newest')" data-sort="newest" class="sort-btn active">Newest</button>
+                        <button onclick="setSort('oldest')" data-sort="oldest" class="sort-btn">Oldest</button>
+                        <button onclick="setSort('largest')" data-sort="largest" class="sort-btn">Largest</button>
+                    </div>
+                </div>
+                @endif
+
+                @if(count($backups) === 0)
+                    <div class="px-5 py-16 text-center">
+                        <div class="text-5xl mb-4">📭</div>
+                        <p class="text-text-2 text-sm font-medium">No backups yet</p>
+                        <p class="text-text-3 text-xs mt-1">Create your first backup using the panel on the left.</p>
+                    </div>
+                @else
+                    <div id="backup-list" class="divide-y divide-border">
+                        @foreach($backups as $backup)
+                        <div class="backup-row"
+                             data-category="{{ $backup['category_slug'] }}"
+                             data-filetype="{{ $backup['filetype_slug'] }}"
+                             data-ts="{{ $backup['created_ts'] }}"
+                             data-size="{{ $backup['size_bytes'] }}">
+
+                            <div class="flex items-center gap-4">
+                                <div class="backup-icon">🗜️</div>
+
+                                <div class="flex-1 min-w-0">
+                                    <p class="backup-filename truncate">{{ $backup['filename'] }}</p>
+
+                                    <div class="backup-meta">
+                                        <span class="backup-meta-date">{{ $backup['created_at'] }}</span>
+                                        <span class="backup-meta-size">{{ $backup['size'] }}</span>
+                                        @if($backup['category_slug'] !== 'all')
+                                            <span class="backup-badge backup-badge-category">
+                                                {{ Str::title(str_replace(['__', '_', '--'], [', ', ' ', ', '], $backup['category_slug'])) }}
+                                            </span>
+                                        @else
+                                            <span class="backup-badge backup-badge-all">All categories</span>
+                                        @endif
+                                        @if($backup['filetype_slug'] !== 'all')
+                                            <span class="backup-badge backup-badge-filetype">{{ Str::title($backup['filetype_slug']) }} only</span>
+                                        @endif
+                                    </div>
+                                </div>
+
+                                <div class="flex items-center gap-2 flex-shrink-0">
+                                    <a href="{{ route('admin.document-backups.download', $backup['filename']) }}" class="btn-blue">⬇️ Download</a>
+                                    <button type="button" onclick="showDeleteConfirm(this)"
+                                            data-filename="{{ $backup['filename'] }}"
+                                            data-action="{{ route('admin.document-backups.destroy', $backup['filename']) }}"
+                                            class="btn-red">🗑️ Delete</button>
                                 </div>
                             </div>
 
-                            {{-- Actions --}}
-                            <div class="flex items-center gap-2 flex-shrink-0">
-                                <a href="{{ route('admin.document-backups.download', $backup['filename']) }}"
-                                   class="inline-flex items-center gap-1 text-xs font-semibold
-                                          text-blue-600 dark:text-blue-400
-                                          border border-blue-200 dark:border-blue-700
-                                          px-3 py-1.5 rounded-lg
-                                          hover:bg-blue-50 dark:hover:bg-blue-900/20 transition">
-                                    ⬇️ Download
-                                </a>
-                                <button type="button"
-                                        onclick="showDeleteConfirm(this)"
-                                        data-filename="{{ $backup['filename'] }}"
-                                        data-action="{{ route('admin.document-backups.destroy', $backup['filename']) }}"
-                                        class="inline-flex items-center gap-1 text-xs font-semibold
-                                               text-red-600 dark:text-red-400
-                                               border border-red-200 dark:border-red-700
-                                               px-3 py-1.5 rounded-lg
-                                               hover:bg-red-50 dark:hover:bg-red-900/20 transition">
-                                    🗑️ Delete
-                                </button>
+                            <div class="delete-confirm hidden mt-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                                <p class="text-xs font-semibold text-red-800 dark:text-red-300 mb-0.5">Delete this backup?</p>
+                                <p class="delete-filename text-xs text-red-600 dark:text-red-400 font-mono mb-2 break-all"></p>
+                                <p class="text-xs text-red-600 dark:text-red-400 mb-2">This cannot be undone and will permanently remove the file.</p>
+                                <div class="flex gap-2">
+                                    <form method="POST" class="delete-form flex-1" style="display:contents">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="flex-1 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition">Yes, delete</button>
+                                    </form>
+                                    <button type="button" onclick="hideDeleteConfirm(this)" class="flex-1 border border-gray-200 dark:border-gray-600 text-text-3 text-xs font-semibold px-3 py-1.5 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition">Cancel</button>
+                                </div>
                             </div>
-                        </div>
 
-                        {{-- Inline delete confirm (hidden by default) --}}
-                        <div class="delete-confirm hidden mt-3 p-3
-                                    bg-red-50 dark:bg-red-900/20
-                                    border border-red-200 dark:border-red-700 rounded-lg">
-                            <p class="text-xs font-semibold text-red-800 dark:text-red-300 mb-0.5">
-                                Delete this backup?
-                            </p>
-                            <p class="delete-filename text-xs text-red-600 dark:text-red-400
-                                      font-mono mb-2 break-all"></p>
-                            <p class="text-xs text-red-600 dark:text-red-400 mb-2">
-                                This cannot be undone and will permanently remove the file.
-                            </p>
-                            <div class="flex gap-2">
-                                <form method="POST" class="delete-form flex-1" style="display:contents">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit"
-                                            class="flex-1 bg-red-600 hover:bg-red-700
-                                                   text-white text-xs font-semibold
-                                                   px-3 py-1.5 rounded-lg transition">
-                                        Yes, delete
-                                    </button>
-                                </form>
-                                <button type="button"
-                                        onclick="hideDeleteConfirm(this)"
-                                        class="flex-1 border border-gray-200 dark:border-gray-600
-                                               text-gray-600 dark:text-gray-400 text-xs font-semibold
-                                               px-3 py-1.5 rounded-lg
-                                               hover:bg-gray-50 dark:hover:bg-gray-700 transition">
-                                    Cancel
-                                </button>
-                            </div>
                         </div>
-
+                        @endforeach
                     </div>
-                    @endforeach
-                </div>
 
-                {{-- Empty state shown when filters match nothing --}}
-                <div id="no-results" class="hidden px-5 py-10 text-center">
-                    <div class="text-4xl mb-3">🔍</div>
-                    <p class="text-gray-500 dark:text-gray-400 text-sm">
-                        No backups match this filter.
-                    </p>
-                </div>
-            @endif
+                    <div id="no-results" class="hidden px-5 py-10 text-center">
+                        <div class="text-4xl mb-3">🔍</div>
+                        <p class="text-text-2 text-sm">No backups match this filter.</p>
+                    </div>
+                @endif
+            </div>
+
+            {{-- Info Box --}}
+            <div class="backups-info">
+                <p class="backups-info-title">ℹ️ What's included in each backup?</p>
+                <ul class="backups-info-list">
+                    <li>✅ All document categories</li>
+                    <li>✅ All document metadata (title, description, category, owner, timestamps, trash state)</li>
+                    <li>✅ Full version history for every document</li>
+                    <li>✅ All physical files (PDFs, images, docs, etc.)</li>
+                    <li>✅ Soft-deleted documents (trash)</li>
+                </ul>
+            </div>
         </div>
 
-        {{-- Info box --}}
-        <div class="mt-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800
-                    rounded-xl p-4">
-            <p class="text-xs font-semibold text-blue-800 dark:text-blue-300 mb-2">
-                ℹ️ What's included in each backup?
-            </p>
-            <ul class="text-xs text-blue-700 dark:text-blue-400 space-y-1">
-                <li>✅ All document categories</li>
-                <li>✅ All document metadata (title, description, category, owner, timestamps, trash state)</li>
-                <li>✅ Full version history for every document</li>
-                <li>✅ All physical files (PDFs, images, docs, etc.)</li>
-                <li>✅ Soft-deleted documents (trash)</li>
-            </ul>
-        </div>
     </div>
 
 </div>
@@ -591,16 +896,13 @@ function syncCatUI() {
     counter.textContent = boxes.length ? `${boxes.length} selected` : '0 selected';
 
     if (!boxes.length) {
-        preview.innerHTML = `<span class="text-xs text-gray-400 dark:text-gray-500 italic">
-            None selected — backs up all categories</span>`;
+        preview.innerHTML = `<span class="text-xs text-text-3 italic">None selected — backs up all categories</span>`;
         return;
     }
 
     preview.innerHTML = boxes.map(cb => {
-        const name = cb.closest('label').querySelector('.cat-label').textContent.trim();
-        return `<span class="text-xs bg-emerald-100 dark:bg-emerald-900/40
-                            text-emerald-800 dark:text-emerald-300
-                            px-2 py-0.5 rounded-full font-medium">${name}</span>`;
+        const name = cb.closest('.backups-checkbox-item').querySelector('.backups-checkbox-label').textContent.trim();
+        return `<span class="text-xs bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300 px-2 py-0.5 rounded-full font-medium">${name}</span>`;
     }).join('');
 }
 
@@ -623,7 +925,6 @@ function cancelRestore() {
 
 // ─── Delete inline confirm ────────────────────────────────────────────────────
 function showDeleteConfirm(btn) {
-    // Hide any other open confirms first.
     document.querySelectorAll('.delete-confirm').forEach(el => el.classList.add('hidden'));
 
     const row     = btn.closest('.backup-row');
@@ -649,15 +950,6 @@ function setFilter(value) {
     document.querySelectorAll('.filter-chip').forEach(btn => {
         const isActive = btn.dataset.filter === value;
         btn.classList.toggle('active', isActive);
-        btn.classList.toggle('border-emerald-300', isActive);
-        btn.classList.toggle('bg-emerald-50', isActive);
-        btn.classList.toggle('text-emerald-700', isActive);
-        btn.classList.toggle('dark:bg-emerald-900/30', isActive);
-        btn.classList.toggle('dark:text-emerald-300', isActive);
-        btn.classList.toggle('border-gray-200', !isActive);
-        btn.classList.toggle('text-gray-500', !isActive);
-        btn.classList.toggle('dark:border-gray-600', !isActive);
-        btn.classList.toggle('dark:text-gray-400', !isActive);
     });
     applyFilterSort();
 }
@@ -667,15 +959,6 @@ function setSort(value) {
     document.querySelectorAll('.sort-btn').forEach(btn => {
         const isActive = btn.dataset.sort === value;
         btn.classList.toggle('active', isActive);
-        btn.classList.toggle('border-emerald-300', isActive);
-        btn.classList.toggle('bg-emerald-50', isActive);
-        btn.classList.toggle('text-emerald-700', isActive);
-        btn.classList.toggle('dark:bg-emerald-900/30', isActive);
-        btn.classList.toggle('dark:text-emerald-300', isActive);
-        btn.classList.toggle('border-gray-200', !isActive);
-        btn.classList.toggle('text-gray-500', !isActive);
-        btn.classList.toggle('dark:border-gray-600', !isActive);
-        btn.classList.toggle('dark:text-gray-400', !isActive);
     });
     applyFilterSort();
 }
@@ -687,7 +970,6 @@ function applyFilterSort() {
 
     let rows = [...list.querySelectorAll('.backup-row')];
 
-    // Filter
     rows.forEach(row => {
         const cat  = row.dataset.category ?? '';
         const type = row.dataset.filetype ?? '';
@@ -703,7 +985,6 @@ function applyFilterSort() {
         row.style.display = visible ? '' : 'none';
     });
 
-    // Sort visible rows
     const visible = rows.filter(r => r.style.display !== 'none');
     visible.sort((a, b) => {
         if (activeSort === 'newest')  return b.dataset.ts   - a.dataset.ts;
@@ -713,7 +994,6 @@ function applyFilterSort() {
     });
     visible.forEach(row => list.appendChild(row));
 
-    // Toggle empty state
     noRes?.classList.toggle('hidden', visible.length > 0);
 }
 
@@ -766,5 +1046,4 @@ document.getElementById('backup-form').addEventListener('submit', async function
     }
 });
 </script>
-
 @endsection

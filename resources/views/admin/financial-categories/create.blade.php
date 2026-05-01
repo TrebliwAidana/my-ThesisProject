@@ -15,7 +15,7 @@
                 </div>
                 <div>
                     <h2 class="text-lg font-semibold text-white">New Financial Category</h2>
-                    <p class="text-sm text-emerald-100">Create a new category for income or expense transactions</p>
+                    <p class="text-sm text-emerald-100">Create a new category for income, expense, or receivable transactions</p>
                 </div>
             </div>
         </div>
@@ -27,14 +27,14 @@
                 <div>
                     <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Name <span class="text-red-500">*</span></label>
                     <input type="text" name="name" value="{{ old('name') }}" required maxlength="100"
-                           class="w-full border border-gold-300 dark:border-gold-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent">
+                           class="w-full border border-gold-300 dark:border-gold-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent transition duration-200">
                     @error('name')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
                 </div>
 
                 <div>
                     <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Applies To <span class="text-red-500">*</span></label>
                     <select name="type" required
-                            class="w-full border border-gold-300 dark:border-gold-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent">
+                            class="w-full border border-gold-300 dark:border-gold-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent transition duration-200">
                         <option value="income"  {{ old('type') === 'income'  ? 'selected' : '' }}>Income</option>
                         <option value="expense" {{ old('type') === 'expense' ? 'selected' : '' }}>Expense</option>
                         <option value="receivable" {{ old('type') === 'receivable' ? 'selected' : '' }}>Receivable</option>
@@ -45,7 +45,7 @@
                 <div>
                     <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Description</label>
                     <input type="text" name="description" value="{{ old('description') }}" maxlength="255"
-                           class="w-full border border-gold-300 dark:border-gold-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent">
+                           class="w-full border border-gold-300 dark:border-gold-600 dark:bg-gray-700 dark:text-white rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent transition duration-200">
                     @error('description')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
                 </div>
 
@@ -56,11 +56,11 @@
                         @click="if (busy) { $event.preventDefault(); $event.stopImmediatePropagation(); return; }"
                         @submit.window="if ($event.target === $el.closest('form')) { busy = true; }"
                         :disabled="busy"
-                        :class="busy ? 'opacity-60 cursor-not-allowed' : ''"
-                        class="bg-emerald-600 hover:bg-gold-500 text-white px-6 py-2 rounded-lg transition"
+                        :class="busy ? 'opacity-60 cursor-not-allowed' : 'bg-emerald-600 hover:bg-gold-500 transform hover:scale-[1.02] active:scale-[0.98]'"
+                        class="flex-1 text-white font-semibold py-2 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
                     >
                         <span x-show="!busy">Create Category</span>
-                        <span x-show="busy" class="flex items-center gap-2">
+                        <span x-show="busy" class="flex items-center justify-center gap-2">
                             <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
                                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
@@ -69,7 +69,7 @@
                         </span>
                     </button>
                     <a href="{{ route('admin.financial-categories.index') }}"
-                       class="flex-1 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 font-semibold py-2 rounded-lg text-center transition">
+                       class="flex-1 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-semibold py-2 rounded-lg text-center transition-all duration-200 hover:shadow-md transform hover:scale-[1.02] active:scale-[0.98]">
                         Cancel
                     </a>
                 </div>

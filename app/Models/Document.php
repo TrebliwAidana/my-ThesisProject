@@ -21,11 +21,13 @@ class Document extends Model
         'tags',
         'owner_id',
         'current_version_id',
+         'uploaded_at', 
     ];
 
     protected $casts = [
         'tags'      => 'array',
         'deleted_at' => 'datetime',
+        'uploaded_at' => 'datetime',
     ];
 
     // Relationship to category

@@ -1,509 +1,849 @@
 @extends('layouts.app')
 
-@section('title', 'Members — VSULHS_SSLG')
+@section('title', 'Members — VSULHS SSLG')
+@section('page-title', 'Members Directory')
+
+@push('styles')
+<style>
+/* ════════════════════════════════════════════════
+   MEMBERS DIRECTORY — Emerald & Gold Luxury Theme
+   Inspired by Financial Records hero design
+════════════════════════════════════════════════ */
+
+/* ── Hero ── */
+.members-hero {
+    position: relative;
+    overflow: hidden;
+    border-radius: 1.25rem;
+    padding: 1.75rem 2rem;
+    isolation: isolate;
+    background: linear-gradient(135deg, #064E3B 0%, #065F46 35%, #047857 60%, #0A3A28 100%);
+}
+.members-hero::before {
+    content: '';
+    position: absolute; inset: 0;
+    background-image: radial-gradient(circle at 1px 1px, rgba(255,255,255,1) 1px, transparent 0);
+    background-size: 28px 28px;
+    opacity: 0.04; z-index: 0;
+}
+.members-hero::after {
+    content: '';
+    position: absolute;
+    top: -60px; right: -60px;
+    width: 280px; height: 280px;
+    background: radial-gradient(circle, rgba(212,175,55,0.35), transparent 65%);
+    filter: blur(48px); z-index: 0;
+}
+.members-hero-content { position: relative; z-index: 1; }
+
+.members-hero-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(1.5rem, 3.5vw, 2.2rem);
+    color: #fff;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+}
+.members-hero-title span {
+    background: linear-gradient(90deg, #F0CC55, #D4AF37);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+.members-hero-pill {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    padding: 0.3rem 0.75rem;
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(212,175,55,0.28);
+    border-radius: 999px;
+    font-size: 0.72rem; font-weight: 600;
+    color: rgba(255,255,255,0.88);
+    font-family: 'DM Mono', monospace;
+}
+
+/* ── Stat Cards ── */
+.member-stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 1rem;
+}
+
+/* ── Emerald Button (matches Financial Records Add Income) ── */
+.btn-emerald {
+    display: inline-flex; align-items: center; gap: .4rem;
+    padding: .48rem 1rem; font-size: .8rem; font-weight: 700;
+    background: linear-gradient(135deg, var(--emerald), var(--emerald-dark));
+    color: #fff; border: none; border-radius: .65rem;
+    cursor: pointer; transition: all .2s ease; text-decoration: none;
+    box-shadow: 0 2px 10px rgba(5,150,105,.22);
+    font-family: 'Outfit', sans-serif; white-space: nowrap;
+}
+.btn-emerald:hover {
+    background: linear-gradient(135deg, var(--gold), var(--gold-dark));
+    color: #0f172a; box-shadow: 0 4px 16px rgba(212,175,55,.35);
+    transform: translateY(-1px);
+}
+
+/* ── Clear Button (matches Financial Records btn-gray) ── */
+.btn-clear {
+    display: inline-flex; align-items: center; gap: .4rem;
+    padding: .48rem .875rem; font-size: .8rem; font-weight: 600;
+    background: var(--surface-3); color: var(--text-2);
+    border: 1.5px solid var(--border); border-radius: .65rem;
+    cursor: pointer; transition: all .18s ease; text-decoration: none;
+    font-family: 'Outfit', sans-serif; white-space: nowrap;
+}
+.btn-clear:hover {
+    border-color: rgba(212,175,55,.4); color: var(--gold-dark);
+    background: rgba(212,175,55,.06);
+}
+
+.member-stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 1rem;
+    padding: 1.1rem 1.2rem;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.25s cubic-bezier(0.4,0,0.2,1);
+    cursor: default;
+}
+.member-stat-card::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 2px;
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.3s ease;
+    border-radius: 0 0 999px 999px;
+}
+.member-stat-card:hover {
+    border-color: rgba(212,175,55,0.35);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 28px rgba(0,0,0,0.08), 0 0 0 1px rgba(212,175,55,0.12);
+}
+.member-stat-card:hover::after { transform: scaleX(1); }
+
+.member-stat-card.all::after { background: linear-gradient(90deg, var(--emerald), var(--gold)); }
+.member-stat-card.admin::after { background: linear-gradient(90deg, #9333ea, #a855f7); }
+.member-stat-card.adviser::after { background: linear-gradient(90deg, #d97706, #f59e0b); }
+.member-stat-card.treasurer::after { background: linear-gradient(90deg, #059669, #10b981); }
+.member-stat-card.auditor::after { background: linear-gradient(90deg, #2563eb, #3b82f6); }
+.member-stat-card.guest::after { background: linear-gradient(90deg, #6b7280, #9ca3af); }
+
+.member-stat-icon {
+    width: 2.1rem; height: 2.1rem;
+    border-radius: 0.6rem;
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 0.75rem;
+    flex-shrink: 0;
+}
+.member-stat-num {
+    font-family: 'DM Mono', monospace;
+    font-size: 1.6rem;
+    font-weight: 700;
+    letter-spacing: -0.04em;
+    line-height: 1;
+    margin-bottom: 0.25rem;
+    color: var(--text);
+}
+.member-stat-label {
+    font-size: 0.67rem; font-weight: 700;
+    letter-spacing: 0.09em; text-transform: uppercase;
+    color: var(--text-3); font-family: 'DM Mono', monospace;
+}
+.member-stat-sub {
+    font-size: 0.65rem; color: var(--text-3);
+    margin-top: 0.2rem; opacity: 0.75;
+}
+
+/* ── Filter Panel ── */
+.member-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 1.25rem;
+    padding: 1.25rem;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+}
+
+.member-input {
+    padding: 0.5rem 0.875rem;
+    font-size: 0.83rem;
+    background: var(--surface-2);
+    border: 1.5px solid var(--border);
+    border-radius: 0.75rem;
+    color: var(--text);
+    font-family: 'Outfit', sans-serif;
+    transition: all 0.2s ease;
+    width: 100%;
+}
+.member-input:focus {
+    outline: none;
+    border-color: var(--gold);
+    box-shadow: 0 0 0 3px rgba(212,175,55,0.12);
+    background: var(--surface);
+}
+.member-input::placeholder { color: var(--text-3); }
+html.dark .member-input { background: rgba(15,23,42,0.5); }
+
+.member-select {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8rem;
+    background: var(--surface-2);
+    border: 1.5px solid var(--border);
+    border-radius: 0.75rem;
+    color: var(--text);
+    font-family: 'Outfit', sans-serif;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+.member-select:focus {
+    outline: none;
+    border-color: var(--gold);
+    box-shadow: 0 0 0 3px rgba(212,175,55,0.12);
+}
+html.dark .member-select { background: rgba(15,23,42,0.5); }
+
+.btn-filter {
+    display: inline-flex; align-items: center; gap: .4rem;
+    padding: .48rem 1rem; font-size: .8rem; font-weight: 700;
+    background: linear-gradient(135deg, var(--gold), var(--gold-dark));
+    color: #0f172a; border: none; border-radius: .65rem;
+    cursor: pointer; transition: all .2s ease;
+    box-shadow: 0 2px 10px rgba(212,175,55,.25);
+    font-family: 'Outfit', sans-serif; white-space: nowrap;
+}
+.btn-filter:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(212,175,55,.4); }
+
+.btn-clear {
+    display: inline-flex; align-items: center; gap: .4rem;
+    padding: .48rem .875rem; font-size: .8rem; font-weight: 600;
+    background: var(--surface-3); color: var(--text-2);
+    border: 1.5px solid var(--border); border-radius: .65rem;
+    cursor: pointer; transition: all .18s ease; text-decoration: none;
+    font-family: 'Outfit', sans-serif; white-space: nowrap;
+}
+.btn-clear:hover {
+    border-color: rgba(212,175,55,.4); color: var(--gold-dark);
+    background: rgba(212,175,55,.06);
+}
+
+/* ── Role Tabs ── */
+.role-tabs {
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+    padding-bottom: 1px;
+}
+.role-tab {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    padding: 0.6rem 1rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    text-decoration: none;
+    color: var(--text-3);
+}
+.role-tab:hover {
+    color: var(--gold-dark);
+    border-bottom-color: rgba(212,175,55,0.4);
+}
+.role-tab.active {
+    border-bottom-color: var(--gold);
+    color: var(--gold-dark);
+}
+html.dark .role-tab.active { color: var(--gold-light); }
+.role-tab-count {
+    font-size: 0.7rem;
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+    background: var(--surface-3);
+    color: var(--text-3);
+    font-family: 'DM Mono', monospace;
+}
+
+/* ── Member Table ── */
+.member-table-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 1.25rem;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+}
+html.dark .member-table-wrap { box-shadow: 0 4px 20px rgba(0,0,0,0.22); }
+
+.member-table {
+    width: 100%;
+    min-width: 900px;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+}
+.member-table thead tr {
+    background: linear-gradient(135deg, #064E3B 0%, #047857 60%, #065F46 100%);
+}
+.member-table th {
+    padding: 0.7rem 0.875rem;
+    text-align: left;
+    font-size: 0.63rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.82);
+    font-family: 'DM Mono', monospace;
+    white-space: nowrap;
+}
+.member-table th.right { text-align: right; }
+.member-table th.center { text-align: center; }
+.member-table tbody tr {
+    border-bottom: 1px solid var(--border);
+    transition: background 0.15s ease;
+}
+.member-table tbody tr:last-child { border-bottom: none; }
+.member-table tbody tr:hover { 
+    background: rgba(212,175,55,0.025); 
+    box-shadow: inset 3px 0 0 var(--gold);
+}
+.member-table td {
+    padding: 0.75rem 0.875rem;
+    color: var(--text-2);
+    vertical-align: middle;
+}
+
+/* ── Badges ── */
+.badge-role {
+    display: inline-flex; align-items: center; gap: 0.25rem;
+    padding: 0.18rem 0.55rem;
+    border-radius: 999px;
+    font-size: 0.67rem; font-weight: 700;
+    font-family: 'DM Mono', monospace;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+}
+.badge-role-admin { background: rgba(147,51,234,0.1); color:#7e22ce; border:1px solid rgba(147,51,234,0.2); }
+.badge-role-adviser { background: rgba(217,119,6,0.1); color:#b45309; border:1px solid rgba(217,119,6,0.2); }
+.badge-role-treasurer { background: rgba(5,150,105,0.1); color:#047857; border:1px solid rgba(5,150,105,0.2); }
+.badge-role-auditor { background: rgba(37,99,235,0.1); color:#1e40af; border:1px solid rgba(37,99,235,0.2); }
+.badge-role-guest { background: rgba(107,114,128,0.1); color:#4b5563; border:1px solid rgba(107,114,128,0.2); }
+
+html.dark .badge-role-admin { background:rgba(147,51,234,0.18); color:#d8b4fe; border-color:rgba(147,51,234,0.3); }
+html.dark .badge-role-adviser { background:rgba(217,119,6,0.18); color:#fcd34d; border-color:rgba(217,119,6,0.3); }
+html.dark .badge-role-treasurer { background:rgba(16,185,129,0.18); color:#6ee7b7; border-color:rgba(16,185,129,0.3); }
+html.dark .badge-role-auditor { background:rgba(37,99,235,0.18); color:#93c5fd; border-color:rgba(37,99,235,0.3); }
+html.dark .badge-role-guest { background:rgba(107,114,128,0.18); color:#cbd5e1; border-color:rgba(107,114,128,0.3); }
+
+/* ── Action Buttons ── */
+.tbl-action {
+    display: inline-flex; align-items: center; justify-content: center;
+    padding: 0.2rem 0.5rem;
+    font-size: 0.67rem; font-weight: 700;
+    font-family: 'DM Mono', monospace;
+    border-radius: 0.4rem;
+    border: 1px solid transparent;
+    cursor: pointer; transition: all 0.15s ease;
+    text-decoration: none; white-space: nowrap;
+    background: none;
+}
+.tbl-action.view { color: #2563eb; border-color: rgba(37,99,235,0.2); background: rgba(37,99,235,0.06); }
+.tbl-action.view:hover { background: rgba(37,99,235,0.14); border-color: rgba(37,99,235,0.4); }
+.tbl-action.edit { color: var(--gold-dark); border-color: rgba(212,175,55,0.25); background: rgba(212,175,55,0.07); }
+.tbl-action.edit:hover { background: rgba(212,175,55,0.16); border-color: rgba(212,175,55,0.45); }
+.tbl-action.history { color: #7c3aed; border-color: rgba(124,58,237,0.2); background: rgba(124,58,237,0.06); }
+.tbl-action.history:hover { background: rgba(124,58,237,0.14); border-color: rgba(124,58,237,0.4); }
+.tbl-action.delete { color: #64748b; border-color: rgba(100,116,139,0.2); background: rgba(100,116,139,0.06); }
+.tbl-action.delete:hover { color: #e11d48; border-color: rgba(225,29,72,0.3); background: rgba(225,29,72,0.06); }
+
+html.dark .tbl-action.view { color: #60a5fa; }
+html.dark .tbl-action.edit { color: var(--gold-light); }
+html.dark .tbl-action.history { color: #a78bfa; }
+
+/* ── Pagination ── */
+.pag-wrap {
+    display: flex; flex-wrap: wrap;
+    align-items: center; justify-content: space-between;
+    gap: 0.75rem; padding: 0.875rem 1.25rem;
+    border-top: 1px solid var(--border);
+    background: var(--surface-2);
+}
+.pag-info { font-size: 0.7rem; color: var(--text-3); font-family: 'DM Mono', monospace; }
+.pag-btns { display: flex; gap: 0.25rem; }
+.pag-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 2rem; height: 2rem; padding: 0 0.5rem;
+    font-size: 0.7rem; font-family: 'DM Mono', monospace; font-weight: 600;
+    border-radius: 0.5rem; border: 1.5px solid var(--border);
+    color: var(--text-3); background: var(--surface);
+    text-decoration: none; transition: all 0.15s ease;
+}
+.pag-btn:not(.disabled):not(.current):hover {
+    border-color: var(--gold); color: var(--gold-dark);
+    background: rgba(212,175,55,0.08);
+}
+html.dark .pag-btn:not(.disabled):not(.current):hover { color: var(--gold-light); }
+.pag-btn.current {
+    background: linear-gradient(135deg, var(--emerald), var(--emerald-dark));
+    border-color: var(--emerald-dark); color: #fff;
+    box-shadow: 0 2px 10px rgba(5,150,105,0.3);
+}
+.pag-btn.disabled { opacity: 0.35; cursor: not-allowed; pointer-events: none; }
+
+/* ── Empty State ── */
+.member-empty {
+    display: flex; flex-direction: column; align-items: center;
+    gap: 0.75rem; padding: 4rem 1rem; text-align: center;
+}
+.member-empty-ring {
+    width: 4.5rem; height: 4.5rem; border-radius: 50%;
+    background: linear-gradient(135deg, rgba(5,150,105,0.1), rgba(212,175,55,0.08));
+    border: 1.5px dashed rgba(212,175,55,0.3);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--text-3);
+}
+
+/* ── Mobile Cards ── */
+.mob-card {
+    padding: 1rem 1.1rem;
+    border-bottom: 1px solid var(--border);
+    position: relative; transition: background 0.15s ease;
+}
+.mob-card:last-child { border-bottom: none; }
+.mob-card:hover { background: rgba(212,175,55,0.035); }
+.mob-card::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0; width: 3px;
+    background: var(--border);
+    transition: background 0.18s ease;
+}
+.mob-card:hover::before { background: var(--gold); }
+
+/* ── Animations ── */
+@keyframes fadeUp {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+.a1 { animation: fadeUp 0.38s ease 0.04s both; }
+.a2 { animation: fadeUp 0.38s ease 0.10s both; }
+.a3 { animation: fadeUp 0.38s ease 0.16s both; }
+.a4 { animation: fadeUp 0.38s ease 0.22s both; }
+</style>
+@endpush
 
 @section('content')
-
 @php
     $currentUser    = auth()->user();
     $isSystemAdmin  = $currentUser->role->level === 1;
     $guestEmail     = 'guest@gmail.com';
 
-    $roleBadgeClasses = [
-        'System Administrator' => 'bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300',
-        'Club Adviser'         => 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300',
-        'Treasurer'            => 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300',
-        'Auditor'              => 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300',
-        'Guest'                => 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400',
+    $roleBadgeMap = [
+        'System Administrator' => 'admin',
+        'Club Adviser' => 'adviser',
+        'Treasurer' => 'treasurer',
+        'Auditor' => 'auditor',
+        'Guest' => 'guest',
     ];
+    
     $avatarBg = [
-        'System Administrator' => 'from-purple-400 to-purple-600',
-        'Club Adviser'         => 'from-amber-400 to-amber-600',
-        'Treasurer'            => 'from-emerald-400 to-emerald-600',
-        'Auditor'              => 'from-blue-400 to-blue-600',
-        'Guest'                => 'from-gray-300 to-gray-500',
+        'System Administrator' => 'from-purple-500 to-purple-700',
+        'Club Adviser'         => 'from-amber-500 to-amber-700',
+        'Treasurer'            => 'from-emerald-500 to-emerald-700',
+        'Auditor'              => 'from-blue-500 to-blue-700',
+        'Guest'                => 'from-gray-400 to-gray-600',
     ];
 @endphp
 
-<div
-    x-data="{
-        search: '{{ request('search') }}',
-        searchTimeout: null,
-        submitSearch() {
-            clearTimeout(this.searchTimeout);
-            this.searchTimeout = setTimeout(() => this.$refs.filterForm.submit(), 500);
-        }
-    }"
-    class="space-y-6 md:space-y-8"
->
+<div class="space-y-5">
 
-    {{-- ─── Header ─── --}}
-    <div class="relative overflow-hidden rounded-2xl bg-gradient-to-r from-primary-600 to-primary-800 dark:from-primary-800 dark:to-primary-900 p-5 md:p-8">
-        <div class="relative z-10 flex flex-wrap justify-between items-start gap-4">
-            <div>
-                <h1 class="text-xl md:text-3xl font-bold text-white tracking-tight">Members</h1>
-                <div class="flex flex-wrap items-center gap-2 mt-2 md:mt-3">
-                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 md:px-3 md:py-1 bg-white/20 rounded-full text-xs md:text-sm text-white">
-                        <svg class="w-3 h-3 md:w-4 md:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
-                        </svg>
-                        {{ $filteredStats['all'] }} total members
-                    </span>
-                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 md:px-3 md:py-1 bg-white/20 rounded-full text-xs md:text-sm text-white">
-                        <svg class="w-3 h-3 md:w-4 md:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                        </svg>
-                        Manage organization members by role
-                    </span>
-                </div>
+    {{-- ── HERO SECTION (Matching Financial Records) ── --}}
+    <div class="members-hero a1">
+        <div class="members-hero-content">
+            <p class="text-emerald-300/70 text-[10px] font-bold tracking-[0.2em] uppercase mb-2"
+               style="font-family:'DM Mono',monospace;">
+                {{ now()->format('F Y') }} · Organization Roster
+            </p>
+            <h1 class="members-hero-title mb-3">Members<br><span>Directory</span></h1>
+            <div class="flex flex-wrap gap-2">
+                <span class="members-hero-pill">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
+                    </svg>
+                    {{ $filteredStats['all'] }} Total Members
+                </span>
+                <span class="members-hero-pill">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    Manage by Role
+                </span>
             </div>
+        </div>
+    </div>
 
+    {{-- ── STATS CARDS ── --}}
+    <div class="member-stat-grid a2">
+        @php
+            $statsCards = [
+                ['key' => 'all', 'label' => 'Total Members', 'sub' => 'Active roster', 'icon' => 'users', 'class' => 'all', 'color' => '#059669'],
+                ['key' => 'admin', 'label' => 'System Admins', 'sub' => 'Full control', 'icon' => 'shield', 'class' => 'admin', 'color' => '#9333ea'],
+                ['key' => 'adviser', 'label' => 'Club Advisers', 'sub' => 'Organization advisers', 'icon' => 'academic', 'class' => 'adviser', 'color' => '#d97706'],
+                ['key' => 'treasurer', 'label' => 'Treasurers', 'sub' => 'Finance handlers', 'icon' => 'currency', 'class' => 'treasurer', 'color' => '#059669'],
+                ['key' => 'auditor', 'label' => 'Auditors', 'sub' => 'Finance reviewers', 'icon' => 'clipboard', 'class' => 'auditor', 'color' => '#2563eb'],
+                ['key' => 'guest', 'label' => 'Guest / Custom', 'sub' => 'Limited access', 'icon' => 'user', 'class' => 'guest', 'color' => '#6b7280'],
+            ];
+        @endphp
+        @foreach($statsCards as $card)
+        @php
+            $count = $card['key'] === 'all' ? $filteredStats['all'] : 
+                    ($card['key'] === 'guest' ? $filteredStats['guest'] + $filteredStats['custom'] : $filteredStats[$card['key']]);
+        @endphp
+        <div class="member-stat-card {{ $card['class'] }}">
+            <div class="member-stat-icon" style="background: {{ $card['color'] }}15;">
+                @if($card['icon'] === 'users')
+                    <svg class="w-4 h-4" fill="none" stroke="{{ $card['color'] }}" viewBox="0 0 24 24" stroke-width="1.75">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
+                    </svg>
+                @elseif($card['icon'] === 'shield')
+                    <svg class="w-4 h-4" fill="none" stroke="{{ $card['color'] }}" viewBox="0 0 24 24" stroke-width="1.75">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                    </svg>
+                @elseif($card['icon'] === 'academic')
+                    <svg class="w-4 h-4" fill="none" stroke="{{ $card['color'] }}" viewBox="0 0 24 24" stroke-width="1.75">
+                        <path d="M12 14l9-5-9-5-9 5 9 5z" stroke="currentColor" stroke-width="2"/>
+                        <path d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" stroke="currentColor" stroke-width="2"/>
+                    </svg>
+                @elseif($card['icon'] === 'currency')
+                    <svg class="w-4 h-4" fill="none" stroke="{{ $card['color'] }}" viewBox="0 0 24 24" stroke-width="1.75">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                @elseif($card['icon'] === 'clipboard')
+                    <svg class="w-4 h-4" fill="none" stroke="{{ $card['color'] }}" viewBox="0 0 24 24" stroke-width="1.75">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
+                    </svg>
+                @else
+                    <svg class="w-4 h-4" fill="none" stroke="{{ $card['color'] }}" viewBox="0 0 24 24" stroke-width="1.75">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                    </svg>
+                @endif
+            </div>
+            <div class="member-stat-num">{{ number_format($count) }}</div>
+            <div class="member-stat-label">{{ $card['label'] }}</div>
+            <div class="member-stat-sub">{{ $card['sub'] }}</div>
+        </div>
+        @endforeach
+    </div>
+
+    {{-- ── ACTION TOOLBAR with Emerald/Gold Button ── --}}
+    <div class="flex flex-wrap items-center justify-between gap-4 a2">
+        <div class="flex flex-wrap gap-2">
             @if($isSystemAdmin || Gate::allows('members.create'))
-            <a href="{{ route('members.create') }}"
-               data-nav-link
-               class="inline-flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 bg-white/20 hover:bg-white/30 border border-white/30 text-white text-xs md:text-sm font-medium rounded-xl transition shadow-sm shrink-0">
-                <svg class="w-3.5 h-3.5 md:w-4 md:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+            <a href="{{ route('members.create') }}" 
+            class="btn-emerald" 
+            data-nav-link>
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
                 </svg>
                 Add Member
             </a>
             @endif
         </div>
-        <div class="absolute top-0 right-0 -mt-8 -mr-8 w-48 h-48 md:w-64 md:h-64 bg-white/5 rounded-full blur-3xl"></div>
-    </div>
 
-    {{-- ─── Stats Grid ─── --}}
-    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 md:gap-5">
-
-        {{-- All --}}
-        <div class="group bg-white dark:bg-gray-800 rounded-xl md:rounded-2xl border border-gold-200 dark:border-gold-800 p-4 md:p-5 hover:shadow-lg transition-all duration-300 hover:scale-[1.02]">
-            <div class="flex items-center justify-between mb-3">
-                <div class="w-9 h-9 bg-primary-50 dark:bg-primary-900/50 rounded-xl flex items-center justify-center">
-                    <svg class="w-5 h-5 text-primary-600 dark:text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
-                    </svg>
-                </div>
-                <span class="text-xl md:text-2xl font-bold text-gray-800 dark:text-white">{{ number_format($filteredStats['all']) }}</span>
-            </div>
-            <p class="text-xs font-medium text-gray-600 dark:text-gray-400">All Members</p>
-        </div>
-
-        {{-- System Admin --}}
-        <div class="group bg-white dark:bg-gray-800 rounded-xl md:rounded-2xl border border-gold-200 dark:border-gold-800 p-4 md:p-5 hover:shadow-lg transition-all duration-300 hover:scale-[1.02]">
-            <div class="flex items-center justify-between mb-3">
-                <div class="w-9 h-9 bg-purple-50 dark:bg-purple-900/50 rounded-xl flex items-center justify-center">
-                    <svg class="w-5 h-5 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/>
-                    </svg>
-                </div>
-                <span class="text-xl md:text-2xl font-bold text-gray-800 dark:text-white">{{ number_format($filteredStats['admin']) }}</span>
-            </div>
-            <p class="text-xs font-medium text-gray-600 dark:text-gray-400">System Admins</p>
-            <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Full system control</p>
-        </div>
-
-        {{-- Club Advisers --}}
-        <div class="group bg-white dark:bg-gray-800 rounded-xl md:rounded-2xl border border-gold-200 dark:border-gold-800 p-4 md:p-5 hover:shadow-lg transition-all duration-300 hover:scale-[1.02]">
-            <div class="flex items-center justify-between mb-3">
-                <div class="w-9 h-9 bg-amber-50 dark:bg-amber-900/50 rounded-xl flex items-center justify-center">
-                    <svg class="w-5 h-5 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
-                    </svg>
-                </div>
-                <span class="text-xl md:text-2xl font-bold text-gray-800 dark:text-white">{{ number_format($filteredStats['adviser']) }}</span>
-            </div>
-            <p class="text-xs font-medium text-gray-600 dark:text-gray-400">Club Advisers</p>
-            <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Organization advisers</p>
-        </div>
-
-        {{-- Treasurers --}}
-        <div class="group bg-white dark:bg-gray-800 rounded-xl md:rounded-2xl border border-gold-200 dark:border-gold-800 p-4 md:p-5 hover:shadow-lg transition-all duration-300 hover:scale-[1.02]">
-            <div class="flex items-center justify-between mb-3">
-                <div class="w-9 h-9 bg-emerald-50 dark:bg-emerald-900/50 rounded-xl flex items-center justify-center">
-                    <svg class="w-5 h-5 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                    </svg>
-                </div>
-                <span class="text-xl md:text-2xl font-bold text-gray-800 dark:text-white">{{ number_format($filteredStats['treasurer']) }}</span>
-            </div>
-            <p class="text-xs font-medium text-gray-600 dark:text-gray-400">Treasurers</p>
-            <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Finance handlers</p>
-        </div>
-
-        {{-- Auditors --}}
-        <div class="group bg-white dark:bg-gray-800 rounded-xl md:rounded-2xl border border-gold-200 dark:border-gold-800 p-4 md:p-5 hover:shadow-lg transition-all duration-300 hover:scale-[1.02]">
-            <div class="flex items-center justify-between mb-3">
-                <div class="w-9 h-9 bg-blue-50 dark:bg-blue-900/50 rounded-xl flex items-center justify-center">
-                    <svg class="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
-                    </svg>
-                </div>
-                <span class="text-xl md:text-2xl font-bold text-gray-800 dark:text-white">{{ number_format($filteredStats['auditor']) }}</span>
-            </div>
-            <p class="text-xs font-medium text-gray-600 dark:text-gray-400">Auditors</p>
-            <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Finance reviewers</p>
-        </div>
-
-        {{-- Guest + Custom --}}
-        <div class="group bg-white dark:bg-gray-800 rounded-xl md:rounded-2xl border border-gold-200 dark:border-gold-800 p-4 md:p-5 hover:shadow-lg transition-all duration-300 hover:scale-[1.02]">
-            <div class="flex items-center justify-between mb-3">
-                <div class="w-9 h-9 bg-gray-50 dark:bg-gray-900/50 rounded-xl flex items-center justify-center">
-                    <svg class="w-5 h-5 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
-                    </svg>
-                </div>
-                <span class="text-xl md:text-2xl font-bold text-gray-800 dark:text-white">{{ number_format($filteredStats['guest'] + $filteredStats['custom']) }}</span>
-            </div>
-            <p class="text-xs font-medium text-gray-600 dark:text-gray-400">Guest / Custom</p>
-            <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Limited access</p>
-        </div>
-
-    </div>
-
-    {{-- ─── Search & Filter ─── --}}
-    <form method="GET" action="{{ route('members.index') }}" id="filter-form" x-ref="filterForm">
-        <div class="flex flex-col sm:flex-row flex-wrap gap-3 items-stretch sm:items-center">
-
-            {{-- Search --}}
-            <div class="relative flex-1 min-w-[180px]">
-                <input
-                    type="text"
-                    name="search"
-                    x-model="search"
-                    @input="submitSearch()"
-                    list="member-suggestions"
-                    placeholder="Search by name or email…"
-                    class="w-full pl-9 pr-8 py-2 text-sm border border-gold-200 dark:border-gold-800 rounded-xl bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent transition"
-                >
-                <datalist id="member-suggestions">
-                    @foreach($users as $member)
-                        <option value="{{ $member->full_name }}"></option>
-                        <option value="{{ $member->email }}"></option>
-                    @endforeach
-                </datalist>
-                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                    </svg>
-                </div>
-                @if(request()->filled('search'))
-                <a href="{{ route('members.index', array_merge(request()->except('search', 'page'))) }}"
-                   class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
-                    </svg>
-                </a>
-                @endif
-            </div>
-
+    {{-- ── FILTER PANEL ── --}}
+    <div class="member-panel a3">
+        <form method="GET" action="{{ route('members.index') }}" id="filter-form" x-ref="filterForm">
             <div class="flex flex-wrap gap-2">
-                <select name="status" onchange="this.form.submit()"
-                    class="flex-1 sm:flex-none border border-gold-200 dark:border-gold-800 rounded-xl px-3 py-2 text-sm bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-gold-500 transition">
+                <div class="flex-1 min-w-[200px]">
+                    <input type="text" name="search" value="{{ request('search') }}"
+                           placeholder="Search by name or email…" class="member-input">
+                </div>
+                <select name="status" class="member-select" onchange="this.form.submit()">
                     <option value="">All Status</option>
-                    <option value="active"   {{ request('status') === 'active'   ? 'selected' : '' }}>Active</option>
-                    <option value="inactive" {{ request('status') === 'inactive' ? 'selected' : '' }}>Inactive</option>
+                    <option value="active" {{ request('status') === 'active' ? 'selected' : '' }}>✅ Active</option>
+                    <option value="inactive" {{ request('status') === 'inactive' ? 'selected' : '' }}>⭕ Inactive</option>
                 </select>
-
-                <select name="verification" onchange="this.form.submit()"
-                    class="flex-1 sm:flex-none border border-gold-200 dark:border-gold-800 rounded-xl px-3 py-2 text-sm bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-gold-500 transition">
+                <select name="verification" class="member-select" onchange="this.form.submit()">
                     <option value="">All Verification</option>
-                    <option value="verified"   {{ request('verification') === 'verified'   ? 'selected' : '' }}>Verified</option>
-                    <option value="unverified" {{ request('verification') === 'unverified' ? 'selected' : '' }}>Unverified</option>
+                    <option value="verified" {{ request('verification') === 'verified' ? 'selected' : '' }}>✓ Verified</option>
+                    <option value="unverified" {{ request('verification') === 'unverified' ? 'selected' : '' }}>⚠ Unverified</option>
                 </select>
-
-                @if(request()->hasAny(['search', 'status', 'verification']) || (request()->filled('role') && request('role') !== 'all'))
-                <a href="{{ route('members.index') }}"
-                   class="inline-flex items-center justify-center text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 px-3 py-2 rounded-xl border border-gold-200 dark:border-gold-800 transition">
-                    Clear
-                </a>
+                <button type="submit" class="btn-filter">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L13 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 017 21v-7.586L3.293 6.707A1 1 0 013 6V4z"/>
+                    </svg>
+                    Filter
+                </button>
+                @if(request()->hasAny(['search','status','verification']))
+                    <a href="{{ route('members.index') }}" class="btn-clear">✕ Clear</a>
                 @endif
             </div>
-        </div>
+        </form>
+    </div>
 
-        {{-- Role Tabs --}}
-        <div class="mt-5 border-b border-gold-200 dark:border-gold-800 overflow-x-auto pb-px">
-            <nav class="flex flex-nowrap sm:flex-wrap gap-1 -mb-px min-w-max sm:min-w-0">
-                @php
-                    $tabs = [
-                        ['key' => 'all',       'label' => 'All',          'count' => $filteredStats['all']],
-                        ['key' => 'admin',     'label' => 'System Admin', 'count' => $filteredStats['admin']],
-                        ['key' => 'adviser',   'label' => 'Adviser',      'count' => $filteredStats['adviser']],
-                        ['key' => 'treasurer', 'label' => 'Treasurer',    'count' => $filteredStats['treasurer']],
-                        ['key' => 'auditor',   'label' => 'Auditor',      'count' => $filteredStats['auditor']],
-                        ['key' => 'guest',     'label' => 'Guest',        'count' => $filteredStats['guest']],
-                        ['key' => 'custom',    'label' => 'Custom',       'count' => $filteredStats['custom']],
-                    ];
-                @endphp
-                @foreach($tabs as $tab)
-                <a href="{{ route('members.index', array_merge(request()->except('role', 'page'), ['role' => $tab['key']])) }}"
-                   data-nav-link
-                   class="inline-flex items-center gap-1.5 px-3 py-2 text-xs sm:text-sm font-medium border-b-2 transition-colors whitespace-nowrap
-                       {{ $roleFilter === $tab['key']
-                            ? 'border-gold-500 text-gold-600 dark:text-gold-400'
-                            : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:border-gold-300 dark:hover:border-gold-700' }}">
-                    {{ $tab['label'] }}
-                    <span class="text-xs bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 rounded-full px-1.5 py-0.5">
-                        {{ $tab['count'] }}
-                    </span>
-                </a>
-                @endforeach
-            </nav>
-        </div>
-    </form>
+    {{-- ── ROLE TABS ── --}}
+    <div class="role-tabs a3">
+        @php
+            $tabs = [
+                ['key' => 'all', 'label' => 'All', 'count' => $filteredStats['all']],
+                ['key' => 'admin', 'label' => 'System Admin', 'count' => $filteredStats['admin']],
+                ['key' => 'adviser', 'label' => 'Adviser', 'count' => $filteredStats['adviser']],
+                ['key' => 'treasurer', 'label' => 'Treasurer', 'count' => $filteredStats['treasurer']],
+                ['key' => 'auditor', 'label' => 'Auditor', 'count' => $filteredStats['auditor']],
+                ['key' => 'guest', 'label' => 'Guest', 'count' => $filteredStats['guest']],
+                ['key' => 'custom', 'label' => 'Custom', 'count' => $filteredStats['custom']],
+            ];
+        @endphp
+        @foreach($tabs as $tab)
+        <a href="{{ route('members.index', array_merge(request()->except('role', 'page'), ['role' => $tab['key']])) }}"
+           data-nav-link
+           class="role-tab {{ $roleFilter === $tab['key'] ? 'active' : '' }}">
+            {{ $tab['label'] }}
+            <span class="role-tab-count">{{ $tab['count'] }}</span>
+        </a>
+        @endforeach
+    </div>
 
-    {{-- ─── Members Table ─── --}}
-    <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gold-200 dark:border-gold-800 overflow-hidden shadow-xl">
+    {{-- ── DESKTOP TABLE ── --}}
+    <div class="member-table-wrap a4 hidden md:block">
         <div class="overflow-x-auto">
-            <table class="min-w-full w-full text-sm">
+            <table class="member-table">
                 <thead>
-                    <tr class="bg-primary-600 dark:bg-primary-700 text-white border-b border-gold-200">
-                        <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide">Member</th>
-                        <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide">Email</th>
-                        <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide">Role</th>
-                        <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide">Verified</th>
-                        <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide">Status</th>
-                        <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide">Level</th>
-                        <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide">Joined</th>
-                        <th class="text-right px-4 py-3 text-xs font-semibold uppercase tracking-wide">Actions</th>
+                    <tr>
+                        <th>Member</th>
+                        <th>Email</th>
+                        <th>Role</th>
+                        <th class="center">Verified</th>
+                        <th class="center">Status</th>
+                        <th class="center">Level</th>
+                        <th>Joined</th>
+                        <th class="right">Actions</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
-
+                <tbody>
                     @forelse ($users as $member)
                     @php
-                        $badgeClass   = $roleBadgeClasses[$member->role->name] ?? 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300';
-                        $gradientBg   = $avatarBg[$member->role->name]         ?? 'from-gray-400 to-gray-600';
-                        $initials     = strtoupper(mb_substr($member->full_name, 0, 2));
-                        $isGuest      = $member->email === $guestEmail;
+                        $badgeType = $roleBadgeMap[$member->role->name] ?? 'guest';
+                        $avatarGradient = $avatarBg[$member->role->name] ?? 'from-gray-400 to-gray-600';
+                        $initials = strtoupper(mb_substr($member->full_name, 0, 2));
+                        $isGuest = $member->email === $guestEmail;
                         $canEditGuest = $isGuest && $isSystemAdmin;
                     @endphp
-
-                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors duration-150">
-
-                        {{-- Member name + position --}}
-                        <td class="px-4 py-3">
+                    <tr>
+                        <td>
                             <div class="flex items-center gap-3">
                                 @if($member->avatar)
                                     <img src="{{ str_starts_with($member->avatar, 'http') ? $member->avatar : asset('storage/' . $member->avatar) }}"
                                          alt="{{ $member->full_name }}"
-                                         class="w-8 h-8 md:w-9 md:h-9 rounded-xl object-cover shadow-sm flex-shrink-0">
+                                         class="w-8 h-8 rounded-lg object-cover shadow-sm flex-shrink-0">
                                 @else
-                                    <div class="w-8 h-8 md:w-9 md:h-9 rounded-xl bg-gradient-to-br {{ $gradientBg }}
-                                         flex items-center justify-center text-xs md:text-sm font-bold text-white shadow-sm flex-shrink-0">
+                                    <div class="w-8 h-8 rounded-lg bg-gradient-to-br {{ $avatarGradient }}
+                                         flex items-center justify-center text-xs font-bold text-white shadow-sm flex-shrink-0">
                                         {{ $initials }}
                                     </div>
                                 @endif
-                                <div class="min-w-0">
-                                    <p class="font-semibold text-gray-900 dark:text-white truncate max-w-[140px] md:max-w-none">
-                                        {{ $member->full_name }}
-                                    </p>
-                                    <p class="text-xs text-gray-500 dark:text-gray-400 truncate max-w-[140px] md:max-w-none">
-                                        {{ $member->position ?? '—' }}
-                                    </p>
+                                <div>
+                                    <p class="font-semibold text-text truncate max-w-[160px]">{{ $member->full_name }}</p>
+                                    <p class="text-xs text-text-3 truncate max-w-[160px]">{{ $member->position ?? '—' }}</p>
                                 </div>
                             </div>
                         </td>
-
-                        {{-- Email --}}
-                        <td class="px-4 py-3 text-gray-600 dark:text-gray-400 max-w-[160px] truncate">
-                            {{ $member->email }}
-                        </td>
-
-                        {{-- Role badge --}}
-                        <td class="px-4 py-3">
-                            <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium {{ $badgeClass }}">
+                        <td class="text-text-2 font-mono text-xs">{{ $member->email }}</td>
+                        <td>
+                            <span class="badge-role badge-role-{{ $badgeType }}">
                                 {{ $member->role->abbreviation ?? $member->role->name }}
                             </span>
                         </td>
-
-                        {{-- Verified --}}
-                        <td class="px-4 py-3">
+                        <td class="center">
                             @if($member->email_verified_at)
-                                <span class="inline-flex items-center gap-1 text-green-600 dark:text-green-400 text-xs">
-                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                                    </svg>
-                                    Verified
+                                <span class="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 text-xs">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                    Yes
                                 </span>
                             @else
-                                <span class="inline-flex items-center gap-1 text-yellow-600 dark:text-yellow-400 text-xs">
-                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
-                                    </svg>
-                                    Unverified
+                                <span class="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400 text-xs">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                                    No
                                 </span>
                             @endif
                         </td>
-
-                        {{-- Status --}}
-                        <td class="px-4 py-3">
+                        <td class="center">
                             @if($member->is_active)
-                                <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300">
-                                    <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>Active
+                                <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                    Active
                                 </span>
                             @else
                                 <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300">
-                                    <span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>Inactive
+                                    <span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>
+                                    Inactive
                                 </span>
                             @endif
                         </td>
-
-                        {{-- Role level progress --}}
-                        <td class="px-4 py-3">
-                            <div class="flex items-center gap-2">
-                                <div class="w-12 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                                    <div class="h-full rounded-full bg-primary-500"
+                        <td class="center">
+                            <div class="flex items-center justify-center gap-2">
+                                <div class="w-12 h-1 bg-surface-3 rounded-full overflow-hidden">
+                                    <div class="h-full rounded-full bg-gradient-to-r from-emerald-500 to-gold"
                                          style="width: {{ min(($member->role->level / 8) * 100, 100) }}%">
                                     </div>
                                 </div>
-                                <span class="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">Lv.{{ $member->role->level }}</span>
+                                <span class="text-xs font-mono text-text-3">Lv.{{ $member->role->level }}</span>
                             </div>
                         </td>
-
-                        {{-- Joined date --}}
-                        <td class="px-4 py-3 text-gray-500 dark:text-gray-400 whitespace-nowrap text-xs md:text-sm">
+                        <td class="text-text-3 text-xs font-mono whitespace-nowrap">
                             {{ optional($member->created_at)->format('M d, Y') }}
                         </td>
-
-                        {{-- Actions --}}
-                        <td class="px-4 py-3">
-                            <div class="flex items-center justify-end gap-1.5">
-
+                        <td class="right">
+                            <div class="flex items-center justify-end gap-1">
                                 @if($isGuest && !$isSystemAdmin)
-                                    <span class="text-xs text-gray-400 dark:text-gray-500 italic px-2 py-1">System Account</span>
+                                    <span class="text-xs text-text-3 italic">System Account</span>
                                 @else
-                                    {{-- View --}}
-                                    <a href="{{ route('members.show', $member->id) }}"
-                                       data-nav-link
-                                       class="p-1.5 rounded-lg text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
-                                       title="View">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                                        </svg>
-                                    </a>
-
-                                    {{-- Edit --}}
+                                    <a href="{{ route('members.show', $member->id) }}" class="tbl-action view" title="View">View</a>
                                     @if(($isSystemAdmin || Gate::allows('members.edit')) && (!$isGuest || $canEditGuest))
-                                    <a href="{{ route('members.edit', $member->id) }}"
-                                       data-nav-link
-                                       class="p-1.5 rounded-lg text-gray-500 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors"
-                                       title="Edit">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                                        </svg>
-                                    </a>
+                                        <a href="{{ route('members.edit', $member->id) }}" class="tbl-action edit" title="Edit">Edit</a>
                                     @endif
-
-                                    {{-- History --}}
-                                    <a href="{{ route('members.edit-history', $member->id) }}"
-                                       data-nav-link
-                                       class="p-1.5 rounded-lg text-gray-500 hover:text-gold-600 hover:bg-gold-50 dark:hover:bg-gold-900/20 transition-colors"
-                                       title="History">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                                        </svg>
-                                    </a>
-
-                                    {{-- Delete --}}
+                                    <a href="{{ route('members.edit-history', $member->id) }}" class="tbl-action history" title="History">Hist</a>
                                     @if(!$isGuest && ($isSystemAdmin || Gate::allows('members.delete')) && $member->id !== auth()->id())
-                                    <button
-                                        type="button"
-                                        onclick="confirmDelete('{{ $member->id }}', '{{ addslashes($member->full_name) }}', '{{ addslashes($member->role->name) }}', '{{ $member->email }}')"
-                                        class="p-1.5 rounded-lg text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                                        title="Delete">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                                        </svg>
-                                    </button>
+                                        <button type="button" onclick="confirmDelete('{{ $member->id }}', '{{ addslashes($member->full_name) }}', '{{ addslashes($member->role->name) }}', '{{ $member->email }}')"
+                                                class="tbl-action delete" title="Delete">Del</button>
                                     @endif
                                 @endif
-
                             </div>
                         </td>
                     </tr>
-
                     @empty
                     <tr>
-                        <td colspan="8" class="px-4 py-10 text-center">
-                            <div class="flex flex-col items-center gap-2">
-                                <svg class="w-10 h-10 text-gray-300 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
-                                </svg>
-                                <p class="text-gray-500 dark:text-gray-400 text-sm">No members found.</p>
+                        <td colspan="8">
+                            <div class="member-empty">
+                                <div class="member-empty-ring">
+                                    <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.25" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+                                </div>
+                                <p class="text-text-2 font-semibold">No members found</p>
+                                <p class="text-text-3 text-sm">Try adjusting your search or filters</p>
                                 @if(request()->hasAny(['search', 'status', 'verification']) || (request()->filled('role') && request('role') !== 'all'))
-                                    <a href="{{ route('members.index') }}" class="text-primary-600 hover:underline text-sm">Clear all filters</a>
+                                    <a href="{{ route('members.index') }}" class="text-emerald-600 hover:text-emerald-700 text-sm">Clear all filters →</a>
                                 @endif
                             </div>
                         </td>
                     </tr>
                     @endforelse
-
                 </tbody>
             </table>
         </div>
 
-        {{-- ─── Pagination ─── --}}
         @if($users->hasPages())
-        <div class="px-4 py-3 border-t border-gold-100 dark:border-gold-800 bg-gray-50 dark:bg-gray-800/50 flex flex-wrap items-center justify-between gap-3">
-            <p class="text-xs text-gray-400 dark:text-gray-500">
-                Showing {{ $users->firstItem() }}–{{ $users->lastItem() }} of {{ $users->total() }} members
-            </p>
-            <div class="flex items-center gap-1">
-
-                {{-- Prev --}}
+        <div class="pag-wrap">
+            <p class="pag-info">{{ $users->firstItem() }}–{{ $users->lastItem() }} of {{ $users->total() }} members</p>
+            <div class="pag-btns">
                 @if($users->onFirstPage())
-                    <span class="px-2.5 py-1 text-xs rounded-lg border border-gold-200 dark:border-gold-800 text-gray-300 dark:text-gray-600 cursor-not-allowed">Prev</span>
+                    <span class="pag-btn disabled">← Prev</span>
                 @else
-                    <a href="{{ $users->previousPageUrl() }}"
-                       data-nav-link
-                       class="px-2.5 py-1 text-xs rounded-lg border border-gold-200 dark:border-gold-800 text-gray-600 dark:text-gray-400 hover:bg-gold-50 dark:hover:bg-gold-900/20 hover:border-gold-400 transition-colors">Prev</a>
+                    <a href="{{ $users->previousPageUrl() }}" class="pag-btn">← Prev</a>
                 @endif
-
-                {{-- Page numbers --}}
-                @foreach($users->getUrlRange(max(1, $users->currentPage() - 2), min($users->lastPage(), $users->currentPage() + 2)) as $page => $url)
+                @foreach($users->getUrlRange(max(1,$users->currentPage()-2), min($users->lastPage(),$users->currentPage()+2)) as $page => $url)
                     @if($page == $users->currentPage())
-                        <span class="px-2.5 py-1 text-xs rounded-lg border border-primary-600 bg-primary-600 text-white font-medium">{{ $page }}</span>
+                        <span class="pag-btn current">{{ $page }}</span>
                     @else
-                        <a href="{{ $url }}"
-                           data-nav-link
-                           class="px-2.5 py-1 text-xs rounded-lg border border-gold-200 dark:border-gold-800 text-gray-600 dark:text-gray-400 hover:bg-gold-50 dark:hover:bg-gold-900/20 hover:border-gold-400 transition-colors">{{ $page }}</a>
+                        <a href="{{ $url }}" class="pag-btn">{{ $page }}</a>
                     @endif
                 @endforeach
-
-                {{-- Next --}}
                 @if($users->hasMorePages())
-                    <a href="{{ $users->nextPageUrl() }}"
-                       data-nav-link
-                       class="px-2.5 py-1 text-xs rounded-lg border border-gold-200 dark:border-gold-800 text-gray-600 dark:text-gray-400 hover:bg-gold-50 dark:hover:bg-gold-900/20 hover:border-gold-400 transition-colors">Next</a>
+                    <a href="{{ $users->nextPageUrl() }}" class="pag-btn">Next →</a>
                 @else
-                    <span class="px-2.5 py-1 text-xs rounded-lg border border-gold-200 dark:border-gold-800 text-gray-300 dark:text-gray-600 cursor-not-allowed">Next</span>
+                    <span class="pag-btn disabled">Next →</span>
                 @endif
-
             </div>
         </div>
         @endif
     </div>
+
+    {{-- ── MOBILE CARDS ── --}}
+    <div class="member-table-wrap a4 md:hidden">
+        @forelse($users as $member)
+        @php
+            $badgeType = $roleBadgeMap[$member->role->name] ?? 'guest';
+            $avatarGradient = $avatarBg[$member->role->name] ?? 'from-gray-400 to-gray-600';
+            $initials = strtoupper(mb_substr($member->full_name, 0, 2));
+            $isGuest = $member->email === $guestEmail;
+        @endphp
+        <div class="mob-card">
+            <div class="flex items-start gap-3 mb-3">
+                @if($member->avatar)
+                    <img src="{{ str_starts_with($member->avatar, 'http') ? $member->avatar : asset('storage/' . $member->avatar) }}"
+                         alt="{{ $member->full_name }}"
+                         class="w-10 h-10 rounded-xl object-cover shadow-sm flex-shrink-0">
+                @else
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br {{ $avatarGradient }}
+                         flex items-center justify-center text-sm font-bold text-white shadow-sm flex-shrink-0">
+                        {{ $initials }}
+                    </div>
+                @endif
+                <div class="flex-1 min-w-0">
+                    <p class="font-semibold text-text truncate">{{ $member->full_name }}</p>
+                    <p class="text-xs text-text-3 truncate">{{ $member->position ?? '—' }}</p>
+                    <p class="text-xs font-mono text-text-3 mt-1 truncate">{{ $member->email }}</p>
+                </div>
+            </div>
+            <div class="flex flex-wrap gap-2 mb-3">
+                <span class="badge-role badge-role-{{ $badgeType }}">{{ $member->role->name }}</span>
+                @if($member->is_active)
+                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300">● Active</span>
+                @else
+                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300">○ Inactive</span>
+                @endif
+                @if($member->email_verified_at)
+                    <span class="text-emerald-600 dark:text-emerald-400 text-xs">✓ Verified</span>
+                @else
+                    <span class="text-amber-600 dark:text-amber-400 text-xs">⚠ Unverified</span>
+                @endif
+            </div>
+            <div class="flex items-center justify-between">
+                <span class="text-xs text-text-3 font-mono">Joined {{ optional($member->created_at)->format('M d, Y') }}</span>
+                <div class="flex gap-1">
+                    <a href="{{ route('members.show', $member->id) }}" class="tbl-action view">View</a>
+                    @if(!$isGuest)
+                        <a href="{{ route('members.edit', $member->id) }}" class="tbl-action edit">Edit</a>
+                        <a href="{{ route('members.edit-history', $member->id) }}" class="tbl-action history">Hist</a>
+                    @endif
+                </div>
+            </div>
+        </div>
+        @empty
+        <div class="member-empty">
+            <div class="member-empty-ring">
+                <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.25" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+            </div>
+            <p class="text-text-2 font-semibold">No members found</p>
+        </div>
+        @endforelse
+
+        @if($users->hasPages())
+        <div class="pag-wrap">
+            <p class="pag-info">{{ $users->firstItem() }}–{{ $users->lastItem() }} of {{ $users->total() }}</p>
+            <div class="pag-btns">
+                @if($users->onFirstPage())
+                    <span class="pag-btn disabled">← Prev</span>
+                @else
+                    <a href="{{ $users->previousPageUrl() }}" class="pag-btn">← Prev</a>
+                @endif
+                @foreach($users->getUrlRange(max(1,$users->currentPage()-2), min($users->lastPage(),$users->currentPage()+2)) as $page => $url)
+                    @if($page == $users->currentPage())
+                        <span class="pag-btn current">{{ $page }}</span>
+                    @else
+                        <a href="{{ $url }}" class="pag-btn">{{ $page }}</a>
+                    @endif
+                @endforeach
+                @if($users->hasMorePages())
+                    <a href="{{ $users->nextPageUrl() }}" class="pag-btn">Next →</a>
+                @else
+                    <span class="pag-btn disabled">Next →</span>
+                @endif
+            </div>
+        </div>
+        @endif
+    </div>
+
 </div>
-
-{{-- Hidden delete forms --}}
-@foreach($users as $member)
-    @if($member->email !== $guestEmail)
-    <form id="delete-form-{{ $member->id }}" action="{{ route('members.destroy', $member->id) }}" method="POST" class="hidden">
-        @csrf
-        @method('DELETE')
-    </form>
-    @endif
-@endforeach
-
 @endsection
 
-{{--
-    FIX: Script moved OUT of @section('content') and into @push('scripts').
-    Inline scripts inside @section block can block navigation and cause the
-    tab to keep spinning when the browser tries to navigate away.
-    @push('scripts') defers execution to after the full layout is ready.
---}}
 @push('scripts')
 <script>
 (function () {
@@ -511,13 +851,15 @@
 
     window.confirmDelete = function (userId, userName, userRole, userEmail) {
         if (userEmail === '{{ $guestEmail }}') {
-            alert('The shared guest account cannot be deleted.');
+            if (window.showNotification) {
+                window.showNotification('The shared guest account cannot be deleted.', 'warning', 4000);
+            } else {
+                alert('The shared guest account cannot be deleted.');
+            }
             return;
         }
 
-        const msg = `You are about to delete ${userName} (${userRole}).\n\nThis action cannot be undone. Continue?`;
-
-        if (confirm(msg)) {
+        if (confirm(`⚠️ Delete ${userName} (${userRole})?\n\nThis action cannot be undone.`)) {
             const form = document.getElementById(`delete-form-${userId}`);
             if (form) {
                 if (window.showNavSkeleton) window.showNavSkeleton();
@@ -528,3 +870,12 @@
 }());
 </script>
 @endpush
+
+@foreach($users as $member)
+    @if($member->email !== $guestEmail)
+    <form id="delete-form-{{ $member->id }}" action="{{ route('members.destroy', $member->id) }}" method="POST" class="hidden">
+        @csrf
+        @method('DELETE')
+    </form>
+    @endif
+@endforeach

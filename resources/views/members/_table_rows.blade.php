@@ -1,21 +1,16 @@
 @php
     $roleColors = [
         'System Administrator' => 'purple',
-        'Supreme Admin'        => 'indigo',
-        'Supreme Officer'      => 'blue',
-        'Org Admin'            => 'emerald',
-        'Org Officer'          => 'sky',
-        'Club Adviser'         => 'amber',
-        'Org Member'           => 'gray',
+        'Club Adviser'         => 'indigo',
+        'Treasurer'            => 'blue',
+        'Auditor'              => 'emerald',
+        'Guest'              => 'sky',
     ];
     $roleBadgeClasses = [
         'System Administrator' => 'bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300',
-        'Supreme Admin'        => 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300',
-        'Supreme Officer'      => 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300',
-        'Org Admin'            => 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300',
-        'Org Officer'          => 'bg-sky-100 text-sky-700 dark:bg-sky-900/50 dark:text-sky-300',
-        'Club Adviser'         => 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300',
-        'Org Member'           => 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
+        'Club Adviser'         => 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300',
+        'Treasurer'            => 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300',
+        'Auditor'             => 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300',
         'Guest'                => 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400',
     ];
 @endphp

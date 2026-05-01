@@ -134,74 +134,62 @@ class DashboardController extends Controller
      * Get chart data based on the selected range (weekly, monthly, yearly).
      * Results are cached for 1 hour to improve performance.
      */
-   private function getChartData(string $range): array
+    private function getChartData(string $range): array
     {
-        $cacheKey = "dashboard_chart_{$range}";
+        if ($range === 'weekly') {
+            $rows = FinancialTransaction::approved()
+                ->selectRaw("type, DATE(transaction_date) as period, SUM(amount) as total")
+                ->whereBetween('transaction_date', [now()->subDays(6)->startOfDay(), now()->endOfDay()])
+                ->groupByRaw("type, DATE(transaction_date)")
+                ->get();
 
-        return Cache::remember($cacheKey, 3600, function () use ($range) {
-
-            if ($range === 'weekly') {
-                $start = now()->subDays(6)->startOfDay();
-                $format = '%a, %b %d';
-                $groupBy = "DATE(transaction_date)";
-
-                $rows = FinancialTransaction::approved()
-                    ->selectRaw("type, DATE(transaction_date) as period, SUM(amount) as total")
-                    ->whereBetween('transaction_date', [$start, now()->endOfDay()])
-                    ->groupByRaw("type, DATE(transaction_date)")
-                    ->get();
-
-                $labels = [];
-                for ($i = 6; $i >= 0; $i--) {
-                    $labels[] = now()->subDays($i)->format('D, M d');
-                }
-                $keys = array_map(fn($l) => now()->subDays(6-array_search($l, $labels))->format('Y-m-d'), $labels);
-
-            } elseif ($range === 'yearly') {
-                $start = now()->subMonths(11)->startOfMonth();
-
-                $rows = FinancialTransaction::approved()
-                    ->selectRaw("type, DATE_FORMAT(transaction_date, '%Y-%m') as period, SUM(amount) as total")
-                    ->where('transaction_date', '>=', $start)
-                    ->groupByRaw("type, DATE_FORMAT(transaction_date, '%Y-%m')")
-                    ->get();
-
-                $labels = [];
-                $keys = [];
-                for ($i = 11; $i >= 0; $i--) {
-                    $d = now()->subMonths($i);
-                    $labels[] = $d->format('M Y');
-                    $keys[] = $d->format('Y-m');
-                }
-
-            } else {
-                // monthly
-                $year = now()->year;
-
-                $rows = FinancialTransaction::approved()
-                    ->selectRaw("type, MONTH(transaction_date) as period, SUM(amount) as total")
-                    ->whereYear('transaction_date', $year)
-                    ->groupByRaw("type, MONTH(transaction_date)")
-                    ->get();
-
-                $labels = [];
-                $keys = [];
-                for ($i = 1; $i <= 12; $i++) {
-                    $labels[] = now()->setMonth($i)->format('M');
-                    $keys[] = $i;
-                }
+            $labels = [];
+            $keys   = [];
+            for ($i = 6; $i >= 0; $i--) {
+                $labels[] = now()->subDays($i)->format('D, M d');
+                $keys[]   = now()->subDays($i)->format('Y-m-d'); // ← fixed
             }
 
-            // Index rows by type + period
-            $indexed = [];
-            foreach ($rows as $row) {
-                $indexed[$row->type][$row->period] = (float) $row->total;
+        } elseif ($range === 'yearly') {
+            $rows = FinancialTransaction::approved()
+                ->selectRaw("type, DATE_FORMAT(transaction_date, '%Y-%m') as period, SUM(amount) as total")
+                ->where('transaction_date', '>=', now()->subMonths(11)->startOfMonth())
+                ->groupByRaw("type, DATE_FORMAT(transaction_date, '%Y-%m')")
+                ->get();
+
+            $labels = [];
+            $keys   = [];
+            for ($i = 11; $i >= 0; $i--) {
+                $d        = now()->subMonths($i);
+                $labels[] = $d->format('M Y');
+                $keys[]   = $d->format('Y-m');
             }
 
-            $incomeData  = array_map(fn($k) => $indexed['income'][$k]  ?? 0, $keys);
-            $expenseData = array_map(fn($k) => $indexed['expense'][$k] ?? 0, $keys);
+        } else {
+            // monthly
+            $rows = FinancialTransaction::approved()
+                ->selectRaw("type, MONTH(transaction_date) as period, SUM(amount) as total")
+                ->whereYear('transaction_date', now()->year)
+                ->groupByRaw("type, MONTH(transaction_date)")
+                ->get();
 
-            return ['labels' => $labels, 'income' => $incomeData, 'expense' => $expenseData];
-        });
+            $labels = [];
+            $keys   = [];
+            for ($i = 1; $i <= 12; $i++) {
+                $labels[] = now()->setMonth($i)->format('M');
+                $keys[]   = $i;
+            }
+        }
+
+        $indexed = [];
+        foreach ($rows as $row) {
+            $indexed[$row->type][$row->period] = (float) $row->total;
+        }
+
+        return [
+            'labels'  => $labels,
+            'income'  => array_map(fn($k) => $indexed['income'][$k]  ?? 0, $keys),
+            'expense' => array_map(fn($k) => $indexed['expense'][$k] ?? 0, $keys),
+        ];
     }
 }

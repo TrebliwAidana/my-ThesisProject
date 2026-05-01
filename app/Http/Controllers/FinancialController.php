@@ -490,12 +490,15 @@ class FinancialController extends Controller
             'end_date'      => 'required|date|after_or_equal:start_date',
             'organization'  => 'nullable|string|max:255',
             'previous_cash' => 'nullable|numeric|min:0',
+            'format'        => 'nullable|in:pdf,excel,word',
         ]);
 
+        $validated = array_merge($validated, $this->resolveSignatories());
         return $this->buildReportPdf($validated)->stream('financial_report_preview.pdf');
     }
 
     // ── Report Builder ─────────────────────────────────────────────────────
+    
     private function resolveSignatories(): array
     {
         $get = fn($role) => User::whereHas('role', fn($q) => $q->where('name', $role))
@@ -509,6 +512,7 @@ class FinancialController extends Controller
             'guidance_name'  => optional($get('Guidance Facilitator'))->full_name ?? 'NOEMI ELISA L. OQUIAS',
         ];
     }
+    
     private function buildReportPdf(array $validated): \Barryvdh\DomPDF\PDF
     {
         $startDate = $validated['start_date'];
@@ -516,27 +520,35 @@ class FinancialController extends Controller
         $orgName   = $validated['organization'] ?? '_________________________';
         $prevCash  = (float) ($validated['previous_cash'] ?? 0);
 
-        $incomeTotal         = FinancialTransaction::where('type', 'income')
+        // 1. Approved income transactions within date range
+        $approvedIncome = FinancialTransaction::where('type', 'income')
             ->where('status', 'approved')
             ->whereBetween('transaction_date', [$startDate, $endDate])
             ->sum('amount');
 
-        $receivablePaidTotal = FinancialTransaction::where('type', 'receivable')
+        // 2. Receivables that were PAID within date range (these become actual cash)
+        $paidReceivables = FinancialTransaction::where('type', 'receivable')
             ->where('status', 'paid')
             ->whereBetween('transaction_date', [$startDate, $endDate])
             ->sum('amount');
 
-        $incomeTotal += $receivablePaidTotal;
+        // 3. Total income = approved income + paid receivables
+        $totalIncome = $approvedIncome + $paidReceivables;
 
-        $expenseTotal = FinancialTransaction::where('type', 'expense')
+        // 4. Total expenses (approved within date range)
+        $totalExpenses = FinancialTransaction::where('type', 'expense')
             ->where('status', 'approved')
             ->whereBetween('transaction_date', [$startDate, $endDate])
             ->sum('amount');
 
-        $netFromOps = $incomeTotal - $expenseTotal;
-        $netFinal   = $netFromOps + $prevCash;
+        // 5. Net from operations (Income - Expenses)
+        $netFromOps = $totalIncome - $totalExpenses;
 
-        $receivablesTotal = FinancialTransaction::where('type', 'receivable')
+        // 6. Final balance (Net + Previous Cash)
+        $netFinal = $netFromOps + $prevCash;
+
+        // 7. Outstanding receivables (approved but NOT YET paid)
+        $outstandingReceivables = FinancialTransaction::where('type', 'receivable')
             ->where('status', 'approved')
             ->whereBetween('transaction_date', [$startDate, $endDate])
             ->sum('amount');
@@ -545,14 +557,13 @@ class FinancialController extends Controller
             'org_name'       => $orgName,
             'start_date'     => $startDate,
             'end_date'       => $endDate,
-            'income_total'   => $incomeTotal,
-            'expense_total'  => $expenseTotal,
+            'income_total'   => $totalIncome,
+            'expense_total'  => $totalExpenses,
             'net_from_ops'   => $netFromOps,
             'prev_cash'      => $prevCash,
             'net_final'      => $netFinal,
-            'receivables'    => $receivablesTotal,
+            'receivables'    => $outstandingReceivables,
             'generated_at'   => now(),
-            // Signatories already resolved by resolveSignatories()
             'treasurer_name' => $validated['treasurer_name'],
             'auditor_name'   => $validated['auditor_name'],
             'president_name' => $validated['president_name'],

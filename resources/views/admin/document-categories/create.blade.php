@@ -47,7 +47,7 @@
                             Creating...
                         </span>
                     </button>
-                <a href="{{ route('admin.document-categories.index') }}" class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg">Cancel</a>
+                <a href="{{ route('admin.document-categories.index') }}"  class="bg-red-600 hover:bg-red-700 text-white text-sm font-semibold px-6 py-2.5 rounded-lg transition shadow-sm">Cancel</a>
             </div>
         </form>
     </div>

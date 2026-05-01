@@ -10,13 +10,7 @@ class DocumentCategorySeeder extends Seeder
     public function run(): void
     {
         $categories = [
-            'Minutes',
-            'Reports',
-            'Policies',
-            'Forms',
-            'Financial Receipts',
-            'Correspondence',
-            'Others',
+ 
         ];
 
         foreach ($categories as $cat) {

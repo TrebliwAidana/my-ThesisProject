@@ -100,7 +100,7 @@ body {
     margin-top: 2px;
 }
 
-/* SIGNATURE - MODIFIED TO BRING NAME CLOSER TO UNDERLINE */
+/* SIGNATURES */
 .signature-table {
     width: 100%;
     margin-top: 20px;
@@ -109,13 +109,13 @@ body {
 }
 
 .signature-table td {
-    padding: 4px 6px;        /* reduced vertical padding */
+    padding: 4px 6px;
     vertical-align: bottom;
 }
 
 .signature-line {
     border-bottom: 1px solid #000;
-    height: 16px;            /* reduced from 24px */
+    height: 16px;
 }
 
 .signature-line.has-name {
@@ -169,6 +169,16 @@ body {
     color: #555;
     margin-top: 6px;
 }
+
+/* DEBUG (remove in production) */
+.debug-info {
+    background: #f8d7da;
+    padding: 10px;
+    margin-top: 20px;
+    font-size: 9px;
+    border: 1px solid #f5c6cb;
+    border-radius: 4px;
+}
 </style>
 </head>
 
@@ -197,7 +207,7 @@ body {
 
 <div class="center">
     of the <span class="underline">{{ $org_name }}</span><br>
-   {{-- // <small>Name of Organization/Club</small> --}}
+    {{-- <small>Name of Organization/Club</small> --}}
 </div>
 
 <div class="center">
@@ -207,7 +217,7 @@ body {
     <span class="underline">{{ \Carbon\Carbon::parse($end_date)->format('F d, Y') }}</span>
 </div>
 
-<!-- FINANCIAL TABLE -->
+<!-- FINANCIAL TABLE - CORRECTED VERSION -->
 <table class="financial-table">
     <thead>
         <tr>
@@ -218,34 +228,46 @@ body {
     </thead>
     <tbody>
         <tr>
-            <td><b>A. Cash on Hand</b><br><span class="row-sub">(attach list)</span></td>
+            <td><strong>A. Cash on Hand</strong><br>
+                <span class="row-sub">(approved income + paid receivables)</span>
+            </td>
             <td class="amount">{{ number_format($income_total, 2) }}</td>
             <td></td>
         </tr>
         <tr>
-            <td><b>B. Less: Expenses</b><br><span class="row-sub">(attach receipts)</span></td>
+            <td><strong>B. Less: Expenses</strong><br>
+                <span class="row-sub">(approved expenses with receipts)</span>
+            </td>
             <td class="amount">{{ number_format($expense_total, 2) }}</td>
             <td></td>
         </tr>
         <tr>
-            <td><b>C. Total Income</b><br><span class="row-sub">(A minus B)</span></td>
+            <td><strong>C. Total Income / Cash on Hand</strong><br>
+                <span class="row-sub">(A minus B)</span>
+            </td>
             <td class="amount">{{ number_format($net_from_ops, 2) }}</td>
             <td></td>
         </tr>
         <tr>
-            <td><b>D. Receivables</b><br><span class="row-sub">(attach list)</span></td>
+            <td><strong>D. Receivables</strong><br>
+                <span class="row-sub">(approved but not yet paid)</span>
+            </td>
             <td class="amount">{{ number_format($receivables, 2) }}</td>
-            <td></td>
+            <td>          </td>
         </tr>
         <tr>
-            <td><b>E. Previous Cash Deposited</b></td>
+            <td><strong>E. Previous Cash Deposited</strong><br>
+                <span class="row-sub">(cash on hand before this period)</span>
+            </td>
             <td class="amount">{{ number_format($prev_cash, 2) }}</td>
-            <td></td>
+            <td>           </td>
         </tr>
-        <tr style="font-weight:bold">
-            <td><b>NET INCOME</b><br><span class="row-sub">(C + E)</span></td>
-            <td class="amount"><b>{{ number_format($net_final, 2) }}</b></td>
-            <td></td>
+        <tr style="font-weight:bold; background-color: #f0f0f0;">
+            <td><strong>NET INCOME</strong><br>
+                <span class="row-sub">(C + E)</span>
+            </td>
+            <td class="amount"><strong>{{ number_format($net_final, 2) }}</strong></td>
+            <td><strong>Current Balance</strong></td>
         </tr>
     </tbody>
 </table>
@@ -254,14 +276,14 @@ body {
 <table class="signature-table">
     <!-- Treasurer (Certified True and Correct) -->
     <tr>
-        <td colspan="3" style="text-align: center;"><b>Certified True and Correct:</b></td>
+        <td colspan="3" style="text-align: center;"><strong>Certified True and Correct:</strong></td>
     </tr>
     <tr>
         <td width="33%"></td>
         <td width="33%" style="text-align: center; border-bottom: 1px solid #000; padding-bottom: 0; vertical-align: bottom;">
-            <b style="display: block; margin-bottom: 2px;">{{ $treasurer_name ?? 'SHEERWINA MAE G. BALOTITE' }}</b>
+            <strong style="display: block; margin-bottom: 2px;">{{ $treasurer_name }}</strong>
         </td>
-        <td width="33%"></td>
+        <td width="33%">n            </td>
     </tr>
     <tr>
         <td colspan="3" style="text-align: center; padding-top: 2px;">Treasurer</td>
@@ -271,11 +293,11 @@ body {
     <!-- Auditor and President -->
     <tr>
         <td width="33%" style="text-align: center; border-bottom: 1px solid #000; padding-bottom: 0; vertical-align: bottom;">
-            <b style="display: block; margin-bottom: 2px;">{{ $auditor_name ?? '_________________________' }}</b>
+            <strong style="display: block; margin-bottom: 2px;">{{ $auditor_name }}</strong>
         </td>
-        <td width="33%"></td>
+        <td width="33%">n            </td>
         <td width="33%" style="text-align: center; border-bottom: 1px solid #000; padding-bottom: 0; vertical-align: bottom;">
-            <b style="display: block; margin-bottom: 2px;">{{ $president_name ?? '_________________________' }}</b>
+            <strong style="display: block; margin-bottom: 2px;">{{ $president_name }}</strong>
         </td>
     </tr>
     <tr>
@@ -288,11 +310,11 @@ body {
     <!-- Adviser and Guidance Facilitator -->
     <tr>
         <td width="33%" style="text-align: center; border-bottom: 1px solid #000; padding-bottom: 0; vertical-align: bottom;">
-            <b style="display: block; margin-bottom: 2px;">{{ $adviser_name ?? '_________________________' }}</b>
+            <strong style="display: block; margin-bottom: 2px;">{{ $adviser_name }}</strong>
         </td>
-        <td width="33%"></td>
+        <td width="33%">n            </td>
         <td width="33%" style="text-align: center; border-bottom: 1px solid #000; padding-bottom: 0; vertical-align: bottom;">
-            <b style="display: block; margin-bottom: 2px;">{{ $guidance_name ?? '_________________________' }}</b>
+            <strong style="display: block; margin-bottom: 2px;">{{ $guidance_name }}</strong>
         </td>
     </tr>
     <tr>
@@ -313,7 +335,7 @@ body {
 
 <div class="center" style="margin-top: 15px;">
     <div style="display: inline-block; border-bottom: 1px solid #000; padding-bottom: 2px; margin-bottom: 2px;">
-        <b>{{ $treasurer_name ?? '_________________________' }}</b>
+        <strong>{{ $treasurer_name }}</strong>
     </div>
     <br>
     VSUIHS Treasurer
@@ -326,7 +348,7 @@ body {
 
 <!-- FOOTER -->
 <div class="footer">
-    <b>VSU INTEGRATED HIGH SCHOOL</b><br>
+    <strong>VSU INTEGRATED HIGH SCHOOL</strong><br>
     Visayas State University, Baybay City, Leyte<br>
     Email: jhs@vsu.edu.ph / integrated.hs@vsu.edu.ph<br>
     Website: www.vsu.edu.ph<br>
@@ -336,6 +358,21 @@ body {
 <div class="generated-date">
     Generated on {{ $generated_at->format('F d, Y \a\t h:i A') }}
 </div>
+
+@if(isset($debug_approved_income) || isset($debug_paid_receivables))
+<!-- DEBUG INFO - Remove for production -->
+<div class="debug-info">
+    <strong>Financial Breakdown ({{ $start_date }} to {{ $end_date }}):</strong><br>
+    Approved Income: ₱{{ number_format($debug_approved_income ?? 0, 2) }}<br>
+    Paid Receivables: ₱{{ number_format($debug_paid_receivables ?? 0, 2) }}<br>
+    Total Income (A): ₱{{ number_format($income_total, 2) }}<br>
+    Total Expenses (B): ₱{{ number_format($expense_total, 2) }}<br>
+    Net Income (C = A - B): ₱{{ number_format($net_from_ops, 2) }}<br>
+    Previous Cash (E): ₱{{ number_format($prev_cash, 2) }}<br>
+    <strong>Final Balance (C + E): ₱{{ number_format($net_final, 2) }}</strong><br><br>
+    <em>Formula: (Approved Income + Paid Receivables) - Expenses + Previous Cash = Current Balance</em>
+</div>
+@endif
 
 </div>
 </body>

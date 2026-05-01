@@ -30,7 +30,7 @@ class DocumentController extends Controller
 
         // Build main query with filters
         $query = $this->applyDocumentFilters(
-            Document::with(['currentVersion:id,document_id,file_path,created_at', 'owner:id,full_name', 'category:id,name'])->latest(),
+            Document::with(['currentVersion:id,document_id,file_path,file_size,created_at', 'owner:id,full_name', 'category:id,name'])->latest(),
             $request
         );
 
@@ -113,7 +113,9 @@ class DocumentController extends Controller
             abort(403);
         }
 
-        return view('documents.create');
+        $categories = DocumentCategory::active()->orderBy('name')->get(['id', 'name']);
+
+        return view('documents.create', compact('categories'));
     }
 
     public function store(Request $request)
@@ -124,11 +126,12 @@ class DocumentController extends Controller
         }
 
         $validated = $request->validate([
-            'title' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'tags' => 'nullable|string|max:255',
-            'change_notes' => 'nullable|string',
-            'file' => 'required|file|max:10240|mimes:pdf,doc,docx,xls,xlsx,ppt,pptx,jpg,jpeg,png,gif,zip',
+            'title'                => 'required|string|max:255',
+            'description'          => 'nullable|string',
+            'document_category_id' => 'nullable|exists:document_categories,id',
+            'tags'                 => 'nullable|string|max:255',
+            'change_notes'         => 'nullable|string',
+            'file'                 => 'required|file|max:10240|mimes:pdf,doc,docx,xls,xlsx,ppt,pptx,jpg,jpeg,png,gif,zip',
         ]);
 
         $tagsArray = [];
@@ -137,12 +140,13 @@ class DocumentController extends Controller
         }
 
         $document = Document::create([
-            'title' => $validated['title'],
-            'description' => $validated['description'] ?? null,
-            'document_category_id' => null,
-            'tags' => $tagsArray,
-            'owner_id' => $user->id,
-            'current_version_id' => null,
+            'title'                => $validated['title'],
+            'description'          => $validated['description'] ?? null,
+            'document_category_id' => $validated['document_category_id'] ?? null,
+            'tags'                 => $tagsArray,
+            'owner_id'             => $user->id,
+            'current_version_id'   => null,
+            'uploaded_at'          => now(),
         ]);
 
         $version = $document->addVersion(
@@ -175,7 +179,7 @@ class DocumentController extends Controller
             abort(403, 'You can only edit your own documents.');
         }
 
-        $categories = DocumentCategory::active()->orderBy('name')->pluck('name', 'id');
+        $categories = DocumentCategory::active()->orderBy('name')->get(['id', 'name']);
 
         return view('documents.edit', compact('document', 'categories'));
     }
@@ -191,8 +195,8 @@ class DocumentController extends Controller
         }
 
         $validated = $request->validate([
-            'title' => 'required|string|max:255',
-            'description' => 'nullable|string',
+            'title'                => 'required|string|max:255',
+            'description'          => 'nullable|string',
             'document_category_id' => 'nullable|exists:document_categories,id',
         ]);
 
@@ -226,11 +230,6 @@ class DocumentController extends Controller
             abort(403);
         }
 
-        // Block deletion of auto-generated financial approval slips.
-        // Deleting the document alone removes the file but leaves the financial
-        // transaction intact — it would keep counting toward income/expense totals.
-        // The correct flow is to delete from Financial Records, which soft-deletes
-        // the transaction (removing it from all totals) and its linked documents together.
         $tags = is_array($document->tags) ? $document->tags : ($document->tags ?? []);
         if (in_array('auto-generated', $tags)) {
             return redirect()->route('documents.index')
@@ -328,7 +327,6 @@ class DocumentController extends Controller
 
         $document = Document::onlyTrashed()->with('versions')->findOrFail($id);
 
-        // Block force-delete of auto-generated financial docs
         $tags = is_array($document->tags) ? $document->tags : ($document->tags ?? []);
         if (in_array('auto-generated', $tags)) {
             return redirect()->route('documents.trash')
@@ -338,23 +336,19 @@ class DocumentController extends Controller
         AuditLogger::log('force_deleted', $document, "Document: {$document->title}", $document->toArray(), []);
 
         DB::transaction(function () use ($document) {
-            // 1. Delete every physical file from disk
             foreach ($document->versions as $version) {
                 if ($version->file_path && Storage::disk('private')->exists($version->file_path)) {
                     Storage::disk('private')->delete($version->file_path);
                 }
             }
 
-            // 2. Delete all version records from DB
             $document->versions()->delete();
 
-            // 3. Detach from any pivot tables (attachments)
             DB::table('attachments')
                 ->where('attachable_type', Document::class)
                 ->where('document_id', $document->id)
                 ->delete();
 
-            // 4. Permanently delete the document record
             $document->forceDelete();
         });
 

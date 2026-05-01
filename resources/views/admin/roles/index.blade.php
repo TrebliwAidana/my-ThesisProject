@@ -1,11 +1,511 @@
 @extends('layouts.app')
-@section('title', 'Roles — VSULHS_SSLG')
+
+@section('title', 'Roles — VSULHS SSLG')
+@section('page-title', 'Roles')
+
+@push('styles')
+<style>
+/* ════════════════════════════════════════════════
+   ROLES MANAGEMENT — Emerald & Gold Luxury Theme
+   Matching Members, Financial & User Management design
+════════════════════════════════════════════════ */
+
+/* ── Hero Section ── */
+.roles-hero {
+    position: relative;
+    overflow: hidden;
+    border-radius: 1.25rem;
+    padding: 1.75rem 2rem;
+    isolation: isolate;
+    background: linear-gradient(135deg, #064E3B 0%, #065F46 35%, #047857 60%, #0A3A28 100%);
+}
+.roles-hero::before {
+    content: '';
+    position: absolute; inset: 0;
+    background-image: radial-gradient(circle at 1px 1px, rgba(255,255,255,1) 1px, transparent 0);
+    background-size: 28px 28px;
+    opacity: 0.04; z-index: 0;
+}
+.roles-hero::after {
+    content: '';
+    position: absolute;
+    top: -60px; right: -60px;
+    width: 280px; height: 280px;
+    background: radial-gradient(circle, rgba(212,175,55,0.35), transparent 65%);
+    filter: blur(48px); z-index: 0;
+}
+.roles-hero-content { position: relative; z-index: 1; }
+
+.roles-hero-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(1.5rem, 3.5vw, 2.2rem);
+    color: #fff;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+}
+.roles-hero-title span {
+    background: linear-gradient(90deg, #F0CC55, #D4AF37);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+.roles-hero-pill {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    padding: 0.3rem 0.75rem;
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(212,175,55,0.28);
+    border-radius: 999px;
+    font-size: 0.72rem; font-weight: 600;
+    color: rgba(255,255,255,0.88);
+    font-family: 'DM Mono', monospace;
+}
+
+/* ── Roles Grid Layout ── */
+.roles-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+}
+@media (min-width: 1024px) {
+    .roles-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+/* ── Roles Card ── */
+.roles-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 1.25rem;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+}
+html.dark .roles-card { box-shadow: 0 4px 20px rgba(0,0,0,0.22); }
+
+.roles-card-header {
+    background: linear-gradient(135deg, #064E3B 0%, #047857 60%, #065F46 100%);
+    padding: 0.75rem 1.25rem;
+    border-bottom: 1px solid rgba(212,175,55,0.2);
+}
+
+.roles-card-title {
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.85);
+    font-family: 'DM Mono', monospace;
+}
+
+/* ── Search Input ── */
+.roles-search {
+    position: relative;
+}
+.roles-search-input {
+    padding: 0.5rem 0.875rem 0.5rem 2rem;
+    font-size: 0.83rem;
+    background: var(--surface-2);
+    border: 1.5px solid var(--border);
+    border-radius: 0.75rem;
+    color: var(--text);
+    font-family: 'Outfit', sans-serif;
+    transition: all 0.2s ease;
+    width: 100%;
+}
+.roles-search-input:focus {
+    outline: none;
+    border-color: var(--gold);
+    box-shadow: 0 0 0 3px rgba(212,175,55,0.12);
+    background: var(--surface);
+}
+.roles-search-input::placeholder { color: var(--text-3); }
+.roles-search-icon {
+    position: absolute;
+    left: 0.65rem;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 1rem;
+    height: 1rem;
+    color: var(--text-3);
+}
+
+/* ── Toggle Buttons ── */
+.roles-toggle-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.4rem 0.875rem;
+    font-size: 0.7rem;
+    font-weight: 600;
+    border-radius: 0.65rem;
+    border: 1.5px solid var(--border);
+    background: var(--surface-3);
+    color: var(--text-2);
+    text-decoration: none;
+    transition: all 0.18s ease;
+    font-family: 'Outfit', sans-serif;
+}
+.roles-toggle-btn:hover {
+    border-color: rgba(212,175,55,0.4);
+    color: var(--gold-dark);
+    background: rgba(212,175,55,0.06);
+}
+.roles-toggle-btn.active {
+    background: linear-gradient(135deg, var(--gold), var(--gold-dark));
+    color: #0f172a;
+    border-color: transparent;
+}
+
+.roles-badge-active {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.2rem 0.6rem;
+    border-radius: 9999px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    font-family: 'DM Mono', monospace;
+}
+.roles-badge-deleted {
+    background: rgba(220,38,38,0.12);
+    color: #dc2626;
+    border: 1px solid rgba(220,38,38,0.25);
+}
+.roles-badge-hidden {
+    background: rgba(107,114,128,0.12);
+    color: #6b7280;
+    border: 1px solid rgba(107,114,128,0.25);
+}
+.roles-badge-predefined {
+    background: rgba(212,175,55,0.12);
+    color: #b8942e;
+    border: 1px solid rgba(212,175,55,0.25);
+}
+.roles-badge-system {
+    background: rgba(239,68,68,0.12);
+    color: #dc2626;
+    border: 1px solid rgba(239,68,68,0.25);
+}
+
+html.dark .roles-badge-deleted { background: rgba(248,113,113,0.15); color: #fca5a5; }
+html.dark .roles-badge-hidden { background: rgba(107,114,128,0.2); color: #cbd5e1; }
+html.dark .roles-badge-predefined { background: rgba(212,175,55,0.15); color: #fcd34d; }
+html.dark .roles-badge-system { background: rgba(248,113,113,0.15); color: #fca5a5; }
+
+/* ── Roles Table ── */
+.roles-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+}
+.roles-table thead tr {
+    background: linear-gradient(135deg, #064E3B 0%, #047857 60%, #065F46 100%);
+}
+.roles-table th {
+    padding: 0.7rem 1rem;
+    text-align: left;
+    font-size: 0.63rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.82);
+    font-family: 'DM Mono', monospace;
+    white-space: nowrap;
+}
+.roles-table th:last-child { text-align: right; }
+.roles-table tbody tr {
+    border-bottom: 1px solid var(--border);
+    transition: background 0.15s ease;
+}
+.roles-table tbody tr:last-child { border-bottom: none; }
+.roles-table tbody tr:hover { 
+    background: rgba(212,175,55,0.025); 
+    box-shadow: inset 3px 0 0 var(--gold);
+}
+.roles-table td {
+    padding: 0.75rem 1rem;
+    color: var(--text-2);
+    vertical-align: middle;
+}
+.roles-table td:last-child { text-align: right; }
+
+/* ── Role Avatar ── */
+.role-avatar {
+    width: 2rem;
+    height: 2rem;
+    border-radius: 0.6rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+.role-name {
+    font-weight: 600;
+    color: var(--text);
+}
+.role-name.deleted {
+    text-decoration: line-through;
+    color: var(--text-3);
+}
+
+/* ── Level Badge ── */
+.role-level-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.2rem 0.6rem;
+    border-radius: 9999px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    font-family: 'DM Mono', monospace;
+}
+
+/* ── User Count Circle ── */
+.user-count-circle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: 9999px;
+    background: var(--surface-3);
+    color: var(--text-3);
+    font-size: 0.7rem;
+    font-weight: 700;
+    font-family: 'DM Mono', monospace;
+}
+
+/* ── Action Buttons ── */
+.roles-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.25rem 0.6rem;
+    font-size: 0.65rem;
+    font-weight: 700;
+    font-family: 'DM Mono', monospace;
+    border-radius: 0.4rem;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    text-decoration: none;
+    white-space: nowrap;
+    background: none;
+}
+.roles-action-restore { color: #059669; border-color: rgba(5,150,105,0.2); background: rgba(5,150,105,0.06); }
+.roles-action-restore:hover { background: rgba(5,150,105,0.14); border-color: rgba(5,150,105,0.4); }
+.roles-action-force-delete { color: #64748b; border-color: rgba(100,116,139,0.2); background: rgba(100,116,139,0.06); }
+.roles-action-force-delete:hover { color: #dc2626; border-color: rgba(220,38,38,0.3); background: rgba(220,38,38,0.06); }
+.roles-action-hide { color: #d97706; border-color: rgba(217,119,6,0.2); background: rgba(217,119,6,0.06); }
+.roles-action-hide:hover { background: rgba(217,119,6,0.14); border-color: rgba(217,119,6,0.4); }
+.roles-action-unhide { color: #059669; border-color: rgba(5,150,105,0.2); background: rgba(5,150,105,0.06); }
+.roles-action-unhide:hover { background: rgba(5,150,105,0.14); border-color: rgba(5,150,105,0.4); }
+.roles-action-edit { color: var(--gold-dark); border-color: rgba(212,175,55,0.25); background: rgba(212,175,55,0.07); }
+.roles-action-edit:hover { background: rgba(212,175,55,0.16); border-color: rgba(212,175,55,0.45); }
+.roles-action-delete { color: #64748b; border-color: rgba(100,116,139,0.2); background: rgba(100,116,139,0.06); }
+.roles-action-delete:hover { color: #dc2626; border-color: rgba(220,38,38,0.3); background: rgba(220,38,38,0.06); }
+.roles-action-disabled {
+    color: var(--text-3);
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+/* ── Add Role Form ── */
+.roles-form {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 1.25rem;
+    padding: 1.5rem;
+}
+.roles-form-title {
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-3);
+    font-family: 'DM Mono', monospace;
+    padding-bottom: 0.75rem;
+    margin-bottom: 1rem;
+    border-bottom: 1px solid var(--border);
+}
+.roles-form-label {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--text-2);
+    margin-bottom: 0.35rem;
+    font-family: 'Outfit', sans-serif;
+}
+.roles-form-input {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.85rem;
+    background: var(--surface-2);
+    border: 1.5px solid var(--border);
+    border-radius: 0.65rem;
+    color: var(--text);
+    font-family: 'Outfit', sans-serif;
+    transition: all 0.2s ease;
+}
+.roles-form-input:focus {
+    outline: none;
+    border-color: var(--gold);
+    box-shadow: 0 0 0 3px rgba(212,175,55,0.12);
+    background: var(--surface);
+}
+.roles-form-input.error {
+    border-color: #dc2626;
+}
+.roles-form-error {
+    color: #dc2626;
+    font-size: 0.7rem;
+    margin-top: 0.25rem;
+}
+.roles-form-hint {
+    font-size: 0.65rem;
+    color: var(--text-3);
+    margin-top: 0.25rem;
+}
+
+.btn-create {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem 1.25rem;
+    font-size: 0.8rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--emerald), var(--emerald-dark));
+    color: #fff;
+    border: none;
+    border-radius: 0.65rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 10px rgba(5,150,105,0.22);
+    font-family: 'Outfit', sans-serif;
+}
+.btn-create:hover {
+    background: linear-gradient(135deg, var(--gold), var(--gold-dark));
+    color: #0f172a;
+    box-shadow: 0 4px 16px rgba(212,175,55,0.35);
+    transform: translateY(-1px);
+}
+.btn-reset {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem 1rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    background: var(--surface-3);
+    color: var(--text-2);
+    border: 1.5px solid var(--border);
+    border-radius: 0.65rem;
+    cursor: pointer;
+    transition: all 0.18s ease;
+    font-family: 'Outfit', sans-serif;
+}
+.btn-reset:hover {
+    border-color: rgba(212,175,55,0.4);
+    color: var(--gold-dark);
+    background: rgba(212,175,55,0.06);
+}
+
+/* ── Info Card ── */
+.roles-info-card {
+    margin-top: 1.5rem;
+    background: rgba(59,130,246,0.05);
+    border: 1px solid rgba(59,130,246,0.15);
+    border-radius: 1rem;
+    padding: 1rem;
+}
+html.dark .roles-info-card {
+    background: rgba(59,130,246,0.08);
+    border-color: rgba(59,130,246,0.2);
+}
+.roles-info-icon {
+    width: 1.25rem;
+    height: 1.25rem;
+    color: #3b82f6;
+    flex-shrink: 0;
+    margin-top: 0.125rem;
+}
+.roles-info-title {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #2563eb;
+    margin-bottom: 0.5rem;
+}
+html.dark .roles-info-title { color: #60a5fa; }
+.roles-info-text {
+    font-size: 0.7rem;
+    color: #1e40af;
+    margin-bottom: 0.25rem;
+}
+html.dark .roles-info-text { color: #93c5fd; }
+
+/* ── Pagination ── */
+.pag-wrap {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.875rem 1.25rem;
+    border-top: 1px solid var(--border);
+    background: var(--surface-2);
+}
+.pag-info { font-size: 0.7rem; color: var(--text-3); font-family: 'DM Mono', monospace; }
+.pag-btns { display: flex; gap: 0.25rem; }
+.pag-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2rem;
+    height: 2rem;
+    padding: 0 0.5rem;
+    font-size: 0.7rem;
+    font-family: 'DM Mono', monospace;
+    font-weight: 600;
+    border-radius: 0.5rem;
+    border: 1.5px solid var(--border);
+    color: var(--text-3);
+    background: var(--surface);
+    text-decoration: none;
+    transition: all 0.15s ease;
+}
+.pag-btn:not(.disabled):not(.current):hover {
+    border-color: var(--gold);
+    color: var(--gold-dark);
+    background: rgba(212,175,55,0.08);
+}
+html.dark .pag-btn:not(.disabled):not(.current):hover { color: var(--gold-light); }
+.pag-btn.current {
+    background: linear-gradient(135deg, var(--emerald), var(--emerald-dark));
+    border-color: var(--emerald-dark);
+    color: #fff;
+    box-shadow: 0 2px 10px rgba(5,150,105,0.3);
+}
+.pag-btn.disabled { opacity: 0.35; cursor: not-allowed; pointer-events: none; }
+
+/* ── Animations ── */
+@keyframes fadeUp {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+.anim-1 { animation: fadeUp 0.38s ease 0.04s both; }
+.anim-2 { animation: fadeUp 0.38s ease 0.10s both; }
+.anim-3 { animation: fadeUp 0.38s ease 0.16s both; }
+.anim-4 { animation: fadeUp 0.38s ease 0.22s both; }
+</style>
+@endpush
 
 @section('content')
 
 @php
     $roleColorMap = [
-        'System Administrator' => 'bg-gold-100 text-gold-700 dark:bg-gold-900/50 dark:text-gold-300',
+        'System Administrator' => 'bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300',
         'Club Adviser'         => 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300',
         'Treasurer'            => 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300',
         'Auditor'              => 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300',
@@ -24,406 +524,408 @@
     $authRoleId = auth()->user()->role_id;
 @endphp
 
-<div class="mb-6">
-    <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Roles</h1>
-    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Manage system roles and view assigned users</p>
-</div>
+<div class="space-y-5">
 
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-
-    {{-- ------------------------------------------------------------------ --}}
-    {{-- Roles List                                                          --}}
-    {{-- ------------------------------------------------------------------ --}}
-    <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gold-200 dark:border-gold-800 overflow-hidden shadow-sm">
-
-        {{-- Toolbar --}}
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-5 py-3 border-b border-gold-200 dark:border-gold-800 bg-gray-50 dark:bg-gray-700/50">
-            <div class="relative">
-                <input type="text"
-                       id="roleSearch"
-                       placeholder="Search by name or abbreviation…"
-                       aria-label="Search roles"
-                       class="w-full sm:w-64 pl-9 pr-3 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-gold-500 focus:border-transparent">
-                <svg class="absolute left-2.5 top-2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                </svg>
-            </div>
-
-            <div class="flex items-center gap-2 flex-wrap">
-
-                {{-- FIX: active mode badges --}}
-                @if ($showTrashed)
-                    <span class="inline-flex items-center gap-1.5 text-xs font-medium text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 px-2.5 py-1 rounded-full">
-                        <span class="w-1.5 h-1.5 rounded-full bg-red-500 inline-block"></span>
-                        Showing deleted roles
-                    </span>
-                @elseif ($showHidden)
-                    <span class="inline-flex items-center gap-1.5 text-xs font-medium text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 px-2.5 py-1 rounded-full">
-                        <span class="w-1.5 h-1.5 rounded-full bg-amber-500 inline-block"></span>
-                        Showing hidden roles
-                    </span>
-                @endif
-
-                {{-- FIX: show hidden toggle — hidden when viewing trash --}}
-                @unless ($showTrashed)
-                    <a href="{{ route('admin.roles.index', $showHidden ? [] : ['show_hidden' => 1]) }}"
-                       class="text-xs font-medium px-3 py-1.5 rounded-lg border transition-all duration-200
-                              {{ $showHidden
-                                  ? 'text-gray-600 border-gray-300 hover:bg-gray-100 dark:text-gray-400 dark:border-gray-600 dark:hover:bg-gray-700'
-                                  : 'text-amber-600 border-amber-200 hover:bg-amber-50 dark:text-amber-400 dark:border-amber-800 dark:hover:bg-amber-900/30' }}">
-                        {{ $showHidden ? '← Hide hidden roles' : 'Show hidden roles' }}
-                    </a>
-                @endunless
-
-                {{-- FIX: trash toggle link — was completely missing from the blade --}}
-                <a href="{{ route('admin.roles.index', $showTrashed ? [] : ['show_trashed' => 1]) }}"
-                   class="text-xs font-medium px-3 py-1.5 rounded-lg border transition-all duration-200
-                          {{ $showTrashed
-                              ? 'text-gray-600 border-gray-300 hover:bg-gray-100 dark:text-gray-400 dark:border-gray-600 dark:hover:bg-gray-700'
-                              : 'text-red-600 border-red-200 hover:bg-red-50 dark:text-red-400 dark:border-red-800 dark:hover:bg-red-900/30' }}">
-                    {{ $showTrashed ? '← Back to active roles' : 'Show deleted roles' }}
-                </a>
-
+    {{-- ── HERO SECTION ── --}}
+    <div class="roles-hero anim-1">
+        <div class="roles-hero-content">
+            <p class="text-emerald-300/70 text-[10px] font-bold tracking-[0.2em] uppercase mb-2"
+               style="font-family:'DM Mono',monospace;">
+                {{ now()->format('F Y') }} · Access Control
+            </p>
+            <h1 class="roles-hero-title mb-3">Roles<br><span>Management</span></h1>
+            <div class="flex flex-wrap gap-2">
+                <span class="roles-hero-pill">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
+                    </svg>
+                    {{ $roles->total() }} Total Roles
+                </span>
+                <span class="roles-hero-pill">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    Manage permissions & access
+                </span>
             </div>
         </div>
+    </div>
 
-        <div class="overflow-x-auto">
-            <table class="w-full text-sm" id="rolesTable">
-                <thead class="bg-gray-50 dark:bg-gray-700/50">
-                    <tr>
-                        <th class="text-left px-5 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Role</th>
-                        <th class="text-left px-5 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Abbr</th>
-                        <th class="text-left px-5 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Level</th>
-                        <th class="text-left px-5 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Users</th>
-                        <th class="text-left px-5 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Perms</th>
-                        <th class="text-right px-5 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
-                    @forelse ($roles as $role)
-                        @php
-                            $colorClass   = $roleColorMap[$role->name] ?? 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300';
-                            $levelLabel   = $levelLabelMap[$role->level] ?? "Level {$role->level}";
-                            $isPredefined = (bool) ($role->is_predefined ?? false);
-                            $isHidden     = ! $role->is_visible;
-                            $isOwnRole    = ($authRoleId === $role->id);
-                            $isTrashed    = ! is_null($role->deleted_at);
-                        @endphp
+    <div class="roles-grid">
 
-                        <tr class="transition-all duration-150 role-row
-                                   {{ $isTrashed
-                                       ? 'opacity-60 bg-red-50/50 dark:bg-red-900/10'
-                                       : ($isHidden
-                                           ? 'opacity-50 bg-gray-50 dark:bg-gray-800/40'
-                                           : 'hover:bg-gray-50 dark:hover:bg-gray-700/50') }}"
-                            data-name="{{ strtolower($role->name) }}"
-                            data-abbr="{{ strtolower($role->abbreviation ?? '') }}">
+        {{-- ------------------------------------------------------------------ --}}
+        {{-- Roles List                                                          --}}
+        {{-- ------------------------------------------------------------------ --}}
+        <div class="roles-card anim-2">
+            <div class="roles-card-header">
+                <h2 class="roles-card-title">Role Directory</h2>
+            </div>
 
-                            {{-- Role name --}}
-                            <td class="px-5 py-3">
-                                <div class="flex items-center gap-2">
-                                    <div class="w-6 h-6 rounded-lg {{ $colorClass }} flex items-center justify-center text-xs font-bold flex-shrink-0"
-                                         aria-hidden="true">
-                                        {{ strtoupper(substr($role->name, 0, 1)) }}
+            {{-- Toolbar --}}
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 border-b border-border bg-surface-2">
+                <div class="roles-search">
+                    <input type="text"
+                           id="roleSearch"
+                           placeholder="Search by name or abbreviation…"
+                           aria-label="Search roles"
+                           class="roles-search-input">
+                    <svg class="roles-search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                    </svg>
+                </div>
+
+                <div class="flex items-center gap-2 flex-wrap">
+                    @if ($showTrashed)
+                        <span class="roles-badge-active roles-badge-deleted">
+                            <span class="w-1.5 h-1.5 rounded-full bg-red-500 inline-block"></span>
+                            Showing deleted roles
+                        </span>
+                    @elseif ($showHidden)
+                        <span class="roles-badge-active roles-badge-hidden">
+                            <span class="w-1.5 h-1.5 rounded-full bg-gray-500 inline-block"></span>
+                            Showing hidden roles
+                        </span>
+                    @endif
+
+                    @unless ($showTrashed)
+                        <a href="{{ route('admin.roles.index', $showHidden ? [] : ['show_hidden' => 1]) }}"
+                           class="roles-toggle-btn">
+                            {{ $showHidden ? '← Hide hidden roles' : '👁️ Show hidden roles' }}
+                        </a>
+                    @endunless
+
+                    <a href="{{ route('admin.roles.index', $showTrashed ? [] : ['show_trashed' => 1]) }}"
+                       class="roles-toggle-btn">
+                        {{ $showTrashed ? '← Back to active roles' : '🗑️ Show deleted roles' }}
+                    </a>
+                </div>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="roles-table" id="rolesTable">
+                    <thead>
+                        <tr>
+                            <th>Role</th>
+                            <th>Abbr</th>
+                            <th>Level</th>
+                            <th>Users</th>
+                            <th>Perms</th>
+                            <th class="right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse ($roles as $role)
+                            @php
+                                $colorClass   = $roleColorMap[$role->name] ?? 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300';
+                                $levelLabel   = $levelLabelMap[$role->level] ?? "Level {$role->level}";
+                                $isPredefined = (bool) ($role->is_predefined ?? false);
+                                $isHidden     = ! $role->is_visible;
+                                $isOwnRole    = ($authRoleId === $role->id);
+                                $isTrashed    = ! is_null($role->deleted_at);
+                                $roleInitial  = strtoupper(substr($role->name, 0, 1));
+                            @endphp
+
+                            <tr class="role-row transition-all duration-150
+                                       {{ $isTrashed ? 'opacity-60' : 'hover:bg-gold/5' }}"
+                                data-name="{{ strtolower($role->name) }}"
+                                data-abbr="{{ strtolower($role->abbreviation ?? '') }}">
+
+                                {{-- Role --}}
+                                <td>
+                                    <div class="flex items-center gap-3">
+                                        <div class="role-avatar {{ $colorClass }}">
+                                            {{ $roleInitial }}
+                                        </div>
+                                        <div>
+                                            <span class="role-name {{ $isTrashed ? 'deleted' : '' }}">
+                                                {{ $role->name }}
+                                            </span>
+                                            <div class="flex flex-wrap gap-1 mt-1">
+                                                @if ($isTrashed)
+                                                    <span class="roles-badge-active roles-badge-deleted">deleted</span>
+                                                @endif
+                                                @if ($isHidden && ! $isTrashed)
+                                                    <span class="roles-badge-active roles-badge-hidden">hidden</span>
+                                                @endif
+                                                @if ($isPredefined)
+                                                    <span class="roles-badge-active roles-badge-predefined">predefined</span>
+                                                @endif
+                                                @if ($role->is_system)
+                                                    <span class="roles-badge-active roles-badge-system">system</span>
+                                                @endif
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <span class="font-semibold text-gray-900 dark:text-white role-name {{ $isTrashed ? 'line-through text-gray-400 dark:text-gray-500' : '' }}">
-                                            {{ $role->name }}
+                                 </</td>
+
+                                {{-- Abbreviation --}}
+                                <td>
+                                    @if ($role->abbreviation)
+                                        <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-mono bg-surface-3 text-text-3">
+                                            {{ $role->abbreviation }}
                                         </span>
-
-                                        {{-- FIX: deleted badge --}}
-                                        @if ($isTrashed)
-                                            <span class="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400">deleted</span>
-                                        @endif
-
-                                        @if ($isHidden && ! $isTrashed)
-                                            <span class="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400">hidden</span>
-                                        @endif
-
-                                        @if ($isPredefined)
-                                            <span class="ml-1 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-gold-50 text-gold-600 dark:bg-gold-900/30 dark:text-gold-400">predefined</span>
-                                        @endif
-
-                                        @if ($role->is_system)
-                                            <span class="ml-1 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300">system</span>
-                                        @endif
-                                    </div>
-                                </div>
-                            </td>
-
-                            {{-- Abbreviation --}}
-                            <td class="px-5 py-3">
-                                @if ($role->abbreviation)
-                                    <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-mono bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400">
-                                        {{ $role->abbreviation }}
-                                    </span>
-                                @else
-                                    <span class="text-gray-400 dark:text-gray-500 text-xs">—</span>
-                                @endif
-                            </td>
-
-                            {{-- Level --}}
-                            <td class="px-5 py-3">
-                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium {{ $colorClass }} cursor-default"
-                                      title="{{ $levelLabel }}">
-                                    Level {{ $role->level }}
-                                </span>
-                            </td>
-
-                            {{-- Users count --}}
-                            <td class="px-5 py-3">
-                                <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs font-semibold">
-                                    {{ $role->users_count }}
-                                </span>
-                            </td>
-
-                            {{-- Permissions count --}}
-                            <td class="px-5 py-3 text-gray-600 dark:text-gray-400">
-                                {{ $role->permissions->count() }}
-                            </td>
-
-                            {{-- Actions --}}
-                            <td class="px-5 py-3 text-right">
-                                <div class="flex items-center justify-end gap-1.5">
-
-                                    {{-- FIX: trash mode shows restore + force delete only --}}
-                                    @if ($isTrashed)
-
-                                        <form method="POST"
-                                              action="{{ route('admin.roles.restore', $role->id) }}"
-                                              class="inline">
-                                            @csrf
-                                            @method('PATCH')
-                                            <button type="submit"
-                                                    class="text-xs font-medium text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 border border-emerald-200 dark:border-emerald-800 px-2.5 py-1 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-900/30 transition-all duration-200">
-                                                Restore
-                                            </button>
-                                        </form>
-
-                                        <form method="POST"
-                                              action="{{ route('admin.roles.force-delete', $role->id) }}"
-                                              onsubmit="return confirm('⚠️ Permanently delete &quot;{{ addslashes($role->name) }}&quot;?\n\nThis cannot be undone.')"
-                                              class="inline">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit"
-                                                    class="text-xs font-medium text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 border border-red-200 dark:border-red-800 px-2.5 py-1 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 transition-all duration-200">
-                                                Delete permanently
-                                            </button>
-                                        </form>
-
                                     @else
+                                        <span class="text-text-3 text-xs">—</span>
+                                    @endif
+                                 </</td>
 
-                                        {{-- Hide / Unhide --}}
-                                        @if ($role->id === 1)
-                                            <span class="text-xs text-gray-400 dark:text-gray-500 italic" title="System Administrator cannot be hidden">Protected</span>
+                                {{-- Level --}}
+                                <td>
+                                    <span class="role-level-badge {{ $colorClass }}">
+                                        Level {{ $role->level }}
+                                    </span>
+                                 </</td>
 
-                                        @elseif ($isOwnRole && $role->is_visible)
-                                            <button disabled
-                                                    class="text-xs font-medium px-2.5 py-1 rounded-lg border border-gray-300 text-gray-400 cursor-not-allowed bg-gray-50 dark:bg-gray-800"
-                                                    title="Cannot hide your own current role.">
-                                                Hide
-                                            </button>
+                                {{-- Users Count --}}
+                                <td>
+                                    <span class="user-count-circle">
+                                        {{ $role->users_count }}
+                                    </span>
+                                 </</td>
 
-                                        @elseif ($role->is_visible && $role->users_count > 0)
-                                            <button disabled
-                                                    class="text-xs font-medium px-2.5 py-1 rounded-lg border border-gray-300 text-gray-400 cursor-not-allowed bg-gray-50 dark:bg-gray-800"
-                                                    title="Cannot hide — {{ $role->users_count }} user(s) assigned.">
-                                                Hide
-                                            </button>
+                                {{-- Permissions Count --}}
+                                <td class="text-text-3">{{ $role->permissions->count() }}</td>
 
-                                        @else
+                                {{-- Actions --}}
+                                <td class="right">
+                                    <div class="flex items-center justify-end gap-1.5">
+
+                                        @if ($isTrashed)
                                             <form method="POST"
-                                                  action="{{ route('admin.roles.toggle-visibility', $role->id) }}?show_hidden={{ $showHidden ? '1' : '0' }}"
-                                                  onsubmit="return confirm('{{ $role->is_visible ? 'Hide' : 'Unhide' }} the role &quot;{{ addslashes($role->name) }}&quot;?')">
+                                                  action="{{ route('admin.roles.restore', $role->id) }}"
+                                                  class="inline">
                                                 @csrf
                                                 @method('PATCH')
                                                 <button type="submit"
-                                                        class="text-xs font-medium px-2.5 py-1 rounded-lg border transition-all duration-200
-                                                               {{ $isHidden
-                                                                   ? 'text-emerald-600 border-emerald-200 hover:bg-emerald-50 dark:text-emerald-400 dark:border-emerald-800 dark:hover:bg-emerald-900/30'
-                                                                   : 'text-amber-600 border-amber-200 hover:bg-amber-50 dark:text-amber-400 dark:border-amber-800 dark:hover:bg-amber-900/30' }}">
-                                                    {{ $isHidden ? 'Unhide' : 'Hide' }}
+                                                        class="roles-action roles-action-restore">
+                                                    Restore
                                                 </button>
                                             </form>
-                                        @endif
 
-                                        {{-- Edit --}}
-                                        @if (! $isHidden)
-                                            <a href="{{ route('admin.roles.edit', $role->id) }}"
-                                               class="text-xs font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 border border-blue-200 dark:border-blue-800 px-2.5 py-1 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-all duration-200">
-                                                Edit
-                                            </a>
-                                        @endif
-
-                                        {{-- Delete (soft) --}}
-                                        @if (! $isPredefined && $role->users_count === 0 && ! $isHidden)
                                             <form method="POST"
-                                                  action="{{ route('admin.roles.destroy', $role->id) }}"
-                                                  onsubmit="return confirm('⚠️ Delete role &quot;{{ addslashes($role->name) }}&quot;?\n\nIt will be moved to trash and can be restored later.')"
+                                                  action="{{ route('admin.roles.force-delete', $role->id) }}"
+                                                  onsubmit="return confirm('⚠️ Permanently delete &quot;{{ addslashes($role->name) }}&quot;?\n\nThis cannot be undone.')"
                                                   class="inline">
                                                 @csrf
                                                 @method('DELETE')
                                                 <button type="submit"
-                                                        class="text-xs font-medium text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 border border-red-200 dark:border-red-800 px-2.5 py-1 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 transition-all duration-200">
-                                                    Delete
+                                                        class="roles-action roles-action-force-delete">
+                                                    Force Del
                                                 </button>
                                             </form>
 
-                                        @elseif ($isPredefined && ! $isHidden)
-                                            <span class="text-xs text-gray-400 dark:text-gray-500 italic" title="Predefined roles cannot be deleted">Predefined</span>
+                                        @else
 
-                                        @elseif ($role->users_count > 0 && ! $isHidden)
-                                            <span class="text-xs text-gray-400 dark:text-gray-500 italic" title="Role has {{ $role->users_count }} assigned user(s)">In use</span>
+                                            @if ($role->id === 1)
+                                                <span class="roles-action-disabled" title="System Administrator cannot be hidden">Protected</span>
+
+                                            @elseif ($isOwnRole && $role->is_visible)
+                                                <span class="roles-action-disabled" title="Cannot hide your own current role.">Hide</span>
+
+                                            @elseif ($role->is_visible && $role->users_count > 0)
+                                                <span class="roles-action-disabled" title="Cannot hide — {{ $role->users_count }} user(s) assigned.">Hide</span>
+
+                                            @else
+                                                <form method="POST"
+                                                      action="{{ route('admin.roles.toggle-visibility', $role->id) }}?show_hidden={{ $showHidden ? '1' : '0' }}"
+                                                      onsubmit="return confirm('{{ $role->is_visible ? 'Hide' : 'Unhide' }} the role &quot;{{ addslashes($role->name) }}&quot;?')"
+                                                      class="inline">
+                                                    @csrf
+                                                    @method('PATCH')
+                                                    <button type="submit"
+                                                            class="roles-action {{ $isHidden ? 'roles-action-unhide' : 'roles-action-hide' }}">
+                                                        {{ $isHidden ? 'Unhide' : 'Hide' }}
+                                                    </button>
+                                                </form>
+                                            @endif
+
+                                            @if (! $isHidden)
+                                                <a href="{{ route('admin.roles.edit', $role->id) }}"
+                                                   class="roles-action roles-action-edit">
+                                                    Edit
+                                                </a>
+                                            @endif
+
+                                            @if (! $isPredefined && $role->users_count === 0 && ! $isHidden)
+                                                <form method="POST"
+                                                      action="{{ route('admin.roles.destroy', $role->id) }}"
+                                                      onsubmit="return confirm('⚠️ Delete role &quot;{{ addslashes($role->name) }}&quot;?\n\nIt will be moved to trash and can be restored later.')"
+                                                      class="inline">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit"
+                                                            class="roles-action roles-action-delete">
+                                                        Delete
+                                                    </button>
+                                                </form>
+
+                                            @elseif ($isPredefined && ! $isHidden)
+                                                <span class="roles-action-disabled" title="Predefined roles cannot be deleted">Predefined</span>
+
+                                            @elseif ($role->users_count > 0 && ! $isHidden)
+                                                <span class="roles-action-disabled" title="Role has {{ $role->users_count }} assigned user(s)">In use</span>
+                                            @endif
+
                                         @endif
 
-                                    @endif
+                                    </div>
+                                 </td>
+                             </tr>
 
-                                </div>
-                            </td>
-                        </tr>
+                        @empty
+                            <tr>
+                                <td colspan="6" class="px-5 py-10 text-center text-text-3">
+                                    {{ $showTrashed ? 'No deleted roles found.' : 'No roles found.' }}
+                                 </td>
+                             </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
 
-                    @empty
-                        <tr>
-                            <td colspan="6" class="px-5 py-10 text-center text-sm text-gray-400 dark:text-gray-500">
-                                {{ $showTrashed ? 'No deleted roles found.' : 'No roles found.' }}
-                            </td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
+            @if ($roles->hasPages())
+                <div class="pag-wrap">
+                    <p class="pag-info">
+                        {{ $roles->firstItem() }}–{{ $roles->lastItem() }} of {{ $roles->total() }} roles
+                    </p>
+                    <div class="pag-btns">
+                        @if ($roles->onFirstPage())
+                            <span class="pag-btn disabled">← Prev</span>
+                        @else
+                            <a href="{{ $roles->previousPageUrl() }}" class="pag-btn">← Prev</a>
+                        @endif
+                        @foreach($roles->getUrlRange(max(1, $roles->currentPage() - 2), min($roles->lastPage(), $roles->currentPage() + 2)) as $page => $url)
+                            @if($page == $roles->currentPage())
+                                <span class="pag-btn current">{{ $page }}</span>
+                            @else
+                                <a href="{{ $url }}" class="pag-btn">{{ $page }}</a>
+                            @endif
+                        @endforeach
+                        @if ($roles->hasMorePages())
+                            <a href="{{ $roles->nextPageUrl() }}" class="pag-btn">Next →</a>
+                        @else
+                            <span class="pag-btn disabled">Next →</span>
+                        @endif
+                    </div>
+                </div>
+            @endif
         </div>
 
-        {{-- Pagination --}}
-        @if ($roles->hasPages())
-            <div class="px-5 py-3 border-t border-gray-100 dark:border-gray-700">
-                {{ $roles->appends(request()->query())->links() }}
-            </div>
-        @endif
+        {{-- ------------------------------------------------------------------ --}}
+        {{-- Add New Role — hidden when viewing trash                            --}}
+        {{-- ------------------------------------------------------------------ --}}
+        @unless ($showTrashed)
+        <div class="roles-form anim-3">
+            <h2 class="roles-form-title">➕ Add New Role</h2>
+
+            <form method="POST" action="{{ route('admin.roles.store') }}">
+                @csrf
+
+                <div class="mb-4">
+                    <label for="role_name" class="roles-form-label">Role Name *</label>
+                    <input type="text"
+                           id="role_name"
+                           name="name"
+                           value="{{ old('name') }}"
+                           required
+                           placeholder="e.g., Secretary, PRO"
+                           class="roles-form-input {{ $errors->has('name') ? 'error' : '' }}">
+                    @error('name')
+                        <p class="roles-form-error">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                <div class="mb-4">
+                    <label for="role_abbreviation" class="roles-form-label">
+                        Abbreviation <span class="font-normal text-text-3">(Optional)</span>
+                    </label>
+                    <input type="text"
+                           id="role_abbreviation"
+                           name="abbreviation"
+                           value="{{ old('abbreviation') }}"
+                           placeholder="e.g., SEC, PRO"
+                           maxlength="10"
+                           class="roles-form-input">
+                    <p class="roles-form-hint">Short code for this role (max 10 characters)</p>
+                </div>
+
+                <div class="mb-4">
+                    <label for="role_level" class="roles-form-label">Level *</label>
+                    <input type="number"
+                           id="role_level"
+                           name="level"
+                           value="{{ old('level', 4) }}"
+                           min="2"
+                           max="10"
+                           required
+                           class="roles-form-input {{ $errors->has('level') ? 'error' : '' }}">
+                    <p class="roles-form-hint">
+                        Level 1 is reserved for System Administrator. Custom roles use level 2–10.
+                        Lower number = higher authority.
+                    </p>
+                    @error('level')
+                        <p class="roles-form-error">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                <div class="mb-4">
+                    <label for="role_desc" class="roles-form-label">
+                        Description <span class="font-normal text-text-3">(Optional)</span>
+                    </label>
+                    <textarea id="role_desc"
+                              name="desc"
+                              rows="2"
+                              placeholder="Describe the responsibilities of this role"
+                              class="roles-form-input">{{ old('desc') }}</textarea>
+                </div>
+
+                <div class="flex items-center gap-3">
+                    <button type="submit" class="btn-create">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                        </svg>
+                        Create Role
+                    </button>
+                    <button type="reset" class="btn-reset">
+                        Reset
+                    </button>
+                </div>
+            </form>
+        </div>
+        @endunless
+
     </div>
 
-    {{-- ------------------------------------------------------------------ --}}
-    {{-- Add New Role — hidden when viewing trash (irrelevant context)       --}}
-    {{-- ------------------------------------------------------------------ --}}
-    @unless ($showTrashed)
-    <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gold-200 dark:border-gold-800 p-6 shadow-sm">
-        <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4 pb-2 border-b border-gray-100 dark:border-gold-800">
-            Add New Role
-        </h2>
-
-        <form method="POST" action="{{ route('admin.roles.store') }}">
-            @csrf
-
-            {{-- Name --}}
-            <div class="mb-4">
-                <label for="role_name" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Role Name</label>
-                <input type="text"
-                       id="role_name"
-                       name="name"
-                       value="{{ old('name') }}"
-                       required
-                       placeholder="e.g., Secretary, PRO"
-                       class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent transition
-                              {{ $errors->has('name') ? 'border-red-400 dark:border-red-500' : 'border-gray-300 dark:border-gray-600' }}
-                              dark:bg-gray-700 dark:text-white">
-                @error('name')
-                    <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                @enderror
-            </div>
-
-            {{-- Abbreviation --}}
-            <div class="mb-4">
-                <label for="role_abbreviation" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                    Abbreviation <span class="font-normal text-gray-400">(Optional)</span>
-                </label>
-                <input type="text"
-                       id="role_abbreviation"
-                       name="abbreviation"
-                       value="{{ old('abbreviation') }}"
-                       placeholder="e.g., SEC, PRO"
-                       maxlength="10"
-                       class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent transition">
-                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Short code for this role (max 10 characters)</p>
-            </div>
-
-            {{-- Level --}}
-            <div class="mb-4">
-                <label for="role_level" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Level</label>
-                <input type="number"
-                       id="role_level"
-                       name="level"
-                       value="{{ old('level', 4) }}"
-                       min="2"
-                       max="10"
-                       required
-                       class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent transition
-                              {{ $errors->has('level') ? 'border-red-400 dark:border-red-500' : 'border-gray-300 dark:border-gray-600' }}
-                              dark:bg-gray-700 dark:text-white">
-                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    Level 1 is reserved for System Administrator. Custom roles use level 2–10.
-                    Lower number = higher authority.
+    {{-- Info Card --}}
+    <div class="roles-info-card anim-4">
+        <div class="flex items-start gap-3">
+            <svg class="roles-info-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <div class="space-y-1">
+                <p class="roles-info-title">Role Hierarchy & Visibility</p>
+                <p class="roles-info-text">
+                    <strong>Predefined roles:</strong>
+                    System Administrator, Club Adviser, Treasurer, Auditor, and Guest are built-in roles.
+                    Their names cannot be changed, but abbreviation, description, level, and permissions can be updated.
                 </p>
-                @error('level')
-                    <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                @enderror
+                <p class="roles-info-text">
+                    <strong>Custom roles</strong> are fully editable and deletable as long as no users are assigned to them.
+                </p>
+                <p class="roles-info-text">
+                    <strong>Hiding a role</strong> removes it from all user creation and editing forms.
+                    Roles with active users cannot be hidden until those users are reassigned.
+                </p>
+                <p class="roles-info-text">
+                    <strong>Deleted roles</strong> are soft-deleted and can be restored from the "Show deleted roles" view.
+                    Permanently deleted roles cannot be recovered.
+                </p>
             </div>
-
-            {{-- Description --}}
-            <div class="mb-4">
-                <label for="role_desc" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                    Description <span class="font-normal text-gray-400">(Optional)</span>
-                </label>
-                <textarea id="role_desc"
-                          name="desc"
-                          rows="2"
-                          placeholder="Describe the responsibilities of this role"
-                          class="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent transition">{{ old('desc') }}</textarea>
-            </div>
-
-            <div class="flex items-center gap-3">
-                <x-submit-button class="bg-primary-600 hover:bg-gold-500 text-white text-sm font-semibold px-5 py-2 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md transform hover:scale-[1.02]">
-                    Create Role
-                </x-submit-button>
-                <button type="reset"
-                        class="text-gray-600 dark:text-gray-400 text-sm font-medium px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 transition">
-                    Reset
-                </button>
-            </div>
-        </form>
-    </div>
-    @endunless
-
-</div>
-
-{{-- ------------------------------------------------------------------ --}}
-{{-- Info card                                                           --}}
-{{-- ------------------------------------------------------------------ --}}
-<div class="mt-6 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4">
-    <div class="flex items-start gap-3">
-        <svg class="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-        </svg>
-        <div class="space-y-1">
-            <p class="text-sm font-medium text-blue-800 dark:text-blue-300">Role Hierarchy & Visibility</p>
-            <p class="text-xs text-blue-700 dark:text-blue-400">
-                <strong>Predefined roles:</strong>
-                System Administrator, Club Adviser, Treasurer, Auditor, and Guest are built-in roles.
-                Their names cannot be changed, but abbreviation, description, level, and permissions can be updated.
-            </p>
-            <p class="text-xs text-blue-700 dark:text-blue-400">
-                <strong>Custom roles</strong> are fully editable and deletable as long as no users are assigned to them.
-            </p>
-            <p class="text-xs text-blue-700 dark:text-blue-400">
-                <strong>Hiding a role</strong> removes it from all user creation and editing forms.
-                Roles with active users cannot be hidden until those users are reassigned.
-            </p>
-            <p class="text-xs text-blue-700 dark:text-blue-400">
-                <strong>Deleted roles</strong> are soft-deleted and can be restored from the "Show deleted roles" view.
-                Permanently deleted roles cannot be recovered.
-            </p>
         </div>
     </div>
+
 </div>
+@endsection
 
 @push('scripts')
 <script>
@@ -431,17 +933,17 @@
         const input = document.getElementById('roleSearch');
         const rows  = document.querySelectorAll('#rolesTable tbody tr.role-row');
 
-        input.addEventListener('input', () => {
-            const filter = input.value.trim().toLowerCase();
+        if (input) {
+            input.addEventListener('input', () => {
+                const filter = input.value.trim().toLowerCase();
 
-            rows.forEach(row => {
-                const name = row.dataset.name ?? '';
-                const abbr = row.dataset.abbr ?? '';
-                row.style.display = (!filter || name.includes(filter) || abbr.includes(filter)) ? '' : 'none';
+                rows.forEach(row => {
+                    const name = row.dataset.name ?? '';
+                    const abbr = row.dataset.abbr ?? '';
+                    row.style.display = (!filter || name.includes(filter) || abbr.includes(filter)) ? '' : 'none';
+                });
             });
-        });
+        }
     })();
 </script>
 @endpush
-
-@endsection
