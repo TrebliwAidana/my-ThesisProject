@@ -17,7 +17,7 @@ class UserSeeder extends Seeder
         $adviser  = Role::where('name', 'Club Adviser')->first();
         $treasurer = Role::where('name', 'Treasurer')->first();
         $auditor  = Role::where('name', 'Auditor')->first();
-        $member   = Role::where('name', 'Org Member')->first();
+        // $member   = Role::where('name', 'Org Member')->first();
         $guest    = Role::where('name', 'Guest')->first();
 
         // System Administrator
@@ -80,20 +80,6 @@ class UserSeeder extends Seeder
             ]
         );
 
-        // Org Member
-        User::firstOrCreate(
-            ['email' => 'member@gmail.com'],
-            [
-                'full_name'       => 'Regular Member',
-                'first_name'      => 'Regular',
-                'last_name'       => 'Member',
-                'password'        => Hash::make('password123'),
-                'role_id'         => $member?->id,
-                'is_active'       => true,
-                'email_verified_at' => now(),
-                'theme'           => 'navy',
-            ]
-        );
 
         // Guest (if not already exists)
         User::firstOrCreate(

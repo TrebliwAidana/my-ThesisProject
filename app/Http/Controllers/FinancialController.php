@@ -440,7 +440,6 @@ class FinancialController extends Controller
     {
         $this->checkGuest();
 
-        // FIX: was 'approve_financial_transactions' — correct slug is 'financial.approve'.
         if ($user = Auth::user() and $user->role->level !== 1 && !$user->hasPermission('financial.approve')) {
             abort(403);
         }
@@ -450,13 +449,31 @@ class FinancialController extends Controller
             'end_date'      => 'required|date|after_or_equal:start_date',
             'organization'  => 'nullable|string|max:255',
             'previous_cash' => 'nullable|numeric|min:0',
+            'format'        => 'required|in:pdf,excel,word',
         ]);
 
-        $pdf  = $this->buildReportPdf($validated);
+        // Merge resolved signatory names so all export classes get the same data
+        $validated = array_merge($validated, $this->resolveSignatories());
+
         $from = $validated['start_date'];
         $to   = $validated['end_date'];
 
-        return $pdf->download("financial_report_{$from}_to_{$to}.pdf");
+        if ($validated['format'] === 'excel') {
+            return \Maatwebsite\Excel\Facades\Excel::download(
+                new \App\Exports\FinancialReportExport($validated),
+                "financial_report_{$from}_to_{$to}.xlsx"
+            );
+        }
+
+        if ($validated['format'] === 'word') {
+            $path = (new \App\Exports\FinancialReportWordExport($validated))->build();
+
+            return response()->download($path, "financial_report_{$from}_to_{$to}.docx")
+                ->deleteFileAfterSend(true);
+        }
+
+        // Default: PDF
+        return $this->buildReportPdf($validated)->download("financial_report_{$from}_to_{$to}.pdf");
     }
 
     public function preview(Request $request)
@@ -479,7 +496,19 @@ class FinancialController extends Controller
     }
 
     // ── Report Builder ─────────────────────────────────────────────────────
+    private function resolveSignatories(): array
+    {
+        $get = fn($role) => User::whereHas('role', fn($q) => $q->where('name', $role))
+            ->where('is_active', true)->first();
 
+        return [
+            'treasurer_name' => optional($get('Treasurer'))->full_name            ?? 'SHEERWINA MAE G. BALOTITE',
+            'auditor_name'   => optional($get('Auditor'))->full_name              ?? '_________________________',
+            'president_name' => optional($get('President'))->full_name            ?? '_________________________',
+            'adviser_name'   => optional($get('Club Adviser'))->full_name         ?? '_________________________',
+            'guidance_name'  => optional($get('Guidance Facilitator'))->full_name ?? 'NOEMI ELISA L. OQUIAS',
+        ];
+    }
     private function buildReportPdf(array $validated): \Barryvdh\DomPDF\PDF
     {
         $startDate = $validated['start_date'];
@@ -487,13 +516,11 @@ class FinancialController extends Controller
         $orgName   = $validated['organization'] ?? '_________________________';
         $prevCash  = (float) ($validated['previous_cash'] ?? 0);
 
-        // Approved cash income only
-        $incomeTotal = FinancialTransaction::where('type', 'income')
+        $incomeTotal         = FinancialTransaction::where('type', 'income')
             ->where('status', 'approved')
             ->whereBetween('transaction_date', [$startDate, $endDate])
             ->sum('amount');
 
-        // Paid receivables count as collected income
         $receivablePaidTotal = FinancialTransaction::where('type', 'receivable')
             ->where('status', 'paid')
             ->whereBetween('transaction_date', [$startDate, $endDate])
@@ -509,14 +536,10 @@ class FinancialController extends Controller
         $netFromOps = $incomeTotal - $expenseTotal;
         $netFinal   = $netFromOps + $prevCash;
 
-        // Outstanding receivables — approved but not yet paid
         $receivablesTotal = FinancialTransaction::where('type', 'receivable')
             ->where('status', 'approved')
             ->whereBetween('transaction_date', [$startDate, $endDate])
             ->sum('amount');
-
-        $get = fn($role) => User::whereHas('role', fn($q) => $q->where('name', $role))
-            ->where('is_active', true)->first();
 
         $data = [
             'org_name'       => $orgName,
@@ -529,11 +552,12 @@ class FinancialController extends Controller
             'net_final'      => $netFinal,
             'receivables'    => $receivablesTotal,
             'generated_at'   => now(),
-            'auditor_name'   => optional($get('Auditor'))->full_name   ?? '_________________________',
-            'president_name' => optional($get('President'))->full_name ?? '_________________________',
-            'adviser_name'   => optional($get('Club Adviser'))->full_name ?? '_________________________',
-            'treasurer_name' => optional($get('Treasurer'))->full_name ?? 'SHEERWINA MAE G. BALOTITE',
-            'guidance_name'  => optional($get('Guidance Facilitator'))->full_name ?? 'NOEMI ELISA L. OQUIAS',
+            // Signatories already resolved by resolveSignatories()
+            'treasurer_name' => $validated['treasurer_name'],
+            'auditor_name'   => $validated['auditor_name'],
+            'president_name' => $validated['president_name'],
+            'adviser_name'   => $validated['adviser_name'],
+            'guidance_name'  => $validated['guidance_name'],
         ];
 
         return Pdf::loadView('financial.report-pdf', $data)

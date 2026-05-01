@@ -4,30 +4,27 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 
 class EmailVerificationController extends Controller
 {
     /**
      * Show email verification notice.
-     * This page should be accessible even when not authenticated.
+     * Accessible even when not authenticated.
      */
     public function notice(Request $request)
     {
-        // Check if there's a verification email in session
         $email = session('verification_email');
-        
+
         if (!$email) {
-            // If no email in session, redirect to login
             return redirect()->route('login')
                 ->with('info', 'Please login first.');
         }
-        
+
         return view('auth.verify-email', compact('email'));
     }
 
     /**
-     * Verify email address.
+     * Verify email address via signed URL link.
      */
     public function verify(Request $request, $id, $hash)
     {
@@ -40,46 +37,45 @@ class EmailVerificationController extends Controller
 
         if ($user->hasVerifiedEmail()) {
             return redirect()->route('login')
-                ->with('info', 'Email already verified.');
+                ->with('info', 'Email already verified. Please log in.');
         }
 
         $user->markEmailAsVerified();
-        
+
         // Clear the verification email from session
         session()->forget('verification_email');
 
         return redirect()->route('login')
-            ->with('success', 'Email verified successfully! You can now log in.');
+            ->with('success', 'Email verified successfully! You can now log in with your credentials.');
     }
 
     /**
-     * Resend verification email.
+     * Resend verification-only email (no password — just the verify link).
      */
     public function resend(Request $request)
     {
-        // Get email from request or session
         $email = $request->input('email') ?? session('verification_email');
-        
+
         if (!$email) {
             return redirect()->route('login')
                 ->with('error', 'Unable to resend verification email.');
         }
-        
+
         $user = User::where('email', $email)->first();
-        
+
         if (!$user) {
             return redirect()->route('login')
                 ->with('error', 'User not found.');
         }
-        
+
         if ($user->hasVerifiedEmail()) {
             return redirect()->route('login')
-                ->with('info', 'Email already verified.');
+                ->with('info', 'Email already verified. Please log in.');
         }
-        
-        // Send verification email
+
+        // Sends VerifyEmailOnly notification (verify link, no password)
         $user->sendEmailVerificationNotification();
-        
-        return back()->with('success', 'Verification link sent to ' . $email);
+
+        return back()->with('success', 'Verification link resent to ' . $email);
     }
 }

@@ -143,10 +143,24 @@
 
             {{-- Buttons --}}
             <div class="flex gap-3">
-                <button type="submit" form="expense-form"
-                        class="flex-1 bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-lg transition shadow-sm">
-                    Save Expense
-                </button>
+                    <button
+                        type="submit"
+                        x-data="{ busy: false }"
+                        @click="if (busy) { $event.preventDefault(); $event.stopImmediatePropagation(); return; }"
+                        @submit.window="if ($event.target === $el.closest('form')) { busy = true; }"
+                        :disabled="busy"
+                        :class="busy ? 'opacity-60 cursor-not-allowed' : ''"
+                        class="bg-emerald-600 hover:bg-gold-500 text-white px-6 py-2 rounded-lg transition"
+                    >
+                        <span x-show="!busy">Create Expense</span>
+                        <span x-show="busy" class="flex items-center gap-2">
+                            <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                            </svg>
+                            Creating...
+                        </span>
+                    </button>
                 <a href="{{ route('financial.index') }}"
                    class="flex-1 text-center bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 font-semibold py-2 px-4 rounded-lg transition shadow-sm">
                     Cancel

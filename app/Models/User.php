@@ -9,13 +9,14 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Auth\MustVerifyEmail as MustVerifyEmailTrait;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 use App\Models\Role;
 use App\Models\Member;
 use App\Models\Document;
 use App\Models\FinancialTransaction;
-use App\Notifications\VerifyEmail;
+use App\Notifications\VerifyEmailOnly;
 
 class User extends Authenticatable implements MustVerifyEmail
 {
@@ -63,7 +64,7 @@ class User extends Authenticatable implements MustVerifyEmail
     // ACCESSORS & MUTATORS
     // =========================================================================
 
-    public function getFullNameAttribute($value)
+    public function getFullNameAttribute(mixed $value): string
     {
         if ($value) {
             return $value;
@@ -80,7 +81,7 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->attributes['full_name'] ?? '';
     }
 
-    public function setFullNameAttribute($value)
+    public function setFullNameAttribute(mixed $value): void
     {
         $this->attributes['full_name'] = $value;
 
@@ -92,7 +93,7 @@ class User extends Authenticatable implements MustVerifyEmail
         }
     }
 
-    public function getInitialsAttribute()
+    public function getInitialsAttribute(): string
     {
         $firstName = $this->first_name ?? '';
         $lastName  = $this->last_name  ?? '';
@@ -104,17 +105,17 @@ class User extends Authenticatable implements MustVerifyEmail
         return $initials ?: 'U';
     }
 
-    public function setFirstNameAttribute($value)
+    public function setFirstNameAttribute(mixed $value): void
     {
         $this->attributes['first_name'] = ucwords(strtolower(trim($value)));
     }
 
-    public function setLastNameAttribute($value)
+    public function setLastNameAttribute(mixed $value): void
     {
         $this->attributes['last_name'] = ucwords(strtolower(trim($value)));
     }
 
-    public function setMiddleNameAttribute($value)
+    public function setMiddleNameAttribute(mixed $value): void
     {
         $this->attributes['middle_name'] = $value ? ucwords(strtolower(trim($value))) : null;
     }
@@ -143,17 +144,17 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasMany(Document::class, 'owner_id');
     }
 
-    public function memberEditLogs()
+    public function memberEditLogs(): HasMany
     {
         return $this->hasMany(MemberEditLog::class, 'member_id');
     }
 
-    public function editsMade()
+    public function editsMade(): HasMany
     {
         return $this->hasMany(MemberEditLog::class, 'edited_by');
     }
 
-    public function positionChangeLogs()
+    public function positionChangeLogs(): HasMany
     {
         return $this->hasMany(PositionChangeLog::class, 'member_id');
     }
@@ -268,27 +269,27 @@ class User extends Authenticatable implements MustVerifyEmail
     // SCOPES
     // =========================================================================
 
-    public function scopeActive($query)
+    public function scopeActive(Builder $query): Builder
     {
         return $query->where('is_active', true);
     }
 
-    public function scopeInactive($query)
+    public function scopeInactive(Builder $query): Builder
     {
         return $query->where('is_active', false);
     }
 
-    public function scopeByYearLevel($query, $yearLevel)
+    public function scopeByYearLevel(Builder $query, mixed $yearLevel): Builder
     {
         return $query->where('year_level', $yearLevel);
     }
 
-    public function scopeVerified($query)
+    public function scopeVerified(Builder $query): Builder
     {
         return $query->whereNotNull('email_verified_at');
     }
 
-    public function scopeUnverified($query)
+    public function scopeUnverified(Builder $query): Builder
     {
         return $query->whereNull('email_verified_at');
     }
@@ -309,12 +310,17 @@ class User extends Authenticatable implements MustVerifyEmail
         ])->save();
     }
 
-    public function sendEmailVerificationNotification()
+    /**
+     * Used by the resend flow only.
+     * Sends a verification-link-only email (no credentials).
+     * The initial welcome + verify link is handled by NewUserWelcomeNotification.
+     */
+    public function sendEmailVerificationNotification(): void
     {
-        $this->notify(new VerifyEmail());
+        $this->notify(new VerifyEmailOnly());
     }
 
-    public function getEmailForVerification()
+    public function getEmailForVerification(): string
     {
         return $this->email;
     }
@@ -373,7 +379,8 @@ class User extends Authenticatable implements MustVerifyEmail
     // =========================================================================
     // AVATAR
     // =========================================================================
-        public function getAvatarUrlAttribute()
+
+    public function getAvatarUrlAttribute(): string
     {
         if (!$this->avatar) {
             return asset('images/default-avatar.png');
@@ -388,7 +395,7 @@ class User extends Authenticatable implements MustVerifyEmail
     // BOOT
     // =========================================================================
 
-    protected static function boot()
+    protected static function boot(): void
     {
         parent::boot();
 
@@ -406,5 +413,4 @@ class User extends Authenticatable implements MustVerifyEmail
             }
         });
     }
-
 }

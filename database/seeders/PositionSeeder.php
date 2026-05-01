@@ -12,13 +12,10 @@ class PositionSeeder extends Seeder
         // Map positions to role_id according to your roles table
         $positions = [
             1 => ['System Administrator'],
-            2 => ['SSLG President', 'SSLG Adviser', 'Student Affairs Head'],
-            3 => ['SSLG Secretary', 'SSLG Treasurer', 'SSLG PIO'],
-            4 => ['Organization President', 'Organization Vice President'],
-            5 => ['Organization Secretary', 'Organization Treasurer', 'Organization Auditor', 'Organization PIO'],
-            6 => ['Club Adviser'],
-            7 => ['Regular Member'],
-            8 => ['Guest'],
+            2 => ['Club Adviser'],
+            3 => ['Treasurer'],
+            4 => ['Auditor'],
+            5 => ['Guest'],
         ];
 
         foreach ($positions as $roleId => $rolePositions) {

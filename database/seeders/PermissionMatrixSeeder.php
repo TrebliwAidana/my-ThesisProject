@@ -155,12 +155,6 @@ class PermissionMatrixSeeder extends Seeder
             // System Administrator gets every permission
             'System Administrator' => $all->keys()->toArray(),
 
-            // Supreme Admin — everything except role/permission management
-            'Supreme Admin' => $all->except([
-                'roles.create', 'roles.edit', 'roles.delete',
-                'permissions.edit',
-            ])->keys()->toArray(),
-
             // Club Adviser — oversight + approval, no data entry
             'Club Adviser' => [
                 'members.view',

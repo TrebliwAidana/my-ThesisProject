@@ -13,7 +13,7 @@ return new class extends Migration
             $table->boolean('is_predefined')->default(false);
         });
 
-        DB::table('roles')->whereIn('id', [1,2,3,4,5,6,7,8])->update(['is_predefined' => true]);
+        DB::table('roles')->whereIn('id', [1,2,3,4,5])->update(['is_predefined' => true]);
     }
 
     public function down()

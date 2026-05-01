@@ -24,6 +24,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'auth.custom' => \App\Http\Middleware\AuthMiddleware::class,
             'role'        => \App\Http\Middleware\RoleMiddleware::class,
+            'verified'    => \App\Http\Middleware\EnsureEmailIsVerified::class,
         ]);
 
     })

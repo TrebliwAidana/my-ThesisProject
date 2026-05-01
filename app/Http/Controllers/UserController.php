@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules\Password;
@@ -19,7 +20,7 @@ class UserController extends Controller
     {
         $this->middleware(['auth.custom']);
         $this->middleware(function ($request, $next) {
-            $user = auth()->user();
+            $user = Auth::user();
             $allowedRoles = ['System Administrator', 'Supreme Admin', 'Adviser'];
             $allowedAbbreviations = ['SysAdmin', 'SA', 'AD'];
 
@@ -37,7 +38,7 @@ class UserController extends Controller
 
     public function index()
     {
-        $user = auth()->user();
+        $user = Auth::user();
 
         if ($user->role->name === 'Adviser' || $user->role->abbreviation === 'AD') {
             $users = User::with('role')
@@ -55,7 +56,7 @@ class UserController extends Controller
 
     public function create()
     {
-        $user = auth()->user();
+        $user = Auth::user();
         // OPTIMIZED: cache all roles
         $roles = $this->getAllRoles();
 
@@ -69,7 +70,7 @@ class UserController extends Controller
 
     public function store(Request $request)
     {
-        $currentUser = auth()->user();
+        $currentUser = Auth::user();
 
         $validated = $request->validate([
             'full_name' => ['required', 'string', 'max:255'],
@@ -102,7 +103,7 @@ class UserController extends Controller
 
     public function show(User $user)
     {
-        $currentUser = auth()->user();
+        $currentUser = Auth::user();
 
         if ($currentUser->role->name === 'Adviser' || $currentUser->role->abbreviation === 'AD') {
             $allowedRoles = ['Org Admin', 'Org Officer', 'Org Member', 'Guest'];
@@ -117,7 +118,7 @@ class UserController extends Controller
 
     public function edit(User $user)
     {
-        $currentUser = auth()->user();
+        $currentUser = Auth::user();
 
         if ($currentUser->role->name === 'Adviser' || $currentUser->role->abbreviation === 'AD') {
             $allowedRoles = ['Org Admin', 'Org Officer', 'Org Member', 'Guest'];
@@ -139,7 +140,7 @@ class UserController extends Controller
 
     public function update(Request $request, User $user)
     {
-        $currentUser = auth()->user();
+        $currentUser = Auth::user();
 
         // CRITICAL: Early guard - prevent modification of guest account
         if ($user->email === 'guest@gmail.com') {
@@ -192,7 +193,7 @@ class UserController extends Controller
 
     public function destroy(User $user)
     {
-        $currentUser = auth()->user();
+        $currentUser = Auth::user();
 
         // CRITICAL: Prevent deletion of guest account (early guard)
         if ($user->email === 'guest@gmail.com') {

@@ -14,8 +14,10 @@ class EnsureEmailIsVerified
      */
     public function handle(Request $request, Closure $next): Response
     {
-        // Check if user is logged in and email is not verified
-        if (!$request->user() || !$request->user()->hasVerifiedEmail()) {
+        // Only block authenticated users who haven't verified their email.
+        // Unauthenticated users are NOT caught here — they go through the
+        // normal login flow and are checked again after authentication.
+        if ($request->user() && !$request->user()->hasVerifiedEmail()) {
             return $request->expectsJson()
                 ? abort(403, 'Your email address is not verified.')
                 : Redirect::route('verification.notice');

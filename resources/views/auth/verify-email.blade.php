@@ -41,8 +41,9 @@
         <form method="POST" action="{{ route('verification.resend') }}" class="mt-6">
             @csrf
             <input type="hidden" name="email" value="{{ session('verification_email') }}">
+            {{-- Fixed: replaced custom bg-primary-600 and bg-gold-500 with valid Tailwind classes --}}
             <button type="submit" 
-                    class="w-full bg-primary-600 hover:bg-gold-500 text-white font-semibold py-2 rounded-lg transition">
+                    class="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-2 rounded-lg transition">
                 Resend Verification Email
             </button>
         </form>

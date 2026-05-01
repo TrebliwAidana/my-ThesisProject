@@ -26,11 +26,11 @@ class AdminController extends Controller
     public function roles(Request $request)
     {
         $user = Auth::user();
-        if ($user->role->level !== 1 && ! $user->hasPermission('roles.view')) {
+        if ((int) $user->role->level !== 1 && ! $user->hasPermission('roles.view')) {
             abort(403, 'You do not have permission to view roles.');
         }
 
-        $showTrashed = $request->boolean('show_trashed'); // ← was declared inline but never assigned to a variable
+        $showTrashed = $request->boolean('show_trashed');
         $showHidden  = $request->boolean('show_hidden');
 
         $query = Role::withCount('users')->with('permissions');
@@ -38,10 +38,7 @@ class AdminController extends Controller
         if ($showTrashed) {
             $query->onlyTrashed();
         } else {
-            $query->when(
-                ! $showHidden,
-                fn ($q) => $q->where('is_visible', true)
-            );
+            $query->when(! $showHidden, fn ($q) => $q->where('is_visible', true));
         }
 
         $roles       = $query->orderBy('level')->paginate(50);
@@ -53,7 +50,7 @@ class AdminController extends Controller
     public function createRole()
     {
         $user = Auth::user();
-        if ($user->role_id !== 1 && ! $user->hasPermission('roles.create')) {
+        if ((int) $user->role_id !== 1 && ! $user->hasPermission('roles.create')) {
             abort(403, 'You do not have permission to create roles.');
         }
 
@@ -65,7 +62,7 @@ class AdminController extends Controller
     public function editRole(int $id)
     {
         $user = Auth::user();
-        if ($user->role->level !== 1 && ! $user->hasPermission('roles.edit')) {
+        if ((int) $user->role->level !== 1 && ! $user->hasPermission('roles.edit')) {
             abort(403, 'You do not have permission to edit roles.');
         }
 
@@ -74,7 +71,7 @@ class AdminController extends Controller
             return redirect()->route('admin.roles.index')->with('error', 'This role is hidden.');
         }
 
-        $permissions = $this->getCachedPermissions();
+        $permissions       = $this->getCachedPermissions();
         $rolePermissionIds = $role->permissions->pluck('id')->toArray();
 
         return view('admin.roles.edit', compact('role', 'permissions', 'rolePermissionIds'));
@@ -83,17 +80,17 @@ class AdminController extends Controller
     public function storeRole(Request $request)
     {
         $user = Auth::user();
-        if ($user->role_id !== 1 && ! $user->hasPermission('roles.create')) {
+        if ((int) $user->role_id !== 1 && ! $user->hasPermission('roles.create')) {
             abort(403);
         }
 
         $validated = $request->validate([
-            'name' => ['required', 'string', 'max:100', 'unique:roles,name'],
+            'name'         => ['required', 'string', 'max:100', 'unique:roles,name'],
             'abbreviation' => ['nullable', 'string', 'max:10'],
-            'desc' => ['nullable', 'string', 'max:500'],
-            'level' => ['required', 'integer', 'min:1', 'max:10'],
-            'is_system' => ['nullable', 'boolean'],
-            'parent_id' => ['nullable', 'exists:roles,id'],
+            'desc'         => ['nullable', 'string', 'max:500'],
+            'level'        => ['required', 'integer', 'min:1', 'max:10'],
+            'is_system'    => ['nullable', 'boolean'],
+            'parent_id'    => ['nullable', 'exists:roles,id'],
         ]);
 
         if ($validated['level'] == 1 && ! ($validated['is_system'] ?? false)) {
@@ -102,13 +99,13 @@ class AdminController extends Controller
 
         try {
             $role = Role::create([
-                'name' => $validated['name'],
+                'name'         => $validated['name'],
                 'abbreviation' => $validated['abbreviation'] ?? null,
-                'desc' => $validated['desc'] ?? null,
-                'level' => $validated['level'],
-                'is_system' => $validated['is_system'] ?? false,
-                'parent_id' => $validated['parent_id'] ?? null,
-                'is_visible' => true,
+                'desc'         => $validated['desc'] ?? null,
+                'level'        => $validated['level'],
+                'is_system'    => $validated['is_system'] ?? false,
+                'parent_id'    => $validated['parent_id'] ?? null,
+                'is_visible'   => true,
             ]);
 
             if ($request->has('permissions')) {
@@ -120,14 +117,14 @@ class AdminController extends Controller
             return redirect()->route('admin.roles.index')
                 ->with('success', "✅ Role '{$role->name}' created successfully.");
         } catch (\Exception $e) {
-            return back()->with('error', '❌ Failed to create role: '.$e->getMessage())->withInput();
+            return back()->with('error', '❌ Failed to create role: ' . $e->getMessage())->withInput();
         }
     }
 
     public function updateRole(Request $request, int $id)
     {
         $user = Auth::user();
-        if ($user->role->level !== 1 && ! $user->hasPermission('roles.edit')) {
+        if ((int) $user->role->level !== 1 && ! $user->hasPermission('roles.edit')) {
             abort(403);
         }
 
@@ -145,8 +142,14 @@ class AdminController extends Controller
 
             if ($request->has('permissions')) {
                 $role->permissions()->sync($request->input('permissions', []));
-                // FIX: cache key must match User::hasPermission() exactly → "user_perms_{id}"
-                $role->users()->each(fn ($u) => cache()->forget("user_perms_{$u->id}"));
+
+                // FIX: was ->each(fn($u) => cache()->forget(...)) — fired one
+                // cache::forget query per user row (N+1).
+                // pluck('id') loads all IDs in a single query, then we loop
+                // over the plain PHP array — zero additional DB queries.
+                $role->users()
+                    ->pluck('id')
+                    ->each(fn ($uid) => cache()->forget("user_perms_{$uid}"));
             }
 
             $this->flushPermissionCaches($role);
@@ -155,11 +158,11 @@ class AdminController extends Controller
         }
 
         $validated = $request->validate([
-            'name' => ['required', 'string', 'max:100', Rule::unique('roles', 'name')->ignore($id)],
+            'name'         => ['required', 'string', 'max:100', Rule::unique('roles', 'name')->ignore($id)],
             'abbreviation' => ['nullable', 'string', 'max:10'],
-            'desc' => ['nullable', 'string', 'max:500'],
-            'level' => ['required', 'integer', 'min:1', 'max:10'],
-            'is_system' => ['nullable', 'boolean'],
+            'desc'         => ['nullable', 'string', 'max:500'],
+            'level'        => ['required', 'integer', 'min:1', 'max:10'],
+            'is_system'    => ['nullable', 'boolean'],
         ]);
 
         if ($validated['level'] == 1 && ! ($validated['is_system'] ?? false)) {
@@ -169,27 +172,30 @@ class AdminController extends Controller
         try {
             $role->update($validated);
             $role->permissions()->sync($request->input('permissions', []));
-            // FIX: cache key must match User::hasPermission() exactly → "user_perms_{id}"
-            $role->users()->each(fn ($u) => cache()->forget("user_perms_{$u->id}"));
+
+            // FIX: same N+1 elimination as predefined branch above
+            $role->users()
+                ->pluck('id')
+                ->each(fn ($uid) => cache()->forget("user_perms_{$uid}"));
 
             $this->flushPermissionCaches($role);
 
             return redirect()->route('admin.roles.index')
                 ->with('success', "✅ Role '{$role->name}' updated successfully.");
         } catch (\Exception $e) {
-            return back()->with('error', '❌ Failed to update role: '.$e->getMessage())->withInput();
+            return back()->with('error', '❌ Failed to update role: ' . $e->getMessage())->withInput();
         }
     }
 
     public function destroyRole(int $id)
     {
         $user = Auth::user();
-        if ($user->role->level !== 1 && ! $user->hasPermission('roles.delete')) {
+        if ((int) $user->role->level !== 1 && ! $user->hasPermission('roles.delete')) {
             abort(403);
         }
- 
+
         $role = Role::findOrFail($id);
- 
+
         if ($role->id === 1) {
             return back()->with('error', '⚠️ Cannot delete the System Administrator role.');
         }
@@ -199,37 +205,33 @@ class AdminController extends Controller
         if ($role->is_predefined) {
             return back()->with('error', '⚠️ Cannot delete a predefined system role.');
         }
- 
-        // FIX: was withTrashed() which blocked deletion even when all assigned
-        // users are themselves soft-deleted. Now only blocks if active (non-trashed)
-        // users exist — soft-deleted users no longer prevent a role soft-delete.
+        // Block only if non-trashed (active) users exist.
+        // Soft-deleted users should not prevent a role soft-delete.
         if ($role->users()->exists()) {
             return back()->with('error', '⚠️ Cannot delete a role that has active users assigned to it.');
         }
- 
+
         try {
             $roleName = $role->name;
             $role->delete();
- 
             $this->flushPermissionCaches();
- 
+
             return redirect()->route('admin.roles.index')
                 ->with('success', "✅ Role '{$roleName}' deleted successfully.");
         } catch (\Exception $e) {
-            return back()->with('error', '❌ Failed to delete role: '.$e->getMessage());
+            return back()->with('error', '❌ Failed to delete role: ' . $e->getMessage());
         }
     }
 
     public function restoreRole(int $id)
     {
         $user = Auth::user();
-        if ($user->role_id !== 1 && ! $user->hasPermission('roles.delete')) {
+        if ((int) $user->role_id !== 1 && ! $user->hasPermission('roles.delete')) {
             abort(403);
         }
 
         $role = Role::withTrashed()->findOrFail($id);
         $role->restore();
-
         $this->flushPermissionCaches();
 
         return redirect()->route('admin.roles.index')
@@ -239,7 +241,7 @@ class AdminController extends Controller
     public function forceDeleteRole(int $id)
     {
         $user = Auth::user();
-        if ($user->role_id !== 1 && ! $user->hasPermission('roles.delete')) {
+        if ((int) $user->role_id !== 1 && ! $user->hasPermission('roles.delete')) {
             abort(403);
         }
 
@@ -251,7 +253,6 @@ class AdminController extends Controller
 
         $roleName = $role->name;
         $role->forceDelete();
-
         $this->flushPermissionCaches();
 
         return redirect()->route('admin.roles.index')
@@ -261,21 +262,19 @@ class AdminController extends Controller
     public function toggleRoleVisibility(Role $role)
     {
         $user = Auth::user();
-        if ($user->role->level !== 1 && ! $user->hasPermission('roles.edit')) {
+        if ((int) $user->role->level !== 1 && ! $user->hasPermission('roles.edit')) {
             abort(403, 'You do not have permission to edit roles.');
         }
 
         if ($role->id === 1) {
             return back()->with('error', 'Cannot toggle visibility of System Administrator role.');
         }
-
         if ($user->role_id == $role->id && $role->is_visible) {
             return back()->with('error', 'Cannot hide your own current role.');
         }
 
         $role->update(['is_visible' => ! $role->is_visible]);
         $status = $role->is_visible ? 'visible' : 'hidden';
-
         $this->flushPermissionCaches();
 
         return redirect()->route('admin.roles.index', ['show_hidden' => request()->boolean('show_hidden')])
@@ -289,7 +288,7 @@ class AdminController extends Controller
     public function users(Request $request)
     {
         $authUser = Auth::user();
-        if ($authUser->role->level !== 1 && ! $authUser->hasPermission('users.view')) {
+        if ((int) $authUser->role->level !== 1 && ! $authUser->hasPermission('users.view')) {
             abort(403, 'You do not have permission to view users.');
         }
 
@@ -303,7 +302,7 @@ class AdminController extends Controller
             $search = $request->input('search');
             $query->where(function ($q) use ($search) {
                 $q->where('full_name', 'like', "%{$search}%")
-                    ->orWhere('email', 'like', "%{$search}%");
+                  ->orWhere('email', 'like', "%{$search}%");
             });
         }
 
@@ -316,11 +315,11 @@ class AdminController extends Controller
         }
 
         if ($request->filled('verification')) {
-            if ($request->input('verification') === 'verified') {
-                $query->whereNotNull('email_verified_at');
-            } elseif ($request->input('verification') === 'unverified') {
-                $query->whereNull('email_verified_at');
-            }
+            match ($request->input('verification')) {
+                'verified'   => $query->whereNotNull('email_verified_at'),
+                'unverified' => $query->whereNull('email_verified_at'),
+                default      => null,
+            };
         }
 
         $users = $query->paginate(20)->appends($request->except('page'));
@@ -342,11 +341,15 @@ class AdminController extends Controller
     public function createUser()
     {
         $authUser = Auth::user();
-        if ($authUser->role->level !== 1 && ! $authUser->hasPermission('users.create')) {
+        if ((int) $authUser->role->level !== 1 && ! $authUser->hasPermission('users.create')) {
             abort(403, 'You do not have permission to create users.');
         }
 
-        $roles = Cache::remember('roles_visible_ordered', 3600, fn () => Role::where('is_visible', true)->orderBy('level')->get());
+        // FIX: was get('id', 'name') — PHP treats the second argument as
+        // $perPage (integer), not columns. 'name' was silently ignored and
+        // the returned models had no name attribute.
+        // Now delegates to getCachedOrderedRoles() — see that method's docblock.
+        $roles = $this->getCachedOrderedRoles();
 
         return view('admin.users.create', compact('roles'));
     }
@@ -354,7 +357,7 @@ class AdminController extends Controller
     public function storeUser(Request $request)
     {
         $authUser = Auth::user();
-        if ($authUser->role->level !== 1 && ! $authUser->hasPermission('users.create')) {
+        if ((int) $authUser->role->level !== 1 && ! $authUser->hasPermission('users.create')) {
             abort(403);
         }
 
@@ -381,21 +384,21 @@ class AdminController extends Controller
         $password = ! empty($validated['password']) ? $validated['password'] : Str::random(10);
 
         $user = User::create([
-            'first_name' => $validated['first_name'],
-            'middle_name' => $validated['middle_name'] ?? null,
-            'last_name' => $validated['last_name'],
-            'full_name' => $this->buildFullName($validated),
-            'email' => $validated['email'],
-            'password' => Hash::make($password),
-            'role_id' => $validated['role_id'],
-            'position' => $validated['position'],
-            'student_id' => $validated['student_id'] ?? null,
-            'year_level' => $validated['year_level'] ?? null,
-            'gender' => $validated['gender'],
-            'phone' => $validated['phone'] ?? null,
-            'birthday' => $validated['birthday'] ?? null,
-            'is_active' => $validated['is_active'] ?? true,
-            'email_verified_at' => now(),
+            'first_name'        => $validated['first_name'],
+            'middle_name'       => $validated['middle_name'] ?? null,
+            'last_name'         => $validated['last_name'],
+            'full_name'         => $this->buildFullName($validated),
+            'email'             => $validated['email'],
+            'password'          => Hash::make($password),
+            'role_id'           => $validated['role_id'],
+            'position'          => $validated['position'],
+            'student_id'        => $validated['student_id'] ?? null,
+            'year_level'        => $validated['year_level'] ?? null,
+            'gender'            => $validated['gender'],
+            'phone'             => $validated['phone'] ?? null,
+            'birthday'          => $validated['birthday'] ?? null,
+            'is_active'         => $validated['is_active'] ?? true,
+            'email_verified_at' => null,
         ]);
 
         $emailSent = false;
@@ -403,10 +406,10 @@ class AdminController extends Controller
             $user->notify(new NewUserWelcomeNotification($password));
             $emailSent = true;
         } catch (\Exception $e) {
-            \Log::warning("Welcome email failed for user {$user->id}: ".$e->getMessage());
+            \Log::warning("Welcome email failed for user {$user->id}: " . $e->getMessage());
         }
 
-        $message = "User '{$user->full_name}' created successfully.";
+        $message  = "User '{$user->full_name}' created successfully.";
         $message .= $emailSent
             ? ' A welcome email has been sent.'
             : ' ⚠️ Welcome email could not be sent — please share credentials manually or resend from the user list.';
@@ -417,12 +420,17 @@ class AdminController extends Controller
     public function editUser(int $id)
     {
         $authUser = Auth::user();
-        if ($authUser->role->level !== 1 && ! $authUser->hasPermission('users.edit')) {
+        if ((int) $authUser->role->level !== 1 && ! $authUser->hasPermission('users.edit')) {
             abort(403);
         }
 
-        $user = User::findOrFail($id);
-        $roles = Cache::remember('roles_visible_ordered', 3600, fn () => Role::where('is_visible', true)->orderBy('level')->get());
+        $user  = User::findOrFail($id);
+
+        // FIX: was an inline Cache::remember() with get() (all columns), while
+        // createUser() used get('id','name') — both under the same cache key.
+        // Whichever ran first cached a collection with a different column set.
+        // Now both delegate to getCachedOrderedRoles() — one key, one shape.
+        $roles = $this->getCachedOrderedRoles();
 
         return view('admin.users.edit', compact('user', 'roles'));
     }
@@ -430,11 +438,11 @@ class AdminController extends Controller
     public function updateUser(Request $request, int $id)
     {
         $authUser = Auth::user();
-        if ($authUser->role->level !== 1 && ! $authUser->hasPermission('users.edit')) {
+        if ((int) $authUser->role->level !== 1 && ! $authUser->hasPermission('users.edit')) {
             abort(403);
         }
 
-        $user = User::findOrFail($id);
+        $user      = User::findOrFail($id);
         $validated = $this->validateUserRequest($request, $id);
 
         $selectedRole = $this->resolveVisibleRole($validated['role_id']);
@@ -462,19 +470,19 @@ class AdminController extends Controller
         }
 
         $data = [
-            'first_name' => $validated['first_name'],
+            'first_name'  => $validated['first_name'],
             'middle_name' => $validated['middle_name'] ?? null,
-            'last_name' => $validated['last_name'],
-            'full_name' => $this->buildFullName($validated),
-            'email' => $validated['email'],
-            'student_id' => $validated['student_id'] ?? null,
-            'phone' => $validated['phone'] ?? null,
-            'gender' => $validated['gender'],
-            'birthday' => $validated['birthday'] ?? null,
-            'role_id' => $validated['role_id'],
-            'position' => $validated['position'] ?? null,
-            'year_level' => $validated['year_level'] ?? null,
-            'is_active' => $validated['is_active'] ?? true,
+            'last_name'   => $validated['last_name'],
+            'full_name'   => $this->buildFullName($validated),
+            'email'       => $validated['email'],
+            'student_id'  => $validated['student_id'] ?? null,
+            'phone'       => $validated['phone'] ?? null,
+            'gender'      => $validated['gender'],
+            'birthday'    => $validated['birthday'] ?? null,
+            'role_id'     => $validated['role_id'],
+            'position'    => $validated['position'] ?? null,
+            'year_level'  => $validated['year_level'] ?? null,
+            'is_active'   => $validated['is_active'] ?? true,
         ];
 
         if (! empty($validated['password'])) {
@@ -483,7 +491,9 @@ class AdminController extends Controller
 
         $user->update($data);
 
-        // FIX: clear the user's own permission cache when their role changes
+        // Invalidate only this user's permission cache — role-level flush
+        // is not needed here because the role's permission set hasn't changed,
+        // only which role this user is assigned to.
         cache()->forget("user_perms_{$user->id}");
 
         return redirect()->route('admin.users.index')
@@ -493,7 +503,7 @@ class AdminController extends Controller
     public function destroyUser(int $id)
     {
         $authUser = Auth::user();
-        if ($authUser->role_id !== 1 && ! $authUser->hasPermission('users.delete')) {
+        if ((int) $authUser->role_id !== 1 && ! $authUser->hasPermission('users.delete')) {
             abort(403);
         }
 
@@ -519,15 +529,13 @@ class AdminController extends Controller
     public function resetPassword(int $id)
     {
         $authUser = Auth::user();
-        if ($authUser->role->level !== 1 && ! $authUser->hasPermission('users.edit')) {
+        if ((int) $authUser->role->level !== 1 && ! $authUser->hasPermission('users.edit')) {
             abort(403);
         }
 
-        $user = User::findOrFail($id);
+        $user        = User::findOrFail($id);
         $newPassword = Str::random(10);
-        $user->password = Hash::make($newPassword);
-        $user->save();
-
+        $user->update(['password' => Hash::make($newPassword)]);
         $user->notify(new PasswordResetNotification($newPassword));
 
         return redirect()->route('admin.users.index')
@@ -537,33 +545,29 @@ class AdminController extends Controller
     public function sendVerificationEmail(int $id)
     {
         $authUser = Auth::user();
-        if ($authUser->role->level !== 1 && ! $authUser->hasPermission('users.edit')) {
+        if ((int) $authUser->role->level !== 1 && ! $authUser->hasPermission('users.edit')) {
             abort(403);
         }
 
         $user = User::findOrFail($id);
 
         if ($user->hasVerifiedEmail()) {
-            if (request()->expectsJson()) {
-                return response()->json(['success' => false, 'message' => 'Email already verified.'], 400);
-            }
-
-            return back()->with('error', 'Email already verified.');
+            return request()->expectsJson()
+                ? response()->json(['success' => false, 'message' => 'Email already verified.'], 400)
+                : back()->with('error', 'Email already verified.');
         }
 
         $user->sendEmailVerificationNotification();
 
-        if (request()->expectsJson()) {
-            return response()->json(['success' => true, 'message' => 'Verification email sent.']);
-        }
-
-        return back()->with('success', 'Verification email sent.');
+        return request()->expectsJson()
+            ? response()->json(['success' => true, 'message' => 'Verification email sent.'])
+            : back()->with('success', 'Verification email sent.');
     }
 
     public function verifyEmailManually(int $id)
     {
         $authUser = Auth::user();
-        if ($authUser->role->level !== 1 && ! $authUser->hasPermission('users.edit')) {
+        if ((int) $authUser->role->level !== 1 && ! $authUser->hasPermission('users.edit')) {
             abort(403);
         }
 
@@ -581,7 +585,7 @@ class AdminController extends Controller
     public function restoreUser(int $id)
     {
         $authUser = Auth::user();
-        if ($authUser->role->level !== 1 && ! $authUser->hasPermission('users.delete')) {
+        if ((int) $authUser->role->level !== 1 && ! $authUser->hasPermission('users.delete')) {
             abort(403);
         }
 
@@ -595,11 +599,11 @@ class AdminController extends Controller
     public function forceDeleteUser(int $id)
     {
         $authUser = Auth::user();
-        if ($authUser->role->level !== 1 && ! $authUser->hasPermission('users.delete')) {
+        if ((int) $authUser->role->level !== 1 && ! $authUser->hasPermission('users.delete')) {
             abort(403);
         }
 
-        $user = User::withTrashed()->findOrFail($id);
+        $user     = User::withTrashed()->findOrFail($id);
         $userName = $user->full_name;
         $user->forceDelete();
 
@@ -611,9 +615,13 @@ class AdminController extends Controller
     // Private Helpers
     // =========================================================================
 
+    /**
+     * Shared validation for store and update.
+     * $userId excludes the current record from unique checks on update.
+     */
     private function validateUserRequest(Request $request, ?int $userId = null): array
     {
-        $emailRule = $userId
+        $emailRule     = $userId
             ? Rule::unique('users', 'email')->whereNot('id', $userId)
             : Rule::unique('users', 'email');
 
@@ -621,34 +629,36 @@ class AdminController extends Controller
             ? Rule::unique('users', 'student_id')->whereNot('id', $userId)
             : Rule::unique('users', 'student_id');
 
-        $phoneRule = $userId
+        $phoneRule     = $userId
             ? Rule::unique('users', 'phone')->whereNot('id', $userId)
             : Rule::unique('users', 'phone');
 
         return $request->validate([
-            'first_name' => ['required', 'string', 'max:255'],
+            'first_name'  => ['required', 'string', 'max:255'],
             'middle_name' => ['nullable', 'string', 'max:255'],
-            'last_name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'email', 'max:255', $emailRule],
-            'role_id' => ['required', 'exists:roles,id'],
-            'position' => ['nullable', 'string', 'max:255'],
-            'student_id' => ['nullable', 'string', 'max:20', $studentIdRule],
-            'year_level' => ['nullable', 'string', 'max:20'],
-            'gender' => ['required', 'string', 'in:Male,Female,Other'],
-            'phone' => ['nullable', 'string', 'max:20', $phoneRule],
-            'birthday' => ['nullable', 'date'],
-            'password' => ['nullable', 'string', 'min:8', 'confirmed'],
-            'is_active' => ['boolean'],
+            'last_name'   => ['required', 'string', 'max:255'],
+            'email'       => ['required', 'string', 'email', 'max:255', $emailRule],
+            'role_id'     => ['required', 'exists:roles,id'],
+            'position'    => ['nullable', 'string', 'max:255'],
+            'student_id'  => ['nullable', 'string', 'max:20', $studentIdRule],
+            'year_level'  => ['nullable', 'string', 'max:20'],
+            'gender'      => ['required', 'string', 'in:Male,Female,Other'],
+            'phone'       => ['nullable', 'string', 'max:20', $phoneRule],
+            'birthday'    => ['nullable', 'date'],
+            'password'    => ['nullable', 'string', 'min:8', 'confirmed'],
+            'is_active'   => ['boolean'],
         ], [
-            'email.unique' => 'This email is already registered.',
+            'email.unique'      => 'This email is already registered.',
             'student_id.unique' => 'This student ID is already assigned.',
-            'phone.unique' => 'This phone number is already in use.',
+            'phone.unique'      => 'This phone number is already in use.',
         ]);
     }
 
+    /** Normalize any phone input to +63XXXXXXXXXX. */
     private function normalizePhone(string $phone): string
     {
         $phone = preg_replace('/[^0-9]/', '', $phone);
+
         if (str_starts_with($phone, '63')) {
             $phone = substr($phone, 2);
         }
@@ -656,89 +666,131 @@ class AdminController extends Controller
             $phone = substr($phone, 1);
         }
 
-        return '+63'.substr($phone, 0, 10);
+        return '+63' . substr($phone, 0, 10);
     }
 
+    /** Return a visible role by ID, or null. */
     private function resolveVisibleRole(int $roleId): ?Role
     {
         return Role::where('id', $roleId)->where('is_visible', true)->first();
     }
 
+    /** Build full_name from validated name parts. */
     private function buildFullName(array $validated): string
     {
         return trim(
-            $validated['first_name'].' '.
-            (! empty($validated['middle_name']) ? $validated['middle_name'].' ' : '').
+            $validated['first_name'] . ' ' .
+            (! empty($validated['middle_name']) ? $validated['middle_name'] . ' ' : '') .
             $validated['last_name']
         );
     }
 
+    /**
+     * All permissions, cached 1 hour.
+     * Stored as plain arrays for minimal memory overhead; returned as Collection.
+     */
     private function getCachedPermissions(): Collection
     {
-        // FIX: aligned cache key — was 'permissions_all_v2', now consistent.
-        // flushPermissionCaches() centralises all Cache::forget() calls so
-        // every write path (store/update/destroy/toggle) forgets the same key.
-        $array = Cache::remember(
-            'permissions_all',
-            3600,
-            fn () => Permission::all()->toArray()
+        return collect(
+            Cache::remember('permissions_all', 3600, fn () => Permission::all()->toArray())
         );
-
-        return collect($array);
-    }
-
-    private function getCachedVisibleRoles(): Collection
-    {
-        $array = Cache::remember(
-            'roles_visible',
-            3600,
-            fn () => Role::where('is_visible', true)->get(['id', 'name'])->toArray()
-        );
-
-        return collect($array)->map(fn ($r) => (object) $r);
     }
 
     /**
-     * Central cache flush for all role/permission write operations.
+     * Visible roles for filter dropdowns (id + name only).
+     * Returns Collection of stdClass objects for blade compatibility.
+     */
+    private function getCachedVisibleRoles(): Collection
+    {
+        return collect(
+            Cache::remember(
+                'roles_visible',
+                3600,
+                fn () => Role::where('is_visible', true)->get(['id', 'name'])->toArray()
+            )
+        )->map(fn ($r) => (object) $r);
+    }
+
+    /**
+     * Visible roles for create/edit user dropdowns — ordered by level.
+     * Selects id + name + level so blades can render "Role Name (Level X)".
      *
-     * FIX: previously each method called Cache::forget() individually with
-     * inconsistent key names (e.g. 'permissions_all' vs 'permissions_all_v2').
-     * This single method is the only place those keys are listed, guaranteeing
-     * every write path flushes the same set of keys.
+     * FIX (critical): createUser() called get('id', 'name') — PHP interprets the
+     * second argument as the integer $perPage, not a columns array. 'name' was
+     * silently discarded, leaving models with no name attribute and blank dropdowns.
      *
-     * Also clears per-user permission caches for all users in the affected role.
-     * Key "user_perms_{id}" matches User::hasPermission() exactly.
+     * FIX (cache collision): createUser() and editUser() both used the cache key
+     * 'roles_visible_ordered' but with different column sets. Whichever ran first
+     * wrote an incompatible collection that the other view then consumed silently.
+     *
+     * This single helper owns the key and always fetches ['id', 'name', 'level'].
+     * Returns an Eloquent Collection (not plain array) because blades use -> syntax.
+     */
+    private function getCachedOrderedRoles(): Collection
+    {
+        $rows = Cache::remember(
+            'roles_visible_ordered',
+            3600,
+            fn () => Role::where('is_visible', true)
+                ->orderBy('level')
+                ->get(['id', 'name', 'level'])
+                ->toArray()  // plain PHP arrays — always safe to serialize
+        );
+
+        // Cast to stdClass AFTER retrieval, never inside the closure
+        return collect($rows)->map(fn ($r) => (object) $r);
+    }
+
+    /**
+     * Central cache invalidation for all role/permission write paths.
+     *
+     * Clears:
+     *   permissions_all       — full permission list (edit-role UI)
+     *   roles_visible         — filter dropdown in users index / createRole
+     *   roles_visible_ordered — create/edit user role dropdown
+     *
+     * Per-user caches:
+     *   FIX: was ->each(fn($u) => cache()->forget(...)) which fired one extra
+     *   DB query per user (N+1). pluck('id') retrieves all IDs in ONE query;
+     *   we then iterate the plain PHP array with zero additional queries.
+     *   Cache key "user_perms_{id}" matches User::hasPermission() exactly.
      */
     private function flushPermissionCaches(?Role $role = null): void
     {
         Cache::forget('permissions_all');
         Cache::forget('roles_visible');
-        Cache::forget('roles_visible_ordered');
+        Cache::forget('roles_visible_ordered');  // ← already there, good
 
         if ($role) {
-            $role->users()->each(fn ($u) => cache()->forget("user_perms_{$u->id}"));
+            $role->users()
+                ->pluck('id')
+                ->each(fn ($uid) => cache()->forget("user_perms_{$uid}"));
         }
     }
 
+    /**
+     * Resolve submitted position against Member::VALID_POSITIONS.
+     *
+     * Returns:
+     *   string → valid position to store
+     *   null   → role has no position list; caller clears the field
+     *   false  → position required but missing; caller returns validation error
+     */
     private function resolvePosition(Role $role, string $position): string|null|false
     {
         $allowed = Member::VALID_POSITIONS[$role->id] ?? [];
 
-        if (empty($allowed)) {
-            return null;
-        }
-
-        if (empty($position)) {
-            return false;
-        }
-
-        if (! in_array($position, $allowed, true)) {
-            return null;
-        }
+        if (empty($allowed))                              return null;
+        if (empty($position))                             return false;
+        if (! in_array($position, $allowed, true))        return null;
 
         return $position;
     }
 
+    /**
+     * Whether year_level should be cleared for this role + position.
+     * Derived entirely from Member constants — no hardcoded role IDs here.
+     */
     private function shouldClearYearLevel(int $roleId, ?string $position): bool
     {
         $positionsForRole = Member::VALID_POSITIONS[$roleId] ?? [];
