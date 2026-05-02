@@ -34,36 +34,37 @@ class RoleMiddleware
      * Only define prefixes that need a permission fallback. Routes without an
      * entry here are either open-to-all or rely solely on the named-role check.
      *
-     * FIX: was 'FinancialTransaction.' (wrong — never matched financial.* routes)
-     *      Corrected to 'financial.' to match actual route names.
+     * Admin routes (users, roles, permissions) are intentionally excluded here.
+     * Their controllers enforce access via hasPermission() directly — no
+     * middleware fallback needed and the old slugs (admin.users, admin.roles,
+     * admin.permissions) never existed in the permissions table anyway.
+     *
+     * FIX: 'financial.' was mapped to 'financial_transactions.view' which does
+     *      not exist in the permissions table. Corrected to 'financial.view'.
+     *
+     * FIX: removed 'admin.users.', 'admin.roles.', 'admin.permissions.',
+     *      'admin.auditlogs.', 'admin.document-categories.',
+     *      'admin.document-backups.' — all mapped to non-existent slugs and
+     *      were silently blocking every non-SysAdmin user. Controllers handle
+     *      these via hasPermission() with correct slugs.
      */
     protected array $routePermissionMap = [
-        'members.'                   => 'members.view',
-        'documents.'                 => 'documents.view',
-        'financial.'                 => 'financial_transactions.view',  // FIX: was 'FinancialTransaction.'
-        'reports.'                   => 'reports.view',
-        'admin.users.'               => 'admin.users',
-        'admin.roles.'               => 'admin.roles',
-        'admin.permissions.'         => 'admin.permissions',
-        'admin.auditlogs.'           => 'admin.audit',
-        'admin.document-categories.' => 'admin.document-categories',
-        'admin.document-backups.'    => 'admin.document-categories',
-        'admin.financial-categories.'=> 'financial_categories.manage',
+        'members.'                    => 'members.view',
+        'documents.'                  => 'documents.view',
+        'financial.'                  => 'financial.view',           // FIX: was 'financial_transactions.view'
+        'reports.'                    => 'reports.view',
+        'admin.financial-categories.' => 'financial_categories.manage',
     ];
 
     public function handle(Request $request, Closure $next, string ...$roles): mixed
     {
-        // FIX: use $request->user() consistently — respects the active guard.
-        //      Removed Auth facade (was mixed with $request->user() inconsistently).
         $user = $request->user();
 
-        // FIX: redirect to 'landing' directly — 'login' route just bounces to landing anyway.
         if (! $user) {
             return redirect()->route('landing')
                 ->with('error', 'You must be logged in to access this page.');
         }
 
-        // FIX: redirect to dashboard with toast instead of raw abort(403).
         if (! $user->role) {
             return redirect()->route('dashboard')
                 ->with('error', 'Your account has no role assigned. Please contact the administrator.');
@@ -96,7 +97,6 @@ class RoleMiddleware
         }
 
         // ── Denied ────────────────────────────────────────────────────────────
-        // FIX: redirect with toast instead of abort(403) raw error page.
         return redirect()->route('dashboard')
             ->with('error', 'You do not have permission to access that page.');
     }

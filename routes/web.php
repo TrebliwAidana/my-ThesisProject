@@ -30,11 +30,12 @@ use Illuminate\Support\Facades\Storage;
 |--------------------------------------------------------------------------
 | Role                  | ID | Dashboard | Members | Financial | Documents | Admin | Profile |
 | System Administrator  |  1 |     ✅    |    ✅   |     ✅    |     ✅    |   ✅  |    ✅   |
-| Club Adviser          |  2 |     ✅    |    ✅   |     ✅    |     ✅    |   ❌  |    ✅   |
-| Treasurer             |  3 |     ✅    |    ✅   |     ✅    |     ✅    |   ❌  |    ✅   |
-| Auditor               |  4 |     ✅    |    ✅   |     ✅    |     ✅    |   ❌  |    ✅   |
+| Club Adviser          |  2 |     ✅    |    ✅   |     ✅    |     ✅    |   ✅* |    ✅   |
+| Treasurer             |  3 |     ✅    |    ✅   |     ✅    |     ✅    |   ✅* |    ✅   |
+| Auditor               |  4 |     ✅    |    ✅   |     ✅    |     ✅    |   ✅* |    ✅   |
 | Guest                 |  5 |     ✅    |    ❌   |  ✅ r/o   |  ✅ r/o   |   ❌  |    ❌   |
 |
+| * Permission-based — controllers enforce fine-grained access via requirePermission()
 | Unauthorized access → redirect to dashboard with error toast (no raw 403).
 | Read-only enforcement for Guest on Financial/Documents is done in controllers.
 |--------------------------------------------------------------------------
@@ -104,9 +105,9 @@ Route::middleware(['auth.custom', 'verified'])->group(function () {
         Route::get('/{document}/versions/{version}/download',  [DocumentVersionController::class, 'download'])->name('version.download');
     });
 
-    Route::get('documents-trash',               [DocumentController::class, 'trash'])->name('documents.trash');
-    Route::patch('documents-trash/{id}/restore',[DocumentController::class, 'restore'])->name('documents.restore');
-    Route::delete('documents-trash/{id}/force', [DocumentController::class, 'forceDelete'])->name('documents.force-delete');
+    Route::get('documents-trash',                [DocumentController::class, 'trash'])->name('documents.trash');
+    Route::patch('documents-trash/{id}/restore', [DocumentController::class, 'restore'])->name('documents.restore');
+    Route::delete('documents-trash/{id}/force',  [DocumentController::class, 'forceDelete'])->name('documents.force-delete');
 
     // ── Financial ─────────────────────────────────────────────────────────────
     Route::prefix('financial')->name('financial.')->group(function () {
@@ -117,16 +118,16 @@ Route::middleware(['auth.custom', 'verified'])->group(function () {
         Route::post('/report/generate', [FinancialController::class, 'generateReport'])->name('report.generate');
 
         // Income
-        Route::get('/income/create',    [IncomeController::class, 'create'])->name('income.create');
-        Route::post('/income',          [IncomeController::class, 'store'])->name('income.store');
+        Route::get('/income/create',  [IncomeController::class, 'create'])->name('income.create');
+        Route::post('/income',        [IncomeController::class, 'store'])->name('income.store');
 
         // Expense
-        Route::get('/expense/create',   [ExpenseController::class, 'create'])->name('expense.create');
-        Route::post('/expense',         [ExpenseController::class, 'store'])->name('expense.store');
+        Route::get('/expense/create', [ExpenseController::class, 'create'])->name('expense.create');
+        Route::post('/expense',       [ExpenseController::class, 'store'])->name('expense.store');
 
         // Receivable
-        Route::get('/receivable/create',   [ReceivableController::class, 'create'])->name('receivable.create');
-        Route::post('/receivable',         [ReceivableController::class, 'store'])->name('receivable.store');
+        Route::get('/receivable/create', [ReceivableController::class, 'create'])->name('receivable.create');
+        Route::post('/receivable',       [ReceivableController::class, 'store'])->name('receivable.store');
 
         // Trash
         Route::get('/trash',                [FinancialController::class, 'trash'])->name('trash');
@@ -144,89 +145,84 @@ Route::middleware(['auth.custom', 'verified'])->group(function () {
         Route::patch('/{id}/reject',       [FinancialController::class, 'reject'])->name('reject');
         Route::patch('/{id}/mark-as-paid', [FinancialController::class, 'markAsPaid'])->name('mark-as-paid');
     });
+    // ── Administration ────────────────────────────────────────────────────────
+    // All admin routes are permission-based.
+    // Controllers enforce fine-grained access via hasPermission() with a
+    // SysAdmin bypass (role level === 1). No route-level role middleware needed.
+    Route::prefix('admin')->name('admin.')->group(function () {
 
-    // ── Administration — System Administrator only ─────────────────────────────
-    Route::middleware('role:System Administrator')
-        ->prefix('admin')
-        ->name('admin.')
-        ->group(function () {
+        // Users — permission-based (controller enforces users.*)
+        Route::prefix('users')->name('users.')->group(function () {
+            Route::get('/',                        [AdminController::class, 'users'])->name('index');
+            Route::get('/create',                  [AdminController::class, 'createUser'])->name('create');
+            Route::post('/',                       [AdminController::class, 'storeUser'])->name('store');
+            Route::get('/{id}/edit',               [AdminController::class, 'editUser'])->name('edit');
+            Route::put('/{id}',                    [AdminController::class, 'updateUser'])->name('update');
+            Route::delete('/{id}',                 [AdminController::class, 'destroyUser'])->name('destroy');
+            Route::post('/{id}/reset-password',    [AdminController::class, 'resetPassword'])->name('reset-password');
+            Route::post('/{id}/send-verification', [AdminController::class, 'sendVerificationEmail'])->name('send-verification');
+            Route::post('/{id}/verify-manual',     [AdminController::class, 'verifyEmailManually'])->name('verify-manual');
+            Route::post('/{id}/restore',           [AdminController::class, 'restoreUser'])->name('restore');
+            Route::delete('/{id}/force-delete',    [AdminController::class, 'forceDeleteUser'])->name('force-delete');
+        });
 
-            // Users
-            Route::prefix('users')->name('users.')->group(function () {
-                Route::get('/',                        [AdminController::class, 'users'])->name('index');
-                Route::get('/create',                  [AdminController::class, 'createUser'])->name('create');
-                Route::post('/',                       [AdminController::class, 'storeUser'])->name('store');
-                Route::get('/{id}/edit',               [AdminController::class, 'editUser'])->name('edit');
-                Route::put('/{id}',                    [AdminController::class, 'updateUser'])->name('update');
-                Route::delete('/{id}',                 [AdminController::class, 'destroyUser'])->name('destroy');
-                Route::post('/{id}/reset-password',    [AdminController::class, 'resetPassword'])->name('reset-password');
-                Route::post('/{id}/send-verification', [AdminController::class, 'sendVerificationEmail'])->name('send-verification');
-                Route::post('/{id}/verify-manual',     [AdminController::class, 'verifyEmailManually'])->name('verify-manual');
-                Route::post('/{id}/restore',           [AdminController::class, 'restoreUser'])->name('restore');
-                Route::delete('/{id}/force-delete',    [AdminController::class, 'forceDeleteUser'])->name('force-delete');
-            });
+        // Roles — permission-based (controller enforces roles.*)
+        Route::prefix('roles')->name('roles.')->group(function () {
+            Route::get('/',          [AdminController::class, 'roles'])->name('index');
+            Route::get('/create',    [AdminController::class, 'createRole'])->name('create');
+            Route::post('/',         [AdminController::class, 'storeRole'])->name('store');
+            Route::get('/{id}/edit', [AdminController::class, 'editRole'])->name('edit');
+            Route::put('/{id}',      [AdminController::class, 'updateRole'])->name('update');
+            Route::delete('/{id}',   [AdminController::class, 'destroyRole'])->name('destroy');
+            Route::patch('/{role}/toggle-visibility', [AdminController::class, 'toggleRoleVisibility'])->name('toggle-visibility');
+            Route::post('/{id}/restore',        [AdminController::class, 'restoreRole'])->name('restore');
+            Route::delete('/{id}/force-delete', [AdminController::class, 'forceDeleteRole'])->name('force-delete');
+        });
 
-            // Roles
-            Route::prefix('roles')->name('roles.')->group(function () {
-                Route::get('/',          [AdminController::class, 'roles'])->name('index');
-                Route::get('/create',    [AdminController::class, 'createRole'])->name('create');
-                Route::post('/',         [AdminController::class, 'storeRole'])->name('store');
-                Route::get('/{id}/edit', [AdminController::class, 'editRole'])->name('edit');
-                Route::put('/{id}',      [AdminController::class, 'updateRole'])->name('update');
-                Route::delete('/{id}',   [AdminController::class, 'destroyRole'])->name('destroy');
-                Route::patch('/{role}/toggle-visibility', [AdminController::class, 'toggleRoleVisibility'])
-                    ->name('toggle-visibility');
-                // FIX: restore and forceDelete routes were missing — AdminController
-                // has both methods but they had no corresponding routes defined.
-                Route::post('/{id}/restore',        [AdminController::class, 'restoreRole'])->name('restore');
-                Route::delete('/{id}/force-delete', [AdminController::class, 'forceDeleteRole'])->name('force-delete');
-            });
+        // Permissions — permission-based (controller enforces permissions.*)
+        Route::prefix('permissions')->name('permissions.')->group(function () {
+            Route::get('/',       [PermissionController::class, 'index'])->name('index');
+            Route::put('/{role}', [PermissionController::class, 'update'])->name('update');
+        });
 
-            // Permissions
-            Route::prefix('permissions')->name('permissions.')->group(function () {
-                Route::get('/',       [PermissionController::class, 'index'])->name('index');
-                Route::put('/{role}', [PermissionController::class, 'update'])->name('update');
-            });
+        // Document Categories — permission-based (controller enforces categories.*)
+        Route::prefix('document-categories')->name('document-categories.')->group(function () {
+            Route::get('/',                        [DocumentCategoryController::class, 'index'])->name('index');
+            Route::get('/create',                  [DocumentCategoryController::class, 'create'])->name('create');
+            Route::post('/',                       [DocumentCategoryController::class, 'store'])->name('store');
+            Route::get('/{documentCategory}/edit', [DocumentCategoryController::class, 'edit'])->name('edit');
+            Route::put('/{documentCategory}',      [DocumentCategoryController::class, 'update'])->name('update');
+            Route::delete('/{documentCategory}',   [DocumentCategoryController::class, 'destroy'])->name('destroy');
+        });
 
-            // Document Categories
-            Route::prefix('document-categories')->name('document-categories.')->group(function () {
-                Route::get('/',                        [DocumentCategoryController::class, 'index'])->name('index');
-                Route::get('/create',                  [DocumentCategoryController::class, 'create'])->name('create');
-                Route::post('/',                       [DocumentCategoryController::class, 'store'])->name('store');
-                Route::get('/{documentCategory}/edit', [DocumentCategoryController::class, 'edit'])->name('edit');
-                Route::put('/{documentCategory}',      [DocumentCategoryController::class, 'update'])->name('update');
-                Route::delete('/{documentCategory}',   [DocumentCategoryController::class, 'destroy'])->name('destroy');
-            });
+        // Document Backups — permission-based (controller enforces backups.*)
+        Route::prefix('document-backups')->name('document-backups.')->group(function () {
+            Route::get('/',                      [DocumentBackupController::class, 'index'])->name('index');
+            Route::post('/create',               [DocumentBackupController::class, 'create'])->name('create');
+            Route::get('/download/{filename}',   [DocumentBackupController::class, 'download'])->name('download')->where('filename', '.*');
+            Route::post('/restore',              [DocumentBackupController::class, 'restore'])->name('restore');
+            Route::delete('/destroy/{filename}', [DocumentBackupController::class, 'destroy'])->name('destroy')->where('filename', '.*');
+        });
 
-            // Document Backups
-            Route::prefix('document-backups')->name('document-backups.')->group(function () {
-                Route::get('/',                      [DocumentBackupController::class, 'index'])->name('index');
-                Route::post('/create',               [DocumentBackupController::class, 'create'])->name('create');
-                Route::get('/download/{filename}',   [DocumentBackupController::class, 'download'])->name('download')->where('filename', '.*');
-                Route::post('/restore',              [DocumentBackupController::class, 'restore'])->name('restore');
-                Route::delete('/destroy/{filename}', [DocumentBackupController::class, 'destroy'])->name('destroy')->where('filename', '.*');
-            });
+        // Financial Categories — permission-based (controller enforces financial_categories.*)
+        Route::prefix('financial-categories')->name('financial-categories.')->group(function () {
+            Route::get('/',                                    [FinancialCategoryController::class, 'index'])->name('index');
+            Route::get('/create',                              [FinancialCategoryController::class, 'create'])->name('create');
+            Route::post('/',                                   [FinancialCategoryController::class, 'store'])->name('store');
+            Route::get('/{financialCategory}/edit',            [FinancialCategoryController::class, 'edit'])->name('edit');
+            Route::put('/{financialCategory}',                 [FinancialCategoryController::class, 'update'])->name('update');
+            Route::patch('/{financialCategory}/toggle-active', [FinancialCategoryController::class, 'toggleActive'])->name('toggleActive');
+            Route::delete('/{financialCategory}',              [FinancialCategoryController::class, 'destroy'])->name('destroy');
+            Route::patch('/restore/{id}',                      [FinancialCategoryController::class, 'restore'])->name('restore');
+            Route::delete('/force-delete/{id}',                [FinancialCategoryController::class, 'forceDelete'])->name('forceDelete');
+        });
 
-            // Financial Categories
-            Route::prefix('financial-categories')->name('financial-categories.')->group(function () {
-                Route::get('/',                                    [FinancialCategoryController::class, 'index'])->name('index');
-                Route::get('/create',                              [FinancialCategoryController::class, 'create'])->name('create');
-                Route::post('/',                                   [FinancialCategoryController::class, 'store'])->name('store');
-                Route::get('/{financialCategory}/edit',            [FinancialCategoryController::class, 'edit'])->name('edit');
-                Route::put('/{financialCategory}',                 [FinancialCategoryController::class, 'update'])->name('update');
-                Route::patch('/{financialCategory}/toggle-active', [FinancialCategoryController::class, 'toggleActive'])->name('toggleActive');
-                Route::delete('/{financialCategory}',              [FinancialCategoryController::class, 'destroy'])->name('destroy');
-                Route::patch('/restore/{id}',                      [FinancialCategoryController::class, 'restore'])->name('restore');
-                Route::delete('/force-delete/{id}',                [FinancialCategoryController::class, 'forceDelete'])->name('forceDelete');
-            });
+        // Audit Logs — permission-based (controller enforces audit.*)
+        Route::prefix('auditlogs')->name('auditlogs.')->group(function () {
+            Route::get('/', [AuditLogController::class, 'index'])->name('index');
+        });
 
-            // Audit Logs
-            Route::prefix('auditlogs')->name('auditlogs.')->group(function () {
-                Route::get('/', [AuditLogController::class, 'index'])->name('index');
-            });
-
-        }); // end admin group
-
+    }); // end admin group
     // ── Profile ───────────────────────────────────────────────────────────────
     Route::middleware('role:System Administrator,Club Adviser,Treasurer,Auditor')
         ->prefix('profile')

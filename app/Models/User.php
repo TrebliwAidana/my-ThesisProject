@@ -177,22 +177,17 @@ class User extends Authenticatable implements MustVerifyEmail
 
         if (!$this->role) return false;
 
-        // FIX: cast to int before strict comparison to handle DB returning string "1"
+        // SysAdmin bypass — level 1 gets everything
         if ((int) ($this->role->level ?? 999) === 1) {
             return true;
         }
 
-        $cacheKey = "user_perms_{$this->id}";
-
-        $permissions = cache()->remember($cacheKey, now()->addMinutes(5), function () {
-            $perms = $this->role?->load('permissions')->permissions ?? collect();
-            return $perms->pluck('slug')->toArray();
-        });
+        $permissions = $this->getCachedPermissions();
 
         // 1. Direct match
         if (in_array($slug, $permissions)) return true;
 
-        // 2. Manage fallback — if role has members.manage, it passes any members.* check
+        // 2. Manage fallback — if role has module.manage, passes any module.* check
         $parts = explode('.', $slug);
         if (count($parts) === 2) {
             $manageSlug = $parts[0] . '.manage';
@@ -200,6 +195,33 @@ class User extends Authenticatable implements MustVerifyEmail
         }
 
         return false;
+    }
+
+    /**
+     * Get cached permission slugs for this user's role.
+     * Keyed by role_id so all users sharing a role share one cache entry —
+     * and invalidation only needs to happen once per role change.
+     */
+    private function getCachedPermissions(): array
+    {
+        $cacheKey = "role_perms_{$this->role_id}";
+
+        return cache()->remember($cacheKey, now()->addMinutes(30), function () {
+            $role = Role::with('permissions')->find($this->role_id);
+
+            if (!$role) return [];
+
+            return $role->permissions->pluck('slug')->toArray();
+        });
+    }
+
+    /**
+     * Clear cached permissions for this user's role.
+     * Call after any role/permission change.
+     */
+    public function clearPermissionCache(): void
+    {
+        cache()->forget("role_perms_{$this->role_id}");
     }
 
     public function canDo(string $module, string $action): bool
@@ -218,22 +240,16 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     /**
-     * Clear cached permissions — call after any role/permission change.
+     * Check if user can access a module — uses hasPermission for consistency.
      */
-    public function clearPermissionCache(): void
-    {
-        cache()->forget("user_perms_{$this->id}");
-    }
-
     public function canAccessModule(string $module): bool
     {
+        // SysAdmin bypass
         if ($this->hasRole('System Administrator') || $this->hasRole('Supreme Admin')) {
             return true;
         }
 
-        return $this->permissions()
-            ->whereHas('module', fn($q) => $q->where('name', $module))
-            ->exists();
+        return $this->hasPermission("{$module}.view");
     }
 
     // =========================================================================

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Document;
 use App\Models\DocumentCategory;
 use App\Models\DocumentVersion;
+use App\Models\FinancialTransaction;
 use App\Models\RestoredBackup;
 use App\Services\AuditLogger;
 use Carbon\Carbon;
@@ -36,13 +37,8 @@ class DocumentBackupController extends Controller
     // -------------------------------------------------------------------------
     public function index()
     {
-        $this->authorizeAccess();
+        $this->authorizeAccess('backups.view');
 
-        // FIX: Flysystem v3 (Laravel 10+) returns a DirectoryListing of
-        // League\Flysystem\FileAttributes objects, NOT plain arrays.
-        // We must call ->toArray() on the listing and then access object
-        // properties via methods, OR just use Storage::files() + individual
-        // stat calls. Using files() + stat is the safest cross-version approach.
         $files = Storage::disk($this->backupDisk)->files($this->backupFolder);
 
         $backups = [];
@@ -58,18 +54,18 @@ class DocumentBackupController extends Controller
             [$categorySlug, $filetypeSlug] = $this->parseBackupSlug($basename);
 
             $backups[] = [
-                'filename'      => basename($file),
-                'path'          => $file,
-                'size'          => $this->formatBytes($sizeBytes),
-                'size_bytes'    => $sizeBytes,
-                'category_slug' => $categorySlug,
-                'filetype_slug' => $filetypeSlug,
-                'created_at'    => Carbon::createFromTimestamp($modified)->format('M d, Y h:i A'),
-                'created_ts'    => $modified,
+                'filename'           => basename($file),
+                'path'               => $file,
+                'size'               => $this->formatBytes($sizeBytes),
+                'size_bytes'         => $sizeBytes,
+                'category_slug'      => $categorySlug,
+                'filetype_slug'      => $filetypeSlug,
+                'has_financial_data' => $this->backupHasFinancialData($file),
+                'created_at'         => Carbon::createFromTimestamp($modified)->format('M d, Y h:i A'),
+                'created_ts'         => $modified,
             ];
         }
 
-        // Sort newest first.
         usort($backups, fn ($a, $b) => $b['created_ts'] - $a['created_ts']);
 
         $totalBytes = array_sum(array_column($backups, 'size_bytes'));
@@ -91,17 +87,22 @@ class DocumentBackupController extends Controller
     // -------------------------------------------------------------------------
     public function create(Request $request)
     {
-        $this->authorizeAccess();
+        $this->authorizeAccess('backups.create');
 
-        // Always respond with JSON when called via AJAX so the blade
-        // JS never receives an HTML error page that breaks res.json().
         $isAjax = $request->ajax() || $request->wantsJson();
 
         try {
             $request->validate([
-                'category_ids'   => 'nullable|array',
-                'category_ids.*' => 'exists:document_categories,id',
-                'file_type'      => 'nullable|in:' . implode(',', array_keys($this->fileTypeGroups)),
+                'category_ids'        => 'nullable|array',
+                'category_ids.*'      => 'exists:document_categories,id',
+                'file_type'           => 'nullable|in:' . implode(',', array_keys($this->fileTypeGroups)),
+                'include_financials'  => 'nullable|boolean',
+                'financial_status'    => 'nullable|array',
+                'financial_status.*'  => 'in:pending,audited,approved,rejected,paid',
+                'financial_type'      => 'nullable|array',
+                'financial_type.*'    => 'in:income,expense,receivable',
+                'financial_date_from' => 'nullable|date',
+                'financial_date_to'   => 'nullable|date|after_or_equal:financial_date_from',
             ]);
         } catch (\Throwable $e) {
             return $isAjax
@@ -112,7 +113,7 @@ class DocumentBackupController extends Controller
         $startTime = microtime(true);
 
         // ------------------------------------------------------------------
-        // Resolve filters
+        // Resolve document filters
         // ------------------------------------------------------------------
         $categoryIds  = array_values(array_filter((array) $request->input('category_ids', [])));
         $fileTypeKey  = $request->input('file_type', 'all');
@@ -131,14 +132,21 @@ class DocumentBackupController extends Controller
         }
 
         // ------------------------------------------------------------------
+        // Resolve financial filters
+        // ------------------------------------------------------------------
+        $includeFinancials  = $request->boolean('include_financials', true);
+        $financialStatuses  = $request->input('financial_status', []);
+        $financialTypes     = $request->input('financial_type', []);
+        $financialDateFrom  = $request->input('financial_date_from');
+        $financialDateTo    = $request->input('financial_date_to');
+
+        // ------------------------------------------------------------------
         // Build tmp ZIP
         // ------------------------------------------------------------------
         $timestamp = now()->format('Y-m-d_His');
         $zipName   = "doc_backup__{$categorySlug}__{$fileTypeKey}__{$timestamp}.zip";
         $tmpPath   = sys_get_temp_dir() . DIRECTORY_SEPARATOR . $zipName;
 
-        // FIX: wrap the entire archive build in try/catch so any failure
-        // returns a proper JSON error instead of a 500 HTML page.
         try {
             $zip = new ZipArchive;
             if ($zip->open($tmpPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
@@ -149,7 +157,7 @@ class DocumentBackupController extends Controller
             $allCategories = DocumentCategory::all(['id', 'name', 'description', 'is_active'])->toArray();
             $zip->addFromString('categories.json', json_encode($allCategories, JSON_PRETTY_PRINT));
 
-            // 2. Documents + versions (2 queries total via eager load)
+            // 2. Documents + versions
             $documents = Document::withTrashed()
                 ->with(['versions' => fn ($q) => $q->select([
                     'id', 'document_id', 'version_number', 'file_path',
@@ -182,23 +190,82 @@ class DocumentBackupController extends Controller
                 ])
                 ->all();
 
-            // 3. Manifest JSON
+            // 3. Financial transactions JSON
+            $financialData     = [];
+            $financialCount    = 0;
+            $financialSnapshot = [
+                'included'    => false,
+                'statuses'    => [],
+                'types'       => [],
+                'date_from'   => null,
+                'date_to'     => null,
+                'record_count'=> 0,
+            ];
+
+            if ($includeFinancials) {
+                $ftQuery = FinancialTransaction::withTrashed()
+                    ->with(['documents:id,title,description,document_category_id'])
+                    ->when(!empty($financialStatuses), fn ($q) => $q->whereIn('status', $financialStatuses))
+                    ->when(!empty($financialTypes),    fn ($q) => $q->whereIn('type', $financialTypes))
+                    ->when($financialDateFrom,         fn ($q) => $q->whereDate('transaction_date', '>=', $financialDateFrom))
+                    ->when($financialDateTo,           fn ($q) => $q->whereDate('transaction_date', '<=', $financialDateTo));
+
+                $financialData = $ftQuery->get()->map(fn ($ft) => [
+                    'id'               => $ft->id,
+                    'type'             => $ft->type,
+                    'user_id'          => $ft->user_id,
+                    'status'           => $ft->status,
+                    'description'      => $ft->description,
+                    'amount'           => $ft->amount,
+                    'category'         => $ft->category,
+                    'transaction_date' => $ft->transaction_date,
+                    'notes'            => $ft->notes,
+                    'approved_by'      => $ft->approved_by,
+                    'approved_at'      => $ft->approved_at,
+                    'audited_by'       => $ft->audited_by,
+                    'audited_at'       => $ft->audited_at,
+                    'customer_name'    => $ft->customer_name,
+                    'due_date'         => $ft->due_date,
+                    'deleted_at'       => $ft->deleted_at,
+                    'created_at'       => $ft->created_at,
+                    'updated_at'       => $ft->updated_at,
+                    'document_ids'     => $ft->documents->pluck('id')->toArray(),
+                ])->all();
+
+                $financialCount = count($financialData);
+
+                $financialSnapshot = [
+                    'included'     => true,
+                    'statuses'     => $financialStatuses,
+                    'types'        => $financialTypes,
+                    'date_from'    => $financialDateFrom,
+                    'date_to'      => $financialDateTo,
+                    'record_count' => $financialCount,
+                ];
+
+                $zip->addFromString(
+                    'financial_transactions.json',
+                    json_encode($financialData, JSON_PRETTY_PRINT)
+                );
+            }
+
+            // 4. Manifest JSON
             $zip->addFromString('manifest.json', json_encode([
-                'backup_version' => '2.0',
-                'created_at'     => now()->toISOString(),
-                'created_by'     => Auth::user()->full_name ?? Auth::user()->email,
-                'scope'          => [
+                'backup_version'  => '3.0',
+                'created_at'      => now()->toISOString(),
+                'created_by'      => Auth::user()->full_name ?? Auth::user()->email,
+                'scope'           => [
                     'category_ids'   => $categoryIds,
                     'category_label' => $categoryLabel,
                     'file_type'      => $fileTypeKey,
                     'allowed_mimes'  => $allowedMimes,
                 ],
-                'document_count' => count($documents),
-                'documents'      => $documents,
+                'financial'       => $financialSnapshot,
+                'document_count'  => count($documents),
+                'documents'       => $documents,
             ], JSON_PRETTY_PRINT));
 
-            // 4. Physical files
-            // FIX: initialize $tempFiles before the loop so it always exists.
+            // 5. Physical document files
             $tempFiles = [];
             $fileCount = 0;
 
@@ -210,19 +277,17 @@ class DocumentBackupController extends Controller
                         continue;
                     }
 
-                    // FIX: use readStream + temp file instead of get() to avoid
-                    // loading the entire file into a PHP string (OOM on large files).
                     $readStream = Storage::disk($this->backupDisk)->readStream($filePath);
                     if (!is_resource($readStream)) {
                         continue;
                     }
 
-                    $tmpFile  = tempnam(sys_get_temp_dir(), 'bkf_');
-                    $dest     = fopen($tmpFile, 'wb');
+                    $tmpFile = tempnam(sys_get_temp_dir(), 'bkf_');
+                    $dest    = fopen($tmpFile, 'wb');
 
                     if ($dest === false) {
                         fclose($readStream);
-                        continue; // skip this file, don't abort the whole backup
+                        continue;
                     }
 
                     stream_copy_to_stream($readStream, $dest);
@@ -235,15 +300,13 @@ class DocumentBackupController extends Controller
                 }
             }
 
-            // Seal the ZIP before streaming it to storage.
             $zip->close();
 
-            // Cleanup per-file temp files after ZIP is sealed.
             foreach ($tempFiles as $tmp) {
                 @unlink($tmp);
             }
 
-            // 5. Stream sealed ZIP to permanent storage
+            // 6. Stream sealed ZIP to permanent storage
             $destination = "{$this->backupFolder}/{$zipName}";
             $writeStream = @fopen($tmpPath, 'rb');
 
@@ -260,7 +323,6 @@ class DocumentBackupController extends Controller
             @unlink($tmpPath);
 
         } catch (\Throwable $e) {
-            // Clean up any open temp files on failure.
             foreach ($tempFiles ?? [] as $tmp) {
                 @unlink($tmp);
             }
@@ -283,28 +345,30 @@ class DocumentBackupController extends Controller
         AuditLogger::log(
             'backup_created',
             null,
-            "Document backup created: {$zipName} (category: {$categoryLabel}, type: {$fileTypeKey}, {$fileCount} files, " . count($documents) . ' documents)',
+            "Document backup created: {$zipName} (category: {$categoryLabel}, type: {$fileTypeKey}, {$fileCount} files, " . count($documents) . ' documents, ' . $financialCount . ' financial records)',
             [],
             [
                 'filename'        => $zipName,
                 'category_ids'    => $categoryIds,
                 'category_label'  => $categoryLabel,
                 'file_type'       => $fileTypeKey,
+                'financial'       => $financialSnapshot,
                 'elapsed_seconds' => $elapsed,
             ]
         );
 
         if ($isAjax) {
             return response()->json([
-                'success'  => true,
-                'filename' => $zipName,
-                'elapsed'  => $elapsed,
-                'message'  => "Backup created in {$elapsed}s — {$fileCount} files from \"{$categoryLabel}\" ({$fileTypeKey}).",
+                'success'          => true,
+                'filename'         => $zipName,
+                'elapsed'          => $elapsed,
+                'financial_count'  => $financialCount,
+                'message'          => "Backup created in {$elapsed}s — {$fileCount} files, {$financialCount} financial records from \"{$categoryLabel}\" ({$fileTypeKey}).",
             ]);
         }
 
         return redirect()->route('admin.document-backups.index')
-            ->with('success', "Backup created: {$zipName} ({$fileCount} files · category: {$categoryLabel} · type: {$fileTypeKey})");
+            ->with('success', "Backup created: {$zipName} ({$fileCount} files · {$financialCount} financial records · category: {$categoryLabel} · type: {$fileTypeKey})");
     }
 
     // -------------------------------------------------------------------------
@@ -312,7 +376,7 @@ class DocumentBackupController extends Controller
     // -------------------------------------------------------------------------
     public function download(string $filename)
     {
-        $this->authorizeAccess();
+        $this->authorizeAccess('backups.view');
 
         $filename = basename($filename);
         $path     = "{$this->backupFolder}/{$filename}";
@@ -331,12 +395,14 @@ class DocumentBackupController extends Controller
     // -------------------------------------------------------------------------
     public function restore(Request $request)
     {
-        $this->authorizeAccess();
+        $this->authorizeAccess('backups.restore');
 
         $request->validate([
-            'backup_file'   => 'required|file|mimes:zip|max:512000',
-            'mode'          => 'required|in:merge,skip',
-            'force_restore' => 'sometimes|boolean',
+            'backup_file'              => 'required|file|mimes:zip|max:512000',
+            'mode'                     => 'required|in:merge,skip',
+            'force_restore'            => 'sometimes|boolean',
+            'restore_financials'       => 'sometimes|boolean',
+            'financial_restore_status' => 'sometimes|in:as_is,force_pending',
         ]);
 
         $uploadedFile = $request->file('backup_file');
@@ -378,6 +444,12 @@ class DocumentBackupController extends Controller
             $categories     = $categoriesJson
                 ? json_decode($categoriesJson, true, 512, JSON_THROW_ON_ERROR)
                 : [];
+
+            $financialJson = $zip->getFromName('financial_transactions.json');
+            $financialRows = ($financialJson && $request->boolean('restore_financials', true))
+                ? json_decode($financialJson, true, 512, JSON_THROW_ON_ERROR)
+                : [];
+
         } catch (\Throwable $e) {
             $zip->close();
             return back()->with('error', $e->getMessage());
@@ -385,11 +457,31 @@ class DocumentBackupController extends Controller
 
         $scope     = $manifest['scope'] ?? ['category_label' => 'All', 'file_type' => 'all'];
         $documents = $manifest['documents'];
-        $stats     = ['categories' => 0, 'documents' => 0, 'versions' => 0, 'files' => 0, 'skipped' => 0];
+
+        /*
+         | FIX: Changed default from 'force_pending' to 'as_is'.
+         | Backups are created from already-audited and approved transactions.
+         | Forcing them back to pending on restore means someone has to
+         | manually re-approve every record after every restore — unnecessary
+         | extra work when the data was already verified before the backup.
+         | Restoring as_is immediately reflects correct totals in the chart.
+         */
+        $financialRestoreStatus = $request->input('financial_restore_status', 'as_is');
+
+        $stats = [
+            'categories'  => 0,
+            'documents'   => 0,
+            'versions'    => 0,
+            'files'       => 0,
+            'skipped'     => 0,
+            'financial'   => 0,
+            'fin_skipped' => 0,
+        ];
 
         DB::beginTransaction();
+        DB::statement('SET FOREIGN_KEY_CHECKS=0;');
         try {
-            // Step 1 – Categories (single query)
+            // ── Step 1: Categories ────────────────────────────────────────
             $catNames     = array_filter(array_column($categories, 'name'));
             $existingCats = DocumentCategory::whereIn('name', $catNames)
                                             ->get(['id', 'name'])
@@ -398,9 +490,8 @@ class DocumentBackupController extends Controller
             $categoryIdMap = [];
 
             foreach ($categories as $cat) {
-                if (empty($cat['name'])) {
-                    continue;
-                }
+                if (empty($cat['name'])) continue;
+
                 if ($existingCats->has($cat['name'])) {
                     $categoryIdMap[$cat['id']] = $existingCats[$cat['name']]->id;
                 } else {
@@ -415,14 +506,14 @@ class DocumentBackupController extends Controller
                 }
             }
 
-            // Step 2 – Bulk-check documents (single query)
+            // ── Step 2: Bulk-check documents ──────────────────────────────
             $backupDocIds = array_column($documents, 'id');
             $existingDocs = Document::withTrashed()
                                     ->whereIn('id', $backupDocIds)
                                     ->get(['id', 'title', 'owner_id', 'current_version_id'])
                                     ->keyBy('id');
 
-            // Step 3 – Bulk-check versions (single query)
+            // ── Step 3: Bulk-check versions ───────────────────────────────
             $allVersionIds = [];
             foreach ($documents as $doc) {
                 foreach ($doc['versions'] as $v) {
@@ -435,7 +526,7 @@ class DocumentBackupController extends Controller
                                                  ->flip()
                                                  ->all();
 
-            // Step 4 – Restore
+            // ── Step 4: Restore documents ─────────────────────────────────
             foreach ($documents as $docData) {
                 $alreadyExists = $existingDocs->has($docData['id']);
 
@@ -508,7 +599,6 @@ class DocumentBackupController extends Controller
 
                     $stats['versions']++;
 
-                    // Stream from ZIP — no full-file string in memory.
                     $stream = $zip->getStream("files/{$versionData['file_path']}");
                     if ($stream !== false) {
                         Storage::disk($this->backupDisk)->writeStream(
@@ -529,6 +619,78 @@ class DocumentBackupController extends Controller
                 }
             }
 
+            // ── Step 5: Restore financial transactions ────────────────────
+            if (!empty($financialRows)) {
+                $backupFtIds   = array_column($financialRows, 'id');
+                $existingFtIds = FinancialTransaction::withTrashed()
+                    ->whereIn('id', $backupFtIds)
+                    ->pluck('id')
+                    ->flip()
+                    ->all();
+
+                foreach ($financialRows as $ftData) {
+                    $ftExists = isset($existingFtIds[$ftData['id']]);
+
+                    if ($ftExists && $request->input('mode') === 'skip') {
+                        $stats['fin_skipped']++;
+                        continue;
+                    }
+
+                    /*
+                     | 'as_is'         → restore with original status (approved, paid, etc.)
+                     |                   so the chart immediately reflects correct totals.
+                     | 'force_pending' → reset to pending so records go through
+                     |                   audit/approve workflow again.
+                     */
+                    $restoredStatus = ($financialRestoreStatus === 'force_pending')
+                        ? 'pending'
+                        : $ftData['status'];
+
+                    $ftPayload = [
+                        'type'             => $ftData['type'],
+                        'user_id'          => $ftData['user_id'],
+                        'status'           => $restoredStatus,
+                        'description'      => $ftData['description'],
+                        'amount'           => $ftData['amount'],
+                        'category'         => $ftData['category'],
+                        'transaction_date' => $ftData['transaction_date'],
+                        'notes'            => $ftData['notes'],
+                        'customer_name'    => $ftData['customer_name'] ?? null,
+                        'due_date'         => $ftData['due_date'] ?? null,
+                        'deleted_at'       => $ftData['deleted_at'] ?? null,
+                        'approved_by'      => $restoredStatus === 'pending' ? null : ($ftData['approved_by'] ?? null),
+                        'approved_at'      => $restoredStatus === 'pending' ? null : ($ftData['approved_at'] ?? null),
+                        'audited_by'       => $restoredStatus === 'pending' ? null : ($ftData['audited_by'] ?? null),
+                        'audited_at'       => $restoredStatus === 'pending' ? null : ($ftData['audited_at'] ?? null),
+                    ];
+
+                    if ($ftExists) {
+                        FinancialTransaction::withTrashed()
+                            ->where('id', $ftData['id'])
+                            ->update($ftPayload);
+                        $ft = FinancialTransaction::withTrashed()->find($ftData['id']);
+                    } else {
+                        $ft = FinancialTransaction::forceCreate(
+                            array_merge(['id' => $ftData['id']], $ftPayload)
+                        );
+                    }
+
+                    if (!empty($ftData['document_ids'])) {
+                        $validDocIds = Document::withTrashed()
+                            ->whereIn('id', $ftData['document_ids'])
+                            ->pluck('id')
+                            ->all();
+
+                        if (!empty($validDocIds)) {
+                            $ft->documents()->syncWithoutDetaching($validDocIds);
+                        }
+                    }
+
+                    $stats['financial']++;
+                }
+            }
+
+            // ── Step 6: Record the restore ────────────────────────────────
             RestoredBackup::updateOrCreate(
                 ['backup_filename' => $filename],
                 [
@@ -538,25 +700,29 @@ class DocumentBackupController extends Controller
                 ]
             );
 
+            DB::statement('SET FOREIGN_KEY_CHECKS=1;');
             DB::commit();
             $zip->close();
 
         } catch (\Throwable $e) {
+            DB::statement('SET FOREIGN_KEY_CHECKS=1;');
             DB::rollBack();
             $zip->close();
+
             \Log::error('Backup restore failed', [
                 'error' => $e->getMessage(),
                 'file'  => $e->getFile(),
                 'line'  => $e->getLine(),
                 'trace' => $e->getTraceAsString(),
             ]);
+
             return back()->with('error', 'Restore failed: ' . $e->getMessage());
         }
 
         AuditLogger::log(
             'backup_restored',
             null,
-            "Backup restored: {$stats['documents']} documents, {$stats['files']} files, {$stats['skipped']} skipped",
+            "Backup restored: {$stats['documents']} documents, {$stats['files']} files, {$stats['financial']} financial records, {$stats['skipped']} skipped",
             [],
             array_merge($stats, ['scope' => $scope])
         );
@@ -567,7 +733,12 @@ class DocumentBackupController extends Controller
             "{$stats['documents']} documents,",
             "{$stats['versions']} versions,",
             "{$stats['files']} files restored.",
-            $stats['skipped'] ? "{$stats['skipped']} skipped (already exist)." : '',
+            $stats['financial']   ? "{$stats['financial']} financial records restored." : '',
+            $stats['fin_skipped'] ? "{$stats['fin_skipped']} financial records skipped." : '',
+            $stats['skipped']     ? "{$stats['skipped']} documents skipped (already exist)." : '',
+            $financialRestoreStatus === 'force_pending' && $stats['financial'] > 0
+                ? '⚠️ Financial records reset to pending — please re-audit and re-approve.'
+                : ($stats['financial'] > 0 ? '✅ Financial records restored with original status.' : ''),
         ]);
 
         return redirect()->route('admin.document-backups.index')
@@ -579,7 +750,7 @@ class DocumentBackupController extends Controller
     // -------------------------------------------------------------------------
     public function destroy(string $filename)
     {
-        $this->authorizeAccess();
+        $this->authorizeAccess('backups.delete');
 
         $filename = basename($filename);
         $path     = "{$this->backupFolder}/{$filename}";
@@ -598,37 +769,70 @@ class DocumentBackupController extends Controller
     // Helpers
     // -------------------------------------------------------------------------
 
+    /**
+     * Authorize access with a specific permission.
+     * Uses redirect with flash toast instead of raw abort(403)
+     * so the user sees a proper notification instead of an error page.
+     */
+    private function authorizeAccess(string $permission = 'backups.view'): void
+    {
+        if (!Auth::user()->hasPermission($permission)) {
+            if (request()->expectsJson() || request()->ajax()) {
+                abort(403, 'You do not have permission to perform this action.');
+            }
+
+            redirect()->route('dashboard')
+                ->with('error', 'You do not have permission to perform this action.')
+                ->send();
+            exit;
+        }
+    }
+
+    /**
+     * Peek inside a ZIP to check if it contains financial_transactions.json.
+     * Used in index() to show a badge on backups that have financial data.
+     */
+    private function backupHasFinancialData(string $storagePath): bool
+    {
+        $tmpPath = sys_get_temp_dir() . '/' . basename($storagePath);
+
+        try {
+            $stream = Storage::disk($this->backupDisk)->readStream($storagePath);
+            if (!is_resource($stream)) return false;
+
+            $dest = fopen($tmpPath, 'wb');
+            stream_copy_to_stream($stream, $dest);
+            fclose($dest);
+            fclose($stream);
+
+            $zip = new ZipArchive;
+            if ($zip->open($tmpPath) !== true) return false;
+
+            $has = $zip->locateName('financial_transactions.json') !== false;
+            $zip->close();
+
+            return $has;
+        } catch (\Throwable) {
+            return false;
+        } finally {
+            @unlink($tmpPath);
+        }
+    }
+
     private function parseBackupSlug(string $basename): array
     {
-        // v2 format: doc_backup__{categorySlug}__{filetypeSlug}__{date}__{time}
         if (str_contains($basename, '__')) {
             $parts = explode('__', $basename);
             return [$parts[1] ?? 'all', $parts[2] ?? 'all'];
         }
 
-        // v1 legacy fallback
         $parts = explode('_', $basename, 6);
         return [$parts[2] ?? 'all', $parts[3] ?? 'all'];
     }
 
-    private function authorizeAccess(): void
-    {
-        $user = Auth::user();
-
-        if (
-            $user->role->level !== 1
-            && !in_array($user->role->name ?? '', ['System Administrator'], true)
-            && !$user->hasPermission('documents.manage')
-        ) {
-            abort(403);
-        }
-    }
-
     private function formatBytes(int $bytes): string
     {
-        if ($bytes <= 0) {
-            return '0 B';
-        }
+        if ($bytes <= 0) return '0 B';
 
         $units = ['B', 'KB', 'MB', 'GB'];
         $i     = (int) floor(log($bytes, 1024));

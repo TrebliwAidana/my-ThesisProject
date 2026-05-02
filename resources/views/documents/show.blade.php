@@ -381,7 +381,7 @@ html.dark .current-version-badge {
             <div class="info-grid">
                 <div class="info-item">
                     <span class="info-label">Category</span>
-                    <span class="info-value">{{ $document->category ?? '—' }}</span>
+                    <span class="info-value">{{ $document->category->name ?? '—' }}</span>
                 </div>
                 <div class="info-item">
                     <span class="info-label">File Size</span>

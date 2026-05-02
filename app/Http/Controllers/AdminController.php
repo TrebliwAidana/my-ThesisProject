@@ -23,12 +23,14 @@ class AdminController extends Controller
     // ROLES
     // =========================================================================
 
+    public function index(Request $request)
+    {
+        return $this->roles($request);
+    }
+
     public function roles(Request $request)
     {
-        $user = Auth::user();
-        if ((int) $user->role->level !== 1 && ! $user->hasPermission('roles.view')) {
-            abort(403, 'You do not have permission to view roles.');
-        }
+        $this->authorizeRole('view');
 
         $showTrashed = $request->boolean('show_trashed');
         $showHidden  = $request->boolean('show_hidden');
@@ -49,10 +51,7 @@ class AdminController extends Controller
 
     public function createRole()
     {
-        $user = Auth::user();
-        if ((int) $user->role_id !== 1 && ! $user->hasPermission('roles.create')) {
-            abort(403, 'You do not have permission to create roles.');
-        }
+        $this->authorizeRole('create');
 
         $roles = $this->getCachedVisibleRoles();
 
@@ -61,10 +60,7 @@ class AdminController extends Controller
 
     public function editRole(int $id)
     {
-        $user = Auth::user();
-        if ((int) $user->role->level !== 1 && ! $user->hasPermission('roles.edit')) {
-            abort(403, 'You do not have permission to edit roles.');
-        }
+        $this->authorizeRole('edit');
 
         $role = Role::with('permissions')->findOrFail($id);
         if (! $role->is_visible) {
@@ -79,10 +75,7 @@ class AdminController extends Controller
 
     public function storeRole(Request $request)
     {
-        $user = Auth::user();
-        if ((int) $user->role_id !== 1 && ! $user->hasPermission('roles.create')) {
-            abort(403);
-        }
+        $this->authorizeRole('create');
 
         $validated = $request->validate([
             'name'         => ['required', 'string', 'max:100', 'unique:roles,name'],
@@ -123,10 +116,7 @@ class AdminController extends Controller
 
     public function updateRole(Request $request, int $id)
     {
-        $user = Auth::user();
-        if ((int) $user->role->level !== 1 && ! $user->hasPermission('roles.edit')) {
-            abort(403);
-        }
+        $this->authorizeRole('edit');
 
         $role = Role::findOrFail($id);
 
@@ -143,10 +133,6 @@ class AdminController extends Controller
             if ($request->has('permissions')) {
                 $role->permissions()->sync($request->input('permissions', []));
 
-                // FIX: was ->each(fn($u) => cache()->forget(...)) — fired one
-                // cache::forget query per user row (N+1).
-                // pluck('id') loads all IDs in a single query, then we loop
-                // over the plain PHP array — zero additional DB queries.
                 $role->users()
                     ->pluck('id')
                     ->each(fn ($uid) => cache()->forget("user_perms_{$uid}"));
@@ -173,7 +159,6 @@ class AdminController extends Controller
             $role->update($validated);
             $role->permissions()->sync($request->input('permissions', []));
 
-            // FIX: same N+1 elimination as predefined branch above
             $role->users()
                 ->pluck('id')
                 ->each(fn ($uid) => cache()->forget("user_perms_{$uid}"));
@@ -189,10 +174,7 @@ class AdminController extends Controller
 
     public function destroyRole(int $id)
     {
-        $user = Auth::user();
-        if ((int) $user->role->level !== 1 && ! $user->hasPermission('roles.delete')) {
-            abort(403);
-        }
+        $this->authorizeRole('delete');
 
         $role = Role::findOrFail($id);
 
@@ -205,8 +187,6 @@ class AdminController extends Controller
         if ($role->is_predefined) {
             return back()->with('error', '⚠️ Cannot delete a predefined system role.');
         }
-        // Block only if non-trashed (active) users exist.
-        // Soft-deleted users should not prevent a role soft-delete.
         if ($role->users()->exists()) {
             return back()->with('error', '⚠️ Cannot delete a role that has active users assigned to it.');
         }
@@ -225,10 +205,7 @@ class AdminController extends Controller
 
     public function restoreRole(int $id)
     {
-        $user = Auth::user();
-        if ((int) $user->role_id !== 1 && ! $user->hasPermission('roles.delete')) {
-            abort(403);
-        }
+        $this->authorizeRole('delete');
 
         $role = Role::withTrashed()->findOrFail($id);
         $role->restore();
@@ -240,10 +217,7 @@ class AdminController extends Controller
 
     public function forceDeleteRole(int $id)
     {
-        $user = Auth::user();
-        if ((int) $user->role_id !== 1 && ! $user->hasPermission('roles.delete')) {
-            abort(403);
-        }
+        $this->authorizeRole('delete');
 
         $role = Role::withTrashed()->findOrFail($id);
 
@@ -261,15 +235,12 @@ class AdminController extends Controller
 
     public function toggleRoleVisibility(Role $role)
     {
-        $user = Auth::user();
-        if ((int) $user->role->level !== 1 && ! $user->hasPermission('roles.edit')) {
-            abort(403, 'You do not have permission to edit roles.');
-        }
+        $this->authorizeRole('edit');
 
         if ($role->id === 1) {
             return back()->with('error', 'Cannot toggle visibility of System Administrator role.');
         }
-        if ($user->role_id == $role->id && $role->is_visible) {
+        if (Auth::user()->role_id == $role->id && $role->is_visible) {
             return back()->with('error', 'Cannot hide your own current role.');
         }
 
@@ -285,12 +256,14 @@ class AdminController extends Controller
     // USERS
     // =========================================================================
 
+    public function userIndex(Request $request)
+    {
+        return $this->users($request);
+    }
+
     public function users(Request $request)
     {
-        $authUser = Auth::user();
-        if ((int) $authUser->role->level !== 1 && ! $authUser->hasPermission('users.view')) {
-            abort(403, 'You do not have permission to view users.');
-        }
+        $this->authorizeUser('view');
 
         $query = User::with('role:id,name');
 
@@ -340,15 +313,8 @@ class AdminController extends Controller
 
     public function createUser()
     {
-        $authUser = Auth::user();
-        if ((int) $authUser->role->level !== 1 && ! $authUser->hasPermission('users.create')) {
-            abort(403, 'You do not have permission to create users.');
-        }
+        $this->authorizeUser('create');
 
-        // FIX: was get('id', 'name') — PHP treats the second argument as
-        // $perPage (integer), not columns. 'name' was silently ignored and
-        // the returned models had no name attribute.
-        // Now delegates to getCachedOrderedRoles() — see that method's docblock.
         $roles = $this->getCachedOrderedRoles();
 
         return view('admin.users.create', compact('roles'));
@@ -356,10 +322,7 @@ class AdminController extends Controller
 
     public function storeUser(Request $request)
     {
-        $authUser = Auth::user();
-        if ((int) $authUser->role->level !== 1 && ! $authUser->hasPermission('users.create')) {
-            abort(403);
-        }
+        $this->authorizeUser('create');
 
         $validated = $this->validateUserRequest($request);
 
@@ -419,17 +382,9 @@ class AdminController extends Controller
 
     public function editUser(int $id)
     {
-        $authUser = Auth::user();
-        if ((int) $authUser->role->level !== 1 && ! $authUser->hasPermission('users.edit')) {
-            abort(403);
-        }
+        $this->authorizeUser('edit');
 
         $user  = User::findOrFail($id);
-
-        // FIX: was an inline Cache::remember() with get() (all columns), while
-        // createUser() used get('id','name') — both under the same cache key.
-        // Whichever ran first cached a collection with a different column set.
-        // Now both delegate to getCachedOrderedRoles() — one key, one shape.
         $roles = $this->getCachedOrderedRoles();
 
         return view('admin.users.edit', compact('user', 'roles'));
@@ -437,10 +392,7 @@ class AdminController extends Controller
 
     public function updateUser(Request $request, int $id)
     {
-        $authUser = Auth::user();
-        if ((int) $authUser->role->level !== 1 && ! $authUser->hasPermission('users.edit')) {
-            abort(403);
-        }
+        $this->authorizeUser('edit');
 
         $user      = User::findOrFail($id);
         $validated = $this->validateUserRequest($request, $id);
@@ -491,9 +443,6 @@ class AdminController extends Controller
 
         $user->update($data);
 
-        // Invalidate only this user's permission cache — role-level flush
-        // is not needed here because the role's permission set hasn't changed,
-        // only which role this user is assigned to.
         cache()->forget("user_perms_{$user->id}");
 
         return redirect()->route('admin.users.index')
@@ -502,14 +451,11 @@ class AdminController extends Controller
 
     public function destroyUser(int $id)
     {
-        $authUser = Auth::user();
-        if ((int) $authUser->role_id !== 1 && ! $authUser->hasPermission('users.delete')) {
-            abort(403);
-        }
+        $this->authorizeUser('delete');
 
         $user = User::with('role')->findOrFail($id);
 
-        if ($user->id === $authUser->id) {
+        if ($user->id === Auth::id()) {
             return back()->with('error', 'You cannot delete your own account.');
         }
         if ($user->email === 'guest@gmail.com') {
@@ -528,10 +474,7 @@ class AdminController extends Controller
 
     public function resetPassword(int $id)
     {
-        $authUser = Auth::user();
-        if ((int) $authUser->role->level !== 1 && ! $authUser->hasPermission('users.edit')) {
-            abort(403);
-        }
+        $this->authorizeUser('edit');
 
         $user        = User::findOrFail($id);
         $newPassword = Str::random(10);
@@ -544,10 +487,7 @@ class AdminController extends Controller
 
     public function sendVerificationEmail(int $id)
     {
-        $authUser = Auth::user();
-        if ((int) $authUser->role->level !== 1 && ! $authUser->hasPermission('users.edit')) {
-            abort(403);
-        }
+        $this->authorizeUser('edit');
 
         $user = User::findOrFail($id);
 
@@ -566,10 +506,7 @@ class AdminController extends Controller
 
     public function verifyEmailManually(int $id)
     {
-        $authUser = Auth::user();
-        if ((int) $authUser->role->level !== 1 && ! $authUser->hasPermission('users.edit')) {
-            abort(403);
-        }
+        $this->authorizeUser('edit');
 
         $user = User::findOrFail($id);
 
@@ -584,10 +521,7 @@ class AdminController extends Controller
 
     public function restoreUser(int $id)
     {
-        $authUser = Auth::user();
-        if ((int) $authUser->role->level !== 1 && ! $authUser->hasPermission('users.delete')) {
-            abort(403);
-        }
+        $this->authorizeUser('delete');
 
         $user = User::withTrashed()->findOrFail($id);
         $user->restore();
@@ -598,10 +532,7 @@ class AdminController extends Controller
 
     public function forceDeleteUser(int $id)
     {
-        $authUser = Auth::user();
-        if ((int) $authUser->role->level !== 1 && ! $authUser->hasPermission('users.delete')) {
-            abort(403);
-        }
+        $this->authorizeUser('delete');
 
         $user     = User::withTrashed()->findOrFail($id);
         $userName = $user->full_name;
@@ -614,6 +545,48 @@ class AdminController extends Controller
     // =========================================================================
     // Private Helpers
     // =========================================================================
+
+    /**
+     * Authorize access to role management actions.
+     *
+     * SysAdmin (role level === 1) always passes.
+     * All others must hold the matching roles.{action} permission.
+     *
+     * @param  string  $action  view | create | edit | delete
+     */
+    private function authorizeRole(string $action): void
+    {
+        $user = Auth::user();
+
+        if ((int) $user->role->level === 1) {
+            return;
+        }
+
+        if (! $user->hasPermission("roles.{$action}")) {
+            abort(403, "You do not have permission to {$action} roles.");
+        }
+    }
+
+    /**
+     * Authorize access to user management actions.
+     *
+     * SysAdmin (role level === 1) always passes.
+     * All others must hold the matching users.{action} permission.
+     *
+     * @param  string  $action  view | create | edit | delete
+     */
+    private function authorizeUser(string $action): void
+    {
+        $user = Auth::user();
+
+        if ((int) $user->role->level === 1) {
+            return;
+        }
+
+        if (! $user->hasPermission("users.{$action}")) {
+            abort(403, "You do not have permission to {$action} users.");
+        }
+    }
 
     /**
      * Shared validation for store and update.
@@ -714,17 +687,6 @@ class AdminController extends Controller
     /**
      * Visible roles for create/edit user dropdowns — ordered by level.
      * Selects id + name + level so blades can render "Role Name (Level X)".
-     *
-     * FIX (critical): createUser() called get('id', 'name') — PHP interprets the
-     * second argument as the integer $perPage, not a columns array. 'name' was
-     * silently discarded, leaving models with no name attribute and blank dropdowns.
-     *
-     * FIX (cache collision): createUser() and editUser() both used the cache key
-     * 'roles_visible_ordered' but with different column sets. Whichever ran first
-     * wrote an incompatible collection that the other view then consumed silently.
-     *
-     * This single helper owns the key and always fetches ['id', 'name', 'level'].
-     * Returns an Eloquent Collection (not plain array) because blades use -> syntax.
      */
     private function getCachedOrderedRoles(): Collection
     {
@@ -734,32 +696,20 @@ class AdminController extends Controller
             fn () => Role::where('is_visible', true)
                 ->orderBy('level')
                 ->get(['id', 'name', 'level'])
-                ->toArray()  // plain PHP arrays — always safe to serialize
+                ->toArray()
         );
 
-        // Cast to stdClass AFTER retrieval, never inside the closure
         return collect($rows)->map(fn ($r) => (object) $r);
     }
 
     /**
      * Central cache invalidation for all role/permission write paths.
-     *
-     * Clears:
-     *   permissions_all       — full permission list (edit-role UI)
-     *   roles_visible         — filter dropdown in users index / createRole
-     *   roles_visible_ordered — create/edit user role dropdown
-     *
-     * Per-user caches:
-     *   FIX: was ->each(fn($u) => cache()->forget(...)) which fired one extra
-     *   DB query per user (N+1). pluck('id') retrieves all IDs in ONE query;
-     *   we then iterate the plain PHP array with zero additional queries.
-     *   Cache key "user_perms_{id}" matches User::hasPermission() exactly.
      */
     private function flushPermissionCaches(?Role $role = null): void
     {
         Cache::forget('permissions_all');
         Cache::forget('roles_visible');
-        Cache::forget('roles_visible_ordered');  // ← already there, good
+        Cache::forget('roles_visible_ordered');
 
         if ($role) {
             $role->users()
@@ -780,9 +730,9 @@ class AdminController extends Controller
     {
         $allowed = Member::VALID_POSITIONS[$role->id] ?? [];
 
-        if (empty($allowed))                              return null;
-        if (empty($position))                             return false;
-        if (! in_array($position, $allowed, true))        return null;
+        if (empty($allowed))                        return null;
+        if (empty($position))                       return false;
+        if (! in_array($position, $allowed, true))  return null;
 
         return $position;
     }

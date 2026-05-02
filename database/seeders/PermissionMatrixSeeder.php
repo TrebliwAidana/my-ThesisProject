@@ -203,6 +203,15 @@ class PermissionMatrixSeeder extends Seeder
 
             $role->permissions()->sync($ids);
 
+            /*
+             | FIX: The old code cleared "user_perms_{user_id}" per user, which
+             | never matched the key written by User::getCachedPermissions()
+             | ("role_perms_{role_id}"). Permissions are cached per role, so a
+             | single forget per role correctly busts the cache for all users
+             | in that role — with no per-user loop needed.
+             */
+            cache()->forget("role_perms_{$role->id}");
+
             $this->command->line("  {$roleName}: " . count($ids) . ' permissions assigned.');
         }
     }

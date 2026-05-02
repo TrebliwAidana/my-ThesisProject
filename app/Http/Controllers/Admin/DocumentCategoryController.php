@@ -10,10 +10,7 @@ class DocumentCategoryController extends Controller
 {
     public function index()
     {
-        // Permission: view categories
-        if (!auth()->user()->hasPermission('categories.view')) {
-            abort(403, 'You do not have permission to view document categories.');
-        }
+        $this->requirePermission('categories.view');
 
         $categories = DocumentCategory::orderBy('name')->paginate(15);
 
@@ -25,17 +22,14 @@ class DocumentCategoryController extends Controller
 
     public function create()
     {
-        if (!auth()->user()->hasPermission('categories.create')) {
-            abort(403, 'You do not have permission to create document categories.');
-        }
+        $this->requirePermission('categories.create');
+
         return view('admin.document-categories.create');
     }
 
     public function store(Request $request)
     {
-        if (!auth()->user()->hasPermission('categories.create')) {
-            abort(403, 'You do not have permission to create document categories.');
-        }
+        $this->requirePermission('categories.create');
 
         $request->validate([
             'name'        => 'required|string|max:255|unique:document_categories,name',
@@ -55,25 +49,21 @@ class DocumentCategoryController extends Controller
 
     public function show(DocumentCategory $documentCategory)
     {
-        if (!auth()->user()->hasPermission('categories.view')) {
-            abort(403, 'You do not have permission to view document categories.');
-        }
+        $this->requirePermission('categories.view');
+
         return view('admin.document-categories.show', compact('documentCategory'));
     }
 
     public function edit(DocumentCategory $documentCategory)
     {
-        if (!auth()->user()->hasPermission('categories.edit')) {
-            abort(403, 'You do not have permission to edit document categories.');
-        }
+        $this->requirePermission('categories.edit');
+
         return view('admin.document-categories.edit', compact('documentCategory'));
     }
 
     public function update(Request $request, DocumentCategory $documentCategory)
     {
-        if (!auth()->user()->hasPermission('categories.edit')) {
-            abort(403, 'You do not have permission to edit document categories.');
-        }
+        $this->requirePermission('categories.edit');
 
         $request->validate([
             'name'        => 'required|string|max:255|unique:document_categories,name,' . $documentCategory->id,
@@ -93,11 +83,8 @@ class DocumentCategoryController extends Controller
 
     public function destroy(DocumentCategory $documentCategory)
     {
-        if (!auth()->user()->hasPermission('categories.delete')) {
-            abort(403, 'You do not have permission to delete document categories.');
-        }
+        $this->requirePermission('categories.delete');
 
-        // Check if any documents are using this category
         if ($documentCategory->documents()->exists()) {
             $count = $documentCategory->documents()->count();
             return redirect()->route('admin.document-categories.index')

@@ -15,12 +15,7 @@ class AuditLogController extends Controller
 
     public function index(Request $request)
     {
-        $user = Auth::user();
-
-        // Permission check: System Admin bypasses, otherwise requires audit.view
-        if ($user->role->level !== 1 && !$user->hasPermission('audit.view')) {
-            abort(403, 'You do not have permission to view audit logs.');
-        }
+        $this->requirePermission('audit.view');
 
         $query = AuditLog::with('user')->latest();
 

@@ -133,30 +133,19 @@ class PermissionController extends Controller
          | ─────────────────────────────────────────────────────────────────────
          | CACHE INVALIDATION
          | ─────────────────────────────────────────────────────────────────────
-         | CRITICAL: The cache key used here MUST exactly match the key used
-         | inside User::hasPermission(). A mismatch means saved permission
-         | changes are ignored until the cache naturally expires, causing users
-         | to get stale 403s even after being granted access.
+         | FIX: The cache key MUST match the key used inside
+         | User::getCachedPermissions(), which is "role_perms_{role_id}".
          |
-         | Common mismatch example:
-         |   hasPermission() stores  → "user_permissions_{id}"
-         |   This line cleared       → "user_perms_{id}"          ← BUG
+         | The old code used "user_perms_{user_id}" and
+         | "user_permissions_{user_id}" — neither of which matches, so
+         | permission changes were never actually reflected until the cache
+         | naturally expired, causing stale 403s for all affected users.
          |
-         | Check your User model's hasPermission() method and align the key
-         | below to match it exactly. Both patterns are shown — keep only one:
-         |
-         |   Pattern A (short key):  "user_perms_{$u->id}"
-         |   Pattern B (long key):   "user_permissions_{$u->id}"
-         |
-         | If you are still getting 403s after saving permissions, this cache
-         | mismatch is almost certainly the cause.
+         | Permissions are cached per role (not per user), so a single
+         | cache::forget per role is sufficient — no per-user loop needed.
          | ─────────────────────────────────────────────────────────────────────
          */
-        $role->users()->each(function ($u) {
-            // ── Adjust this key to match User::hasPermission() exactly ──
-            cache()->forget("user_perms_{$u->id}");        // Pattern A
-            cache()->forget("user_permissions_{$u->id}");  // Pattern B (belt-and-suspenders)
-        });
+        cache()->forget("role_perms_{$role->id}");
 
         if ($request->expectsJson() || $request->wantsJson()) {
             return response()->json([

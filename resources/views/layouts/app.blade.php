@@ -11,8 +11,8 @@
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 
-    <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.x.x/dist/cdn.min.js"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    {{-- <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.x.x/dist/cdn.min.js"></script> --}}
+    {{-- <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script> --}}
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -499,6 +499,7 @@
     </div>
 
     {{-- Navigation --}}
+    
     <nav class="flex-1 py-3 overflow-y-auto" aria-label="Sidebar">
         @php
             $user = auth()->user();
@@ -524,11 +525,11 @@
             <div x-show="!sidebarCollapsed" class="sidebar-section-label">Main</div>
 
             <a href="{{ route('dashboard') }}"
-               class="sidebar-link {{ $isActive('dashboard') ? 'active' : '' }}"
-               data-nav-link>
+            class="sidebar-link {{ $isActive('dashboard') ? 'active' : '' }}"
+            data-nav-link>
                 <svg class="w-[18px] h-[18px] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75"
-                          d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+                        d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
                 </svg>
                 <span x-show="!sidebarCollapsed">Dashboard</span>
                 <span x-show="sidebarCollapsed" class="sidebar-tooltip">Dashboard</span>
@@ -536,11 +537,11 @@
 
             @if($user->hasPermission('members.view'))
             <a href="{{ route('members.index') }}"
-               class="sidebar-link {{ $isActive('members') ? 'active' : '' }}"
-               data-nav-link>
+            class="sidebar-link {{ $isActive('members') ? 'active' : '' }}"
+            data-nav-link>
                 <svg class="w-[18px] h-[18px] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75"
-                          d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+                        d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
                 </svg>
                 <span x-show="!sidebarCollapsed">Members</span>
                 <span x-show="sidebarCollapsed" class="sidebar-tooltip">Members</span>
@@ -554,11 +555,11 @@
 
             @if($user->hasPermission('documents.view'))
             <a href="{{ route('documents.index') }}"
-               class="sidebar-link {{ $isActive('documents') ? 'active' : '' }}"
-               data-nav-link>
+            class="sidebar-link {{ $isActive('documents') ? 'active' : '' }}"
+            data-nav-link>
                 <svg class="w-[18px] h-[18px] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75"
-                          d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                 </svg>
                 <span x-show="!sidebarCollapsed" class="leading-tight">Fin. Reports</span>
                 <span x-show="sidebarCollapsed" class="sidebar-tooltip">Approved Financial Reports</span>
@@ -567,11 +568,11 @@
 
             @if($user->hasPermission('financial.view'))
             <a href="{{ route('financial.index') }}"
-               class="sidebar-link {{ $isActive('financial') ? 'active' : '' }}"
-               data-nav-link>
+            class="sidebar-link {{ $isActive('financial') ? 'active' : '' }}"
+            data-nav-link>
                 <svg class="w-[18px] h-[18px] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75"
-                          d="M9 7h6m0 10v-3m-6 3v-3m-6 3h18M3 5h18a2 2 0 012 2v10a2 2 0 01-2 2H3a2 2 0 01-2-2V7a2 2 0 012-2z"/>
+                        d="M9 7h6m0 10v-3m-6 3v-3m-6 3h18M3 5h18a2 2 0 012 2v10a2 2 0 01-2 2H3a2 2 0 01-2-2V7a2 2 0 012-2z"/>
                 </svg>
                 <span x-show="!sidebarCollapsed">Financial Records</span>
                 <span x-show="sidebarCollapsed" class="sidebar-tooltip">Financial Records</span>
@@ -582,11 +583,11 @@
             @if(!$isGuest)
             <div x-show="!sidebarCollapsed" class="sidebar-section-label">Account</div>
             <a href="{{ route('profile.index') }}"
-               class="sidebar-link {{ $isActive('profile') ? 'active' : '' }}"
-               data-nav-link>
+            class="sidebar-link {{ $isActive('profile') ? 'active' : '' }}"
+            data-nav-link>
                 <svg class="w-[18px] h-[18px] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75"
-                          d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
                 </svg>
                 <span x-show="!sidebarCollapsed">My Profile</span>
                 <span x-show="sidebarCollapsed" class="sidebar-tooltip">My Profile</span>
@@ -597,38 +598,53 @@
             @if($visibleAdminItems->isNotEmpty())
             <div x-show="!sidebarCollapsed" class="sidebar-section-label">Administration</div>
 
-            <button @click="adminOpen = !adminOpen"
-                    :class="adminOpen ? 'active' : ''"
-                    class="sidebar-link w-full justify-between">
-                <span class="flex items-center gap-3">
+            @if($visibleAdminItems->count() === 1)
+                @php $singleItem = $visibleAdminItems->first(); @endphp
+                <a href="{{ route($singleItem['route']) }}"
+                class="sidebar-link {{ $isActive($singleItem['match']) ? 'active' : '' }}"
+                data-nav-link>
                     <svg class="w-[18px] h-[18px] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75"
-                              d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="{{ $singleItem['icon'] }}"/>
                     </svg>
-                    <span x-show="!sidebarCollapsed">Administration</span>
-                </span>
-                <svg x-show="!sidebarCollapsed"
-                     :class="adminOpen ? 'rotate-90' : ''"
-                     class="w-3 h-3 transition-transform flex-shrink-0"
-                     fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                </svg>
-                <span x-show="sidebarCollapsed" class="sidebar-tooltip">Administration</span>
-            </button>
-
-            <div x-show="adminOpen" x-collapse id="admin-submenu">
-                @foreach($visibleAdminItems as $item)
-                <a href="{{ route($item['route']) }}"
-                   class="sidebar-sub-link {{ $isActive($item['match']) ? 'active' : '' }}"
-                   data-nav-link>
-                    <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="{{ $item['icon'] }}"/>
-                    </svg>
-                    <span x-show="!sidebarCollapsed">{{ $item['label'] }}</span>
-                    <span x-show="sidebarCollapsed" class="sidebar-tooltip">{{ $item['label'] }}</span>
+                    <span x-show="!sidebarCollapsed">{{ $singleItem['label'] }}</span>
+                    <span x-show="sidebarCollapsed" class="sidebar-tooltip">{{ $singleItem['label'] }}</span>
                 </a>
-                @endforeach
-            </div>
+
+            @else
+                <button @click="adminOpen = !adminOpen"
+                        :class="adminOpen ? 'active' : ''"
+                        class="sidebar-link w-full justify-between">
+                    <span class="flex items-center gap-3">
+                        <svg class="w-[18px] h-[18px] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75"
+                                d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                        </svg>
+                        <span x-show="!sidebarCollapsed">Administration</span>
+                    </span>
+                    <svg x-show="!sidebarCollapsed"
+                        :class="adminOpen ? 'rotate-90' : ''"
+                        class="w-3 h-3 transition-transform flex-shrink-0"
+                        fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                    </svg>
+                    <span x-show="sidebarCollapsed" class="sidebar-tooltip">Administration</span>
+                </button>
+
+                <div x-show="adminOpen" x-collapse id="admin-submenu">
+                    @foreach($visibleAdminItems as $item)
+                    <a href="{{ route($item['route']) }}"
+                    class="sidebar-sub-link {{ $isActive($item['match']) ? 'active' : '' }}"
+                    data-nav-link>
+                        <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="{{ $item['icon'] }}"/>
+                        </svg>
+                        <span x-show="!sidebarCollapsed">{{ $item['label'] }}</span>
+                        <span x-show="sidebarCollapsed" class="sidebar-tooltip">{{ $item['label'] }}</span>
+                    </a>
+                    @endforeach
+                </div>
+            @endif
+
             @endif
         @endif
     </nav>
