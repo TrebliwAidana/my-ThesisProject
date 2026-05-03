@@ -38,9 +38,9 @@ class FinancialController extends Controller
         }
 
         $query = FinancialTransaction::with([
-            'user:id,full_name,email',
-            'approver:id,full_name,email',
-            'auditor:id,full_name,email',
+            'user:id,first_name,middle_name,last_name,email',
+            'approver:id,first_name,middle_name,last_name,email',
+            'auditor:id,first_name,middle_name,last_name,email',
         ])->latest('transaction_date');
 
         $showApproved = $request->boolean('show_approved');

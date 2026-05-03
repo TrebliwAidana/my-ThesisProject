@@ -25,8 +25,8 @@ class UserSeeder extends Seeder
             ['email' => 'sysadmin@gmail.com'],
             [
                 'full_name'       => 'Wilbert B. Anadia',
-                'first_name'      => 'System',
-                'last_name'       => 'Administrator',
+                'first_name'      => 'Wilbert',
+                'last_name'       => 'Anadia',
                 'password'        => Hash::make('password123'),
                 'role_id'         => $sysAdmin?->id,
                 'is_active'       => true,

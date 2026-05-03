@@ -93,12 +93,15 @@ class ProfileController extends Controller
         $user->first_name  = $validated['first_name'];
         $user->middle_name = $validated['middle_name'] ?? null;
         $user->last_name   = $validated['last_name'];
-        $user->full_name   = trim(
-            $validated['first_name'] . ' ' .
-            (!empty($validated['middle_name']) ? $validated['middle_name'] . ' ' : '') .
-            $validated['last_name']
+        
+        // Build full_name manually WITHOUT triggering setFullNameAttribute
+        $user->attributes['full_name'] = trim(
+        $validated['first_name'] . ' ' .
+        (!empty($validated['middle_name']) ? $validated['middle_name'] . ' ' : '') .
+        $validated['last_name']
         );
-        $user->email       = $validated['email'];
+
+        $user->email = $validated['email'];
 
         if (isset($validated['student_id'])) $user->student_id = $validated['student_id'];
         if (isset($validated['year_level'])) $user->year_level = $validated['year_level'];

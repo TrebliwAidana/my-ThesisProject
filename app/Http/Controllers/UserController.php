@@ -90,12 +90,15 @@ class UserController extends Controller
         }
 
         User::create([
-            'full_name' => $validated['full_name'],
-            'email' => $validated['email'],
-            'password' => Hash::make($validated['password']),
-            'role_id' => $validated['role_id'],
+            'first_name'        => $validated['first_name'],
+            'middle_name'       => $validated['middle_name'] ?? null,
+            'last_name'         => $validated['last_name'],
+            'email'             => $validated['email'],
+            'password'          => Hash::make($validated['password']),
+            'role_id'           => $validated['role_id'],
             'email_verified_at' => now(),
         ]);
+
 
         return redirect()->route('users.index')
             ->with('success', '✅ User created successfully.');
@@ -177,7 +180,6 @@ class UserController extends Controller
             }
         }
 
-        $user->full_name = $validated['full_name'];
         $user->email = $validated['email'];
         $user->role_id = $validated['role_id'];
 

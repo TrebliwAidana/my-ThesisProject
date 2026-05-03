@@ -13,7 +13,7 @@ class DocumentSeeder extends Seeder
             [
                 'title'                => 'Annual Report 2024',
                 'description'         => '',
-                'owner_id'            => 1,
+                'owner_id'            => 3,
                 'document_category_id'=> null,
                 'current_version_id'  => null,
                 'tags'                => null,
@@ -24,7 +24,7 @@ class DocumentSeeder extends Seeder
             [
                 'title'                => 'Meeting Minutes - January',
                 'description'         => '',
-                'owner_id'            => 2,
+                'owner_id'            => 3,
                 'document_category_id'=> null,
                 'current_version_id'  => null,
                 'tags'                => null,
@@ -35,7 +35,7 @@ class DocumentSeeder extends Seeder
             [
                 'title'                => 'Budget Proposal Q1',
                 'description'         => '',
-                'owner_id'            => 2,
+                'owner_id'            => 3,
                 'document_category_id'=> null,
                 'current_version_id'  => null,
                 'tags'                => null,

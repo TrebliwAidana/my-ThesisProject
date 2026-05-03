@@ -23,7 +23,7 @@ class User extends Authenticatable implements MustVerifyEmail
     use Notifiable, MustVerifyEmailTrait, SoftDeletes;
 
     protected $fillable = [
-        'full_name',
+        
         'first_name',
         'last_name',
         'middle_name',
@@ -64,21 +64,14 @@ class User extends Authenticatable implements MustVerifyEmail
     // ACCESSORS & MUTATORS
     // =========================================================================
 
-    public function getFullNameAttribute(mixed $value): string
+     public function getFullNameAttribute(): string
     {
-        if ($value) {
-            return $value;
-        }
-
-        if ($this->first_name && $this->last_name) {
-            $name = $this->first_name . ' ' . $this->last_name;
-            if ($this->middle_name) {
-                $name = $this->first_name . ' ' . $this->middle_name . ' ' . $this->last_name;
-            }
-            return $name;
-        }
-
-        return $this->attributes['full_name'] ?? '';
+        $parts = array_filter([
+            $this->first_name,
+            $this->middle_name ? strtoupper(substr($this->middle_name, 0, 1)) . '.' : null,
+            $this->last_name,
+        ]);
+        return implode(' ', $parts) ?: 'Unknown';
     }
 
     public function setFullNameAttribute(mixed $value): void
@@ -119,6 +112,7 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         $this->attributes['middle_name'] = $value ? ucwords(strtolower(trim($value))) : null;
     }
+
 
     // =========================================================================
     // RELATIONSHIPS
@@ -391,6 +385,7 @@ class User extends Authenticatable implements MustVerifyEmail
             in_array($this->role?->abbreviation, $nonStudentAbbr)
         );
     }
+
 
     // =========================================================================
     // AVATAR

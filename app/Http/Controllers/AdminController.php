@@ -274,7 +274,8 @@ class AdminController extends Controller
         if ($request->filled('search')) {
             $search = $request->input('search');
             $query->where(function ($q) use ($search) {
-                $q->where('full_name', 'like', "%{$search}%")
+                $q->where('first_name', 'like', "%{$search}%")
+                  ->orWhere('last_name', 'like', "%{$search}%")
                   ->orWhere('email', 'like', "%{$search}%");
             });
         }
@@ -350,7 +351,6 @@ class AdminController extends Controller
             'first_name'        => $validated['first_name'],
             'middle_name'       => $validated['middle_name'] ?? null,
             'last_name'         => $validated['last_name'],
-            'full_name'         => $this->buildFullName($validated),
             'email'             => $validated['email'],
             'password'          => Hash::make($password),
             'role_id'           => $validated['role_id'],
@@ -425,7 +425,6 @@ class AdminController extends Controller
             'first_name'  => $validated['first_name'],
             'middle_name' => $validated['middle_name'] ?? null,
             'last_name'   => $validated['last_name'],
-            'full_name'   => $this->buildFullName($validated),
             'email'       => $validated['email'],
             'student_id'  => $validated['student_id'] ?? null,
             'phone'       => $validated['phone'] ?? null,
@@ -648,20 +647,6 @@ class AdminController extends Controller
         return Role::where('id', $roleId)->where('is_visible', true)->first();
     }
 
-    /** Build full_name from validated name parts. */
-    private function buildFullName(array $validated): string
-    {
-        return trim(
-            $validated['first_name'] . ' ' .
-            (! empty($validated['middle_name']) ? $validated['middle_name'] . ' ' : '') .
-            $validated['last_name']
-        );
-    }
-
-    /**
-     * All permissions, cached 1 hour.
-     * Stored as plain arrays for minimal memory overhead; returned as Collection.
-     */
     private function getCachedPermissions(): Collection
     {
         return collect(

@@ -30,7 +30,7 @@ class DocumentController extends Controller
 
         // Build main query with filters
         $query = $this->applyDocumentFilters(
-            Document::with(['currentVersion:id,document_id,file_path,file_size,created_at', 'owner:id,full_name', 'category:id,name'])->latest(),
+            Document::with(['currentVersion:id,document_id,file_path,file_size,created_at', 'owner:id,first_name,middle_name,last_name', 'category:id,name'])->latest(),
             $request
         );
 

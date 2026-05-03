@@ -638,27 +638,6 @@ document.getElementById('avatarInput').addEventListener('change', function (e) {
     reader.readAsDataURL(file);
 });
 
-// Auto-update full name
-const firstInput  = document.querySelector('input[name="first_name"]');
-const middleInput = document.querySelector('input[name="middle_name"]');
-const lastInput   = document.querySelector('input[name="last_name"]');
-const fullInput   = document.querySelector('input[name="full_name"]');
-
-function updateFullName() {
-    const first  = firstInput.value.trim();
-    const middle = middleInput.value.trim();
-    const last   = lastInput.value.trim();
-
-    const full = [first, middle, last]
-        .filter(part => part !== '')
-        .join(' ');
-
-    fullInput.value = full;
-}
-
-firstInput.addEventListener('input', updateFullName);
-middleInput.addEventListener('input', updateFullName);
-lastInput.addEventListener('input', updateFullName);
 </script>
 @endpush
 @endsection
