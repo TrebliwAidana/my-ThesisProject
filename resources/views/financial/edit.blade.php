@@ -494,19 +494,7 @@ input[type=number] {
                     </div>
 
                     {{-- Category Dropdown --}}
-                    <div class="mb-5"
-                         x-data="{
-                             category: @json(old('category_final', $transaction->category ?? '')),
-                             categories: [],
-                             loading: true,
-                             init() {
-                                 fetch('{{ route('api.financial-categories.list') }}?type={{ $transaction->type }}')
-                                     .then(r => r.json())
-                                     .then(data => { this.categories = data; this.loading = false; })
-                                     .catch(() => { this.loading = false; });
-                             }
-                         }"
-                         x-init="init()">
+                    <div class="mb-5" x-data="categoryLoader()">
                         <label class="form-label">Category</label>
 
                         <template x-if="loading">
@@ -522,7 +510,6 @@ input[type=number] {
                                     <template x-for="cat in categories" :key="cat.id">
                                         <option :value="cat.name" x-text="cat.name" :selected="cat.name === category"></option>
                                     </template>
-                                    {{-- Graceful fallback: if saved category no longer exists in DB --}}
                                     <template x-if="category && !categories.find(c => c.name === category)">
                                         <option :value="category" x-text="category + ' (archived)'" selected></option>
                                     </template>
@@ -608,3 +595,21 @@ input[type=number] {
 </div>
 
 @endsection
+
+@push('scripts')
+<script>
+function categoryLoader() {
+    return {
+        category: @json(old('category_final', $transaction->category ?? '')),
+        categories: [],
+        loading: true,
+        init() {
+            fetch('{{ route('api.financial-categories.list') }}?type={{ $transaction->type }}')
+                .then(r => r.json())
+                .then(data => { this.categories = data; this.loading = false; })
+                .catch(() => { this.loading = false; });
+        }
+    };
+}
+</script>
+@endpush
