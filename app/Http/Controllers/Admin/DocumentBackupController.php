@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Financial\FinancialHelperTrait;
 use App\Models\Document;
 use App\Models\DocumentCategory;
 use App\Models\DocumentVersion;
@@ -19,6 +20,8 @@ use ZipArchive;
 
 class DocumentBackupController extends Controller
 {
+    use FinancialHelperTrait;
+
     private string $backupDisk   = 'private';
     private string $backupFolder = 'backups/documents';
 
@@ -37,7 +40,7 @@ class DocumentBackupController extends Controller
     // -------------------------------------------------------------------------
     public function index()
     {
-        $this->authorizeAccess('backups.view');
+        $this->requirePermission('backups.view');
 
         $files = Storage::disk($this->backupDisk)->files($this->backupFolder);
 
@@ -87,7 +90,7 @@ class DocumentBackupController extends Controller
     // -------------------------------------------------------------------------
     public function create(Request $request)
     {
-        $this->authorizeAccess('backups.create');
+        $this->requirePermission('backups.create');
 
         $isAjax = $request->ajax() || $request->wantsJson();
 
@@ -112,9 +115,6 @@ class DocumentBackupController extends Controller
 
         $startTime = microtime(true);
 
-        // ------------------------------------------------------------------
-        // Resolve document filters
-        // ------------------------------------------------------------------
         $categoryIds  = array_values(array_filter((array) $request->input('category_ids', [])));
         $fileTypeKey  = $request->input('file_type', 'all');
         $allowedMimes = $this->fileTypeGroups[$fileTypeKey] ?? [];
@@ -131,18 +131,12 @@ class DocumentBackupController extends Controller
             $categoryLabel = $cats->pluck('name')->join(', ');
         }
 
-        // ------------------------------------------------------------------
-        // Resolve financial filters
-        // ------------------------------------------------------------------
         $includeFinancials  = $request->boolean('include_financials', true);
         $financialStatuses  = $request->input('financial_status', []);
         $financialTypes     = $request->input('financial_type', []);
         $financialDateFrom  = $request->input('financial_date_from');
         $financialDateTo    = $request->input('financial_date_to');
 
-        // ------------------------------------------------------------------
-        // Build tmp ZIP
-        // ------------------------------------------------------------------
         $timestamp = now()->format('Y-m-d_His');
         $zipName   = "doc_backup__{$categorySlug}__{$fileTypeKey}__{$timestamp}.zip";
         $tmpPath   = sys_get_temp_dir() . DIRECTORY_SEPARATOR . $zipName;
@@ -153,11 +147,9 @@ class DocumentBackupController extends Controller
                 throw new \RuntimeException('Failed to create ZIP archive. Check server temp directory permissions.');
             }
 
-            // 1. Categories JSON
             $allCategories = DocumentCategory::all(['id', 'name', 'description', 'is_active'])->toArray();
             $zip->addFromString('categories.json', json_encode($allCategories, JSON_PRETTY_PRINT));
 
-            // 2. Documents + versions
             $documents = Document::withTrashed()
                 ->with(['versions' => fn ($q) => $q->select([
                     'id', 'document_id', 'version_number', 'file_path',
@@ -190,16 +182,15 @@ class DocumentBackupController extends Controller
                 ])
                 ->all();
 
-            // 3. Financial transactions JSON
             $financialData     = [];
             $financialCount    = 0;
             $financialSnapshot = [
-                'included'    => false,
-                'statuses'    => [],
-                'types'       => [],
-                'date_from'   => null,
-                'date_to'     => null,
-                'record_count'=> 0,
+                'included'     => false,
+                'statuses'     => [],
+                'types'        => [],
+                'date_from'    => null,
+                'date_to'      => null,
+                'record_count' => 0,
             ];
 
             if ($includeFinancials) {
@@ -249,7 +240,6 @@ class DocumentBackupController extends Controller
                 );
             }
 
-            // 4. Manifest JSON
             $zip->addFromString('manifest.json', json_encode([
                 'backup_version'  => '3.0',
                 'created_at'      => now()->toISOString(),
@@ -265,7 +255,6 @@ class DocumentBackupController extends Controller
                 'documents'       => $documents,
             ], JSON_PRETTY_PRINT));
 
-            // 5. Physical document files
             $tempFiles = [];
             $fileCount = 0;
 
@@ -306,7 +295,6 @@ class DocumentBackupController extends Controller
                 @unlink($tmp);
             }
 
-            // 6. Stream sealed ZIP to permanent storage
             $destination = "{$this->backupFolder}/{$zipName}";
             $writeStream = @fopen($tmpPath, 'rb');
 
@@ -359,11 +347,11 @@ class DocumentBackupController extends Controller
 
         if ($isAjax) {
             return response()->json([
-                'success'          => true,
-                'filename'         => $zipName,
-                'elapsed'          => $elapsed,
-                'financial_count'  => $financialCount,
-                'message'          => "Backup created in {$elapsed}s — {$fileCount} files, {$financialCount} financial records from \"{$categoryLabel}\" ({$fileTypeKey}).",
+                'success'         => true,
+                'filename'        => $zipName,
+                'elapsed'         => $elapsed,
+                'financial_count' => $financialCount,
+                'message'         => "Backup created in {$elapsed}s — {$fileCount} files, {$financialCount} financial records from \"{$categoryLabel}\" ({$fileTypeKey}).",
             ]);
         }
 
@@ -376,7 +364,7 @@ class DocumentBackupController extends Controller
     // -------------------------------------------------------------------------
     public function download(string $filename)
     {
-        $this->authorizeAccess('backups.view');
+        $this->requirePermission('backups.view');
 
         $filename = basename($filename);
         $path     = "{$this->backupFolder}/{$filename}";
@@ -395,7 +383,7 @@ class DocumentBackupController extends Controller
     // -------------------------------------------------------------------------
     public function restore(Request $request)
     {
-        $this->authorizeAccess('backups.restore');
+        $this->requirePermission('backups.restore');
 
         $request->validate([
             'backup_file'              => 'required|file|mimes:zip|max:512000',
@@ -455,31 +443,25 @@ class DocumentBackupController extends Controller
             return back()->with('error', $e->getMessage());
         }
 
-        $scope     = $manifest['scope'] ?? ['category_label' => 'All', 'file_type' => 'all'];
-        $documents = $manifest['documents'];
-
-        /*
-         | FIX: Changed default from 'force_pending' to 'as_is'.
-         | Backups are created from already-audited and approved transactions.
-         | Forcing them back to pending on restore means someone has to
-         | manually re-approve every record after every restore — unnecessary
-         | extra work when the data was already verified before the backup.
-         | Restoring as_is immediately reflects correct totals in the chart.
-         */
+        $scope                  = $manifest['scope'] ?? ['category_label' => 'All', 'file_type' => 'all'];
+        $documents              = $manifest['documents'];
         $financialRestoreStatus = $request->input('financial_restore_status', 'as_is');
+        $actorUser              = Auth::user();
 
         $stats = [
-            'categories'  => 0,
-            'documents'   => 0,
-            'versions'    => 0,
-            'files'       => 0,
-            'skipped'     => 0,
-            'financial'   => 0,
-            'fin_skipped' => 0,
+            'categories'           => 0,
+            'documents'            => 0,
+            'versions'             => 0,
+            'files'                => 0,
+            'skipped'              => 0,
+            'financial'            => 0,
+            'fin_skipped'          => 0,
+            'financial_docs_generated' => 0,
         ];
 
         DB::beginTransaction();
         DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+
         try {
             // ── Step 1: Categories ────────────────────────────────────────
             $catNames     = array_filter(array_column($categories, 'name'));
@@ -636,12 +618,6 @@ class DocumentBackupController extends Controller
                         continue;
                     }
 
-                    /*
-                     | 'as_is'         → restore with original status (approved, paid, etc.)
-                     |                   so the chart immediately reflects correct totals.
-                     | 'force_pending' → reset to pending so records go through
-                     |                   audit/approve workflow again.
-                     */
                     $restoredStatus = ($financialRestoreStatus === 'force_pending')
                         ? 'pending'
                         : $ftData['status'];
@@ -688,6 +664,44 @@ class DocumentBackupController extends Controller
 
                     $stats['financial']++;
                 }
+
+                // ── Step 5b: Regenerate approval documents ────────────────
+                // For approved/paid transactions that don't yet have an
+                // auto-generated document — regenerate the PDF so that
+                // Documents module and dashboard totals stay consistent.
+                $restoredTransactions = FinancialTransaction::withTrashed()
+                    ->whereIn('id', $backupFtIds)
+                    ->whereIn('status', ['approved', 'paid'])
+                    ->whereNull('deleted_at')
+                    ->with(['user', 'approver', 'auditor', 'documents'])
+                    ->get();
+
+                foreach ($restoredTransactions as $ft) {
+                    try {
+                        // Skip if already has an auto-generated approval doc
+                        $alreadyHasDoc = $ft->documents()
+                            ->whereJsonContains('tags', 'auto-generated')
+                            ->exists();
+
+                        if ($alreadyHasDoc) continue;
+
+                        // Receivables only get a doc when paid, not just approved
+                        if ($ft->type === 'receivable' && $ft->status !== 'paid') continue;
+
+                        // Skip if restore mode was force_pending
+                        // (status was reset so no approval doc should be generated)
+                        if ($financialRestoreStatus === 'force_pending') continue;
+
+                        // Use the trait method — pass actorUser so it doesn't
+                        // rely on Auth::user() being the original approver
+                        $this->saveApprovedTransactionAsDocument($ft, $actorUser);
+                        $stats['financial_docs_generated']++;
+
+                    } catch (\Throwable $e) {
+                        // Don't fail the whole restore for a single PDF error
+                        \Log::warning("Could not regenerate approval doc for transaction #{$ft->id}: " . $e->getMessage());
+                    }
+                }
             }
 
             // ── Step 6: Record the restore ────────────────────────────────
@@ -722,7 +736,7 @@ class DocumentBackupController extends Controller
         AuditLogger::log(
             'backup_restored',
             null,
-            "Backup restored: {$stats['documents']} documents, {$stats['files']} files, {$stats['financial']} financial records, {$stats['skipped']} skipped",
+            "Backup restored: {$stats['documents']} documents, {$stats['files']} files, {$stats['financial']} financial records, {$stats['financial_docs_generated']} approval docs regenerated, {$stats['skipped']} skipped",
             [],
             array_merge($stats, ['scope' => $scope])
         );
@@ -733,9 +747,10 @@ class DocumentBackupController extends Controller
             "{$stats['documents']} documents,",
             "{$stats['versions']} versions,",
             "{$stats['files']} files restored.",
-            $stats['financial']   ? "{$stats['financial']} financial records restored." : '',
-            $stats['fin_skipped'] ? "{$stats['fin_skipped']} financial records skipped." : '',
-            $stats['skipped']     ? "{$stats['skipped']} documents skipped (already exist)." : '',
+            $stats['financial']                > 0 ? "{$stats['financial']} financial records restored."                                   : '',
+            $stats['financial_docs_generated'] > 0 ? "{$stats['financial_docs_generated']} approval documents regenerated."               : '',
+            $stats['fin_skipped']              > 0 ? "{$stats['fin_skipped']} financial records skipped."                                 : '',
+            $stats['skipped']                  > 0 ? "{$stats['skipped']} documents skipped (already exist)."                             : '',
             $financialRestoreStatus === 'force_pending' && $stats['financial'] > 0
                 ? '⚠️ Financial records reset to pending — please re-audit and re-approve.'
                 : ($stats['financial'] > 0 ? '✅ Financial records restored with original status.' : ''),
@@ -750,7 +765,7 @@ class DocumentBackupController extends Controller
     // -------------------------------------------------------------------------
     public function destroy(string $filename)
     {
-        $this->authorizeAccess('backups.delete');
+        $this->requirePermission('backups.delete');
 
         $filename = basename($filename);
         $path     = "{$this->backupFolder}/{$filename}";
@@ -769,29 +784,6 @@ class DocumentBackupController extends Controller
     // Helpers
     // -------------------------------------------------------------------------
 
-    /**
-     * Authorize access with a specific permission.
-     * Uses redirect with flash toast instead of raw abort(403)
-     * so the user sees a proper notification instead of an error page.
-     */
-    private function authorizeAccess(string $permission = 'backups.view'): void
-    {
-        if (!Auth::user()->hasPermission($permission)) {
-            if (request()->expectsJson() || request()->ajax()) {
-                abort(403, 'You do not have permission to perform this action.');
-            }
-
-            redirect()->route('dashboard')
-                ->with('error', 'You do not have permission to perform this action.')
-                ->send();
-            exit;
-        }
-    }
-
-    /**
-     * Peek inside a ZIP to check if it contains financial_transactions.json.
-     * Used in index() to show a badge on backups that have financial data.
-     */
     private function backupHasFinancialData(string $storagePath): bool
     {
         $tmpPath = sys_get_temp_dir() . '/' . basename($storagePath);

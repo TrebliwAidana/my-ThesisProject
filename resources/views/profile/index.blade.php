@@ -369,22 +369,24 @@ html.dark .file-btn:hover { color: var(--gold-light); }
                     @csrf
                     @method('PUT')
 
-                    {{-- Avatar --}}
+                   {{-- Avatar --}}
                     <div class="flex items-center gap-4 mb-4 pb-4" style="border-bottom:1px solid var(--border);">
                         <div class="avatar-ring">
                             @if(auth()->user()->avatar)
                                 <img id="avatarPreview"
-                                     src="{{ url('/secure-avatar/' . basename($user->avatar)) }}"
-                                     alt="Avatar"
-                                     class="w-14 h-14 rounded-full object-cover">
+                                    src="{{ Str::startsWith($user->avatar, 'http') 
+                                        ? $user->avatar 
+                                        : asset('storage/' . $user->avatar) }}"
+                                    alt="Avatar"
+                                    class="w-14 h-14 rounded-full object-cover">
                             @else
                                 <div id="avatarInitials"
-                                     class="w-14 h-14 rounded-full flex items-center justify-center text-white text-base font-bold"
-                                     style="background: linear-gradient(135deg, var(--emerald), var(--emerald-dark)); font-family:'DM Mono',monospace;">
+                                    class="w-14 h-14 rounded-full flex items-center justify-center text-white text-base font-bold"
+                                    style="background: linear-gradient(135deg, var(--emerald), var(--emerald-dark)); font-family:'DM Mono',monospace;">
                                     {{ strtoupper(substr(auth()->user()->full_name, 0, 2)) }}
                                 </div>
                                 <img id="avatarPreview" src="" alt="Avatar"
-                                     class="w-14 h-14 rounded-full object-cover hidden">
+                                    class="w-14 h-14 rounded-full object-cover hidden">
                             @endif
                         </div>
                         <div class="flex-1 min-w-0">
@@ -416,12 +418,6 @@ html.dark .file-btn:hover { color: var(--gold-light); }
                             <label class="prof-label">Last</label>
                             <input type="text" name="last_name" value="{{ old('last_name', $user->last_name) }}" class="prof-input">
                         </div>
-                    </div>
-
-                    {{-- Full Name --}}
-                    <div class="mb-3">
-                        <label class="prof-label">Full Name <span style="color:#f43f5e;">*</span></label>
-                        <input type="text" name="full_name" value="{{ old('full_name', $user->full_name) }}" required class="prof-input">
                     </div>
 
                     {{-- Email --}}
@@ -627,6 +623,7 @@ html.dark .file-btn:hover { color: var(--gold-light); }
 
 @push('scripts')
 <script>
+// Avatar preview
 document.getElementById('avatarInput').addEventListener('change', function (e) {
     const file = e.target.files[0];
     if (!file) return;
@@ -640,6 +637,28 @@ document.getElementById('avatarInput').addEventListener('change', function (e) {
     };
     reader.readAsDataURL(file);
 });
+
+// Auto-update full name
+const firstInput  = document.querySelector('input[name="first_name"]');
+const middleInput = document.querySelector('input[name="middle_name"]');
+const lastInput   = document.querySelector('input[name="last_name"]');
+const fullInput   = document.querySelector('input[name="full_name"]');
+
+function updateFullName() {
+    const first  = firstInput.value.trim();
+    const middle = middleInput.value.trim();
+    const last   = lastInput.value.trim();
+
+    const full = [first, middle, last]
+        .filter(part => part !== '')
+        .join(' ');
+
+    fullInput.value = full;
+}
+
+firstInput.addEventListener('input', updateFullName);
+middleInput.addEventListener('input', updateFullName);
+lastInput.addEventListener('input', updateFullName);
 </script>
 @endpush
 @endsection

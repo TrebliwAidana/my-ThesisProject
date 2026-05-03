@@ -178,7 +178,7 @@ class PermissionMatrixSeeder extends Seeder
             'Auditor' => [
                 'financial.view', 'financial.audit', 'financial.review',
                 'reports.view',
-                'audit.view', 'audit.remarks',
+                'audit.view', 'audit.remarks', 'documents.view',
             ],
 
             // Guest — public reports only

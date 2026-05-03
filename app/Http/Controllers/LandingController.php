@@ -30,23 +30,18 @@ class LandingController extends Controller
 
         // Featured members, ordered by role level (highest first)
         $featuredMembers = User::with('role')
-            ->where('is_active', true)
-            ->whereHas('role', function ($q) {
-                $q->whereIn('name', [
-                    'System Administrator',
-                    'Supreme Admin',
-                    'Supreme Officer',
-                    'Club Adviser',
-                    'Org Admin',
-                    'Org Officer',
-                    'Org Member',
-                ]);
-            })
+            ->where('users.is_active', true)
             ->join('roles', 'users.role_id', '=', 'roles.id')
+            ->whereIn('roles.name', [
+                'System Administrator',
+                'Treasurer',
+                'Auditor',
+                'Club Adviser',
+            ])
             ->orderBy('roles.level', 'asc')
             ->select('users.*')
             ->take(10)
-            ->get();
+            ->get();        
 
         // Dynamic roles from DB with active member counts
         $roles = Role::where('is_visible', true)

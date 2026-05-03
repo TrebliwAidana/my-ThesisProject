@@ -90,17 +90,20 @@ class ProfileController extends Controller
             $validated['year_level'] = null;
         }
 
-        $user->full_name = $validated['full_name'];
-        $user->email     = $validated['email'];
+        $user->first_name  = $validated['first_name'];
+        $user->middle_name = $validated['middle_name'] ?? null;
+        $user->last_name   = $validated['last_name'];
+        $user->full_name   = trim(
+            $validated['first_name'] . ' ' .
+            (!empty($validated['middle_name']) ? $validated['middle_name'] . ' ' : '') .
+            $validated['last_name']
+        );
+        $user->email       = $validated['email'];
 
-        if (isset($validated['first_name']))  $user->first_name  = $validated['first_name'];
-        if (isset($validated['last_name']))   $user->last_name   = $validated['last_name'];
-        if (isset($validated['middle_name'])) $user->middle_name = $validated['middle_name'];
-        if (isset($validated['student_id']))  $user->student_id  = $validated['student_id'];
-        if (isset($validated['year_level']))  $user->year_level  = $validated['year_level'];
-        if (isset($validated['gender']))      $user->gender      = $validated['gender'];
-        if (isset($validated['birthday']))    $user->birthday    = $validated['birthday'];
-
+        if (isset($validated['student_id'])) $user->student_id = $validated['student_id'];
+        if (isset($validated['year_level'])) $user->year_level = $validated['year_level'];
+        if (isset($validated['gender']))     $user->gender     = $validated['gender'];
+        if (isset($validated['birthday']))   $user->birthday   = $validated['birthday'];
         if (isset($validated['phone'])) {
             $phone = preg_replace('/[^0-9]/', '', $validated['phone']);
             if (str_starts_with($phone, '63')) $phone = substr($phone, 2);

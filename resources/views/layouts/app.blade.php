@@ -650,13 +650,28 @@
     </nav>
 
     {{-- User footer --}}
+
     @auth
     <div class="sidebar-footer p-3 flex items-center gap-3 flex-shrink-0"
-         :class="sidebarCollapsed ? 'justify-center' : 'justify-start'">
-        <div class="w-9 h-9 rounded-full avatar-gradient flex items-center justify-center text-white text-xs font-bold shadow-md flex-shrink-0"
-             style="font-family: 'DM Mono', monospace;">
-            {{ strtoupper(substr(auth()->user()->full_name, 0, 2)) }}
-        </div>
+        :class="sidebarCollapsed ? 'justify-center' : 'justify-start'">
+
+        {{-- Avatar: photo if set, else initials --}}
+        @if(auth()->user()->avatar)
+            <div class="w-9 h-9 rounded-full flex-shrink-0 shadow-md overflow-hidden"
+                style="border: 2px solid rgba(212,175,55,0.35); min-width: 2.25rem;">
+                <img src="{{ Str::startsWith(auth()->user()->avatar, 'http') 
+                            ? auth()->user()->avatar 
+                            : asset('storage/' . auth()->user()->avatar) }}"
+                    alt="{{ auth()->user()->full_name }}"
+                    class="w-full h-full object-cover">
+            </div>
+        @else
+            <div class="w-9 h-9 rounded-full avatar-gradient flex items-center justify-center text-white text-xs font-bold shadow-md flex-shrink-0"
+                style="font-family: 'DM Mono', monospace;">
+                {{ strtoupper(substr(auth()->user()->full_name, 0, 2)) }}
+            </div>
+        @endif
+
         <div x-show="!sidebarCollapsed" class="min-w-0">
             <p class="text-xs font-semibold truncate" style="color: var(--text);">{{ auth()->user()->full_name }}</p>
             <p class="text-[10px] font-medium" style="color: var(--gold-dark); font-family: 'DM Mono', monospace;">{{ auth()->user()->role->name }}</p>
@@ -784,16 +799,30 @@
             <div class="relative" x-data="{ open: false }">
                 <button @click="open = !open"
                         class="user-pill flex items-center gap-2 px-3 py-1.5 rounded-xl">
-                    <div class="w-7 h-7 rounded-full avatar-gradient flex items-center justify-center text-white text-[11px] font-bold flex-shrink-0"
-                         style="font-family: 'DM Mono', monospace;">
-                        {{ strtoupper(substr(auth()->user()->full_name, 0, 2)) }}
-                    </div>
+
+                    {{-- Avatar: photo if set, else initials --}}
+                    @if(auth()->user()->avatar)
+                        <div class="w-7 h-7 rounded-full flex-shrink-0 overflow-hidden"
+                            style="border: 1.5px solid rgba(212,175,55,0.35); min-width: 1.75rem;">
+                            <img src="{{ Str::startsWith(auth()->user()->avatar, 'http') 
+                                        ? auth()->user()->avatar 
+                                        : asset('storage/' . auth()->user()->avatar) }}"
+                                alt="{{ auth()->user()->full_name }}"
+                                class="w-full h-full object-cover">
+                        </div>
+                    @else
+                        <div class="w-7 h-7 rounded-full avatar-gradient flex items-center justify-center text-white text-[11px] font-bold flex-shrink-0"
+                            style="font-family: 'DM Mono', monospace;">
+                            {{ strtoupper(substr(auth()->user()->full_name, 0, 2)) }}
+                        </div>
+                    @endif
+
                     <span class="hidden sm:inline text-sm font-semibold max-w-[120px] truncate"
-                          style="color: var(--emerald-dark);">
+                        style="color: var(--emerald-dark);">
                         {{ auth()->user()->full_name }}
                     </span>
                     <svg class="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                         style="color: var(--gold-dark);">
+                        style="color: var(--gold-dark);">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/>
                     </svg>
                 </button>

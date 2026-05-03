@@ -18,24 +18,13 @@ trait FinancialHelperTrait
 
     protected function checkGuest(): void
     {
-        if (auth()->user()->email === 'guest@gmail.com') {
+        if (auth()->Auth::user()->email === 'guest@gmail.com') {
             abort(403, 'Guest accounts cannot perform this action.');
         }
     }
 
     // ── Permission Guard ───────────────────────────────────────────────────
 
-    /**
-     * Returns a RedirectResponse if the user is unauthorized, or null if OK.
-     * Usage:  if ($response = $this->authorizeFinancialAction('create')) return $response;
-     *
-     * FIX: The previous $map used non-existent underscore slugs:
-     *   'submit_financial_transactions'  → does not exist in permissions table
-     *   'approve_financial_transactions' → does not exist in permissions table
-     *
-     * All slugs now match PermissionMatrixSeeder exactly (dot-notation format).
-     * Cache key "user_perms_{id}" confirmed to match User::hasPermission().
-     */
     protected function authorizeFinancialAction(string $action): ?RedirectResponse
     {
         $user = Auth::user();
@@ -45,12 +34,11 @@ trait FinancialHelperTrait
                 ->with('error', 'Guest accounts cannot perform financial actions.');
         }
 
-        // Map action → permission slug (must match PermissionMatrixSeeder exactly)
         $map = [
-            'create'  => 'financial.create',   // FIX: was 'submit_financial_transactions'
-            'edit'    => 'financial.edit',      // FIX: was 'submit_financial_transactions'
-            'delete'  => 'financial.delete',    // FIX: was 'submit_financial_transactions'
-            'approve' => 'financial.approve',   // FIX: was 'approve_financial_transactions'
+            'create'  => 'financial.create',
+            'edit'    => 'financial.edit',
+            'delete'  => 'financial.delete',
+            'approve' => 'financial.approve',
         ];
 
         $permission = $map[$action] ?? null;
@@ -79,7 +67,6 @@ trait FinancialHelperTrait
             'receipt.max'                      => 'Receipt file must not exceed 5MB.',
         ]);
 
-        // Normalize the category field name
         $validated['category'] = $validated['category_final'] ?? null;
         unset($validated['category_final']);
 
@@ -108,11 +95,14 @@ trait FinancialHelperTrait
     // ── Approval PDF Helpers ───────────────────────────────────────────────
 
     /**
-     * Generates and saves the income/expense approval PDF to Documents.
+     * Generates and saves the income/expense/receivable approval PDF to Documents.
+     * Supports an optional $actorUser for restore context where Auth::user()
+     * may not be the original approver.
      */
-    protected function saveApprovedTransactionAsDocument(FinancialTransaction $transaction): void
-    {
-        // For receivables the status is 'paid', for income/expense it is 'approved'
+    protected function saveApprovedTransactionAsDocument(
+        FinancialTransaction $transaction,
+        ?\App\Models\User $actorUser = null
+    ): void {
         $isReceivable = $transaction->type === 'receivable';
         $typeLabel    = $isReceivable ? 'Receivable' : ucfirst($transaction->type);
         $categoryName = $isReceivable ? 'Approved Receivable' : "Approved {$typeLabel}";
@@ -122,15 +112,13 @@ trait FinancialHelperTrait
         $title            = "{$categoryName}: {$transaction->description} [{$dateFormatted}]";
         $filename         = "transaction_{$transaction->id}_{$transaction->type}_paid.pdf";
 
-        $pdf = $this->buildTransactionApprovalPdf($transaction, $typeLabel, $isReceivable);
+        $pdf = $this->buildTransactionApprovalPdf($transaction, $typeLabel, $isReceivable, $actorUser);
 
-        $this->writePdfToDocument($pdf, $filename, $title, $transaction, $typeLabel, $documentCategory);
+        $this->writePdfToDocument($pdf, $filename, $title, $transaction, $typeLabel, $documentCategory, $actorUser);
     }
 
     /**
-     * Generates and saves the receivable paid PDF to Documents,
-     * attaching it to the linked income transaction so it appears
-     * on the receivable show page via incomeTransaction.documents.
+     * Generates and saves the receivable paid PDF to Documents.
      */
     protected function saveApprovedReceivableAsDocument(
         Receivable $receivable,
@@ -145,7 +133,6 @@ trait FinancialHelperTrait
         if (!is_dir($tempDir)) mkdir($tempDir, 0755, true);
         $tempPath = "{$tempDir}/{$filename}";
 
-        // Generate and write the PDF to disk first
         $pdf = Pdf::loadView('financial.approval-slip-pdf', [
             'transaction'   => $linkedTransaction,
             'type_label'    => 'Receivable',
@@ -167,7 +154,6 @@ trait FinancialHelperTrait
 
         file_put_contents($tempPath, $pdf->output());
 
-        // Ensure the file actually exists before proceeding
         if (!file_exists($tempPath) || filesize($tempPath) === 0) {
             \Illuminate\Support\Facades\Log::error("Failed to write receivable PDF to {$tempPath}");
             return;
@@ -184,13 +170,12 @@ trait FinancialHelperTrait
                 'owner_id'             => Auth::id(),
             ]);
 
-            // Build the UploadedFile BEFORE the finally block can delete it
             $uploadedFile = new \Illuminate\Http\UploadedFile(
                 $tempPath,
                 $filename,
                 'application/pdf',
                 null,
-                true  // test mode — skips is_uploaded_file() check
+                true
             );
 
             $document->addVersion(
@@ -198,7 +183,6 @@ trait FinancialHelperTrait
                 "Auto-saved — Receivable #{$receivable->reference_no} paid via transaction #{$linkedTransaction->id}"
             );
 
-            // syncWithoutDetaching prevents duplicate pivot rows
             $linkedTransaction->documents()->syncWithoutDetaching([$document->id]);
 
             AuditLogger::log(
@@ -212,7 +196,7 @@ trait FinancialHelperTrait
             \Illuminate\Support\Facades\Log::error(
                 "saveApprovedReceivableAsDocument failed for receivable #{$receivable->id}: " . $e->getMessage()
             );
-            throw $e; // re-throw so the DB::transaction rolls back
+            throw $e;
         } finally {
             if (file_exists($tempPath)) @unlink($tempPath);
         }
@@ -220,11 +204,13 @@ trait FinancialHelperTrait
 
     /**
      * Builds the DomPDF instance for a transaction approval slip.
+     * Accepts optional $actorUser for restore context.
      */
     protected function buildTransactionApprovalPdf(
         FinancialTransaction $transaction,
         string $typeLabel,
-        bool $isReceivable
+        bool $isReceivable,
+        ?\App\Models\User $actorUser = null
     ): \Barryvdh\DomPDF\PDF {
         $transaction->loadMissing(['user', 'approver', 'auditor']);
 
@@ -232,7 +218,7 @@ trait FinancialHelperTrait
             'transaction'   => $transaction,
             'type_label'    => $typeLabel,
             'is_receivable' => $isReceivable,
-            'approved_by'   => Auth::user(),
+            'approved_by'   => $actorUser ?? Auth::user(),
             'generated_at'  => now(),
         ])
         ->setPaper('a4', 'portrait')
@@ -251,6 +237,7 @@ trait FinancialHelperTrait
     /**
      * Writes a DomPDF instance to a temp file, creates a Document record,
      * versions it, and attaches it to the transaction via the pivot.
+     * Accepts optional $actorUser for restore context.
      */
     protected function writePdfToDocument(
         \Barryvdh\DomPDF\PDF $pdf,
@@ -258,8 +245,10 @@ trait FinancialHelperTrait
         string $title,
         FinancialTransaction $transaction,
         string $typeLabel,
-        ?DocumentCategory $documentCategory
+        ?DocumentCategory $documentCategory,
+        ?\App\Models\User $actorUser = null
     ): void {
+        $actor    = $actorUser ?? Auth::user();
         $tempDir  = storage_path('app/temp/financial');
         if (!is_dir($tempDir)) mkdir($tempDir, 0755, true);
         $tempPath = "{$tempDir}/{$filename}";
@@ -270,11 +259,11 @@ trait FinancialHelperTrait
                 'title'                => $title,
                 'description'          => "Auto-generated approval slip for {$typeLabel} #{$transaction->id}. "
                                         . "Amount: ₱" . number_format($transaction->amount, 2) . ". "
-                                        . "Approved by: " . Auth::user()->full_name
+                                        . "Approved by: " . ($actor?->full_name ?? 'System')
                                         . " on " . now()->format('F j, Y g:i A') . ".",
                 'document_category_id' => $documentCategory?->id,
                 'tags'                 => [$transaction->type, $transaction->category ?? 'financial', 'auto-generated'],
-                'owner_id'             => Auth::id(),
+                'owner_id'             => $actor?->id ?? Auth::id(),
             ]);
 
             $uploadedFile = new \Illuminate\Http\UploadedFile(
@@ -286,8 +275,6 @@ trait FinancialHelperTrait
                 "Auto-saved on approval — {$typeLabel} transaction #{$transaction->id}"
             );
 
-            // syncWithoutDetaching prevents duplicate pivot rows if addVersion
-            // internally also attaches (depends on Document implementation)
             $transaction->documents()->syncWithoutDetaching([$document->id]);
 
             AuditLogger::log(

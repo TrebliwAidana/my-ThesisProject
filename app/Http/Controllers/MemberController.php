@@ -796,11 +796,19 @@ class MemberController extends Controller
             $result = $this->getCloudinaryInstance()
                 ->uploadApi()
                 ->upload($file->getRealPath(), ['folder' => 'vsulhs-sslg/avatars']);
-
             return $result['secure_url'];
         }
 
-        return $file->store('avatars', 'public');
+        $path = $file->store('avatars', 'public');
+
+        // Mirror to public/storage for OneDrive symlink workaround
+        $dest = public_path('storage/avatars/' . basename($path));
+        if (!file_exists(dirname($dest))) {
+            mkdir(dirname($dest), 0755, true);
+        }
+        copy(storage_path('app/public/' . $path), $dest);
+
+        return $path;
     }
 
     private function deleteAvatar(?string $avatar): void

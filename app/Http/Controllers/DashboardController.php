@@ -2,13 +2,14 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\User;
 use App\Models\Document;
+use App\Models\DocumentCategory;
 use App\Models\FinancialTransaction;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+
 class DashboardController extends Controller
 {
     public function __construct()
@@ -18,28 +19,25 @@ class DashboardController extends Controller
 
     public function index(Request $request)
     {
-
         $user = Auth::user()->load(['role', 'member']);
 
         $user->avatar_url = $user->avatar
             ? asset('storage/' . $user->avatar)
             : asset('images/default-avatar.png');
 
-        // Get the selected range (default: monthly)
         $range = $request->get('range', 'monthly');
 
-        // ── Member Statistics ───────────────────────────────────────────────────
-        $totalMembers = User::count();
-        $activeMembers = User::where('is_active', true)->count();
-        $officersCount = User::join('roles', 'users.role_id', '=', 'roles.id')
-            ->whereIn('roles.name', [
-                'System Administrator', 'treasurer', 'auditor', 'Club Adviser'
-            ])->count();
+        // ── Member Statistics ───────────────────────────────────────────────
+        $totalMembers        = User::count();
+        $activeMembers       = User::where('is_active', true)->count();
+        $officersCount       = User::join('roles', 'users.role_id', '=', 'roles.id')
+            ->whereIn('roles.name', ['System Administrator', 'treasurer', 'auditor', 'Club Adviser'])
+            ->count();
         $newMembersThisMonth = User::whereMonth('created_at', now()->month)
             ->whereYear('created_at', now()->year)
             ->count();
 
-        // ── Recent Documents ────────────────────────────────────────────────────
+        // ── Recent Documents ────────────────────────────────────────────────
         $recentDocuments = null;
         if ($user->hasPermission('documents.view')) {
             $recentDocuments = Document::with('uploader')
@@ -48,13 +46,21 @@ class DashboardController extends Controller
                 ->get();
         }
 
-        // ── Financial Summaries (approved only) ─────────────────────────────────
-        $incomeTotal   = (float) FinancialTransaction::income()->approved()->sum('amount');
-        $expenseTotal  = (float) FinancialTransaction::expense()->approved()->sum('amount');
-        $balance       = $incomeTotal - $expenseTotal;
+        // ── Financial Summaries ─────────────────────────────────────────────
+        // Approved income transactions
+        $incomeTotal = (float) FinancialTransaction::income()->approved()->sum('amount');
+
+        // Paid receivables count toward income (same logic as FinancialController)
+        $receivablePaidTotal = (float) FinancialTransaction::receivable()->paid()->sum('amount');
+
+        // Combined income
+        $totalIncome  = $incomeTotal + $receivablePaidTotal;
+        $expenseTotal = (float) FinancialTransaction::expense()->approved()->sum('amount');
+        $balance      = $totalIncome - $expenseTotal;
+
         $pendingTransactions = FinancialTransaction::pending()->count();
 
-        // ── Recent Transactions ─────────────────────────────────────────────────
+        // ── Recent Transactions ─────────────────────────────────────────────
         $recentTransactions = null;
         if ($user->hasPermission('financial.view')) {
             $recentTransactions = FinancialTransaction::with('user')
@@ -67,8 +73,8 @@ class DashboardController extends Controller
                 });
         }
 
-        // ── Pending Approvals ───────────────────────────────────────────────────
-        $pendingApprovals = [];
+        // ── Pending Approvals ───────────────────────────────────────────────
+        $pendingApprovals  = [];
         $pendingTasksCount = 0;
         if ($user->hasPermission('financial.approve')) {
             $pendingTransactionsForApproval = FinancialTransaction::pending()
@@ -86,11 +92,11 @@ class DashboardController extends Controller
             $pendingTasksCount = FinancialTransaction::pending()->count();
         }
 
-        // ── Role Description ────────────────────────────────────────────────────
+        // ── Role Description ────────────────────────────────────────────────
         $roleDescription = $user->role->description
             ?? 'Manage your account and participate in organization activities.';
 
-        // ── User Badges ─────────────────────────────────────────────────────────
+        // ── User Badges ─────────────────────────────────────────────────────
         $userBadges = [];
         if ($user->role->name === 'System Administrator') {
             $userBadges[] = ['color' => 'purple', 'text' => 'System Admin'];
@@ -105,10 +111,12 @@ class DashboardController extends Controller
             $userBadges[] = ['color' => 'emerald', 'text' => 'Org Leader'];
         }
 
-        // ── Chart Data (with caching) ───────────────────────────────────────────
+        // ── Chart Data ──────────────────────────────────────────────────────
         $chartData = $this->getChartData($range);
 
-        // Return the view with all required variables
+        $totalExpense = $expenseTotal;
+        $netBalance   = $balance;
+
         return view('dashboard.index', compact(
             'user',
             'totalMembers',
@@ -119,7 +127,11 @@ class DashboardController extends Controller
             'recentTransactions',
             'incomeTotal',
             'expenseTotal',
+            'totalExpense',
             'balance',
+            'totalIncome',
+            'receivablePaidTotal',
+            'netBalance', 
             'pendingTransactions',
             'pendingApprovals',
             'pendingTasksCount',
@@ -131,30 +143,30 @@ class DashboardController extends Controller
     }
 
     /**
-     * Get chart data based on the selected range (weekly, monthly, yearly).
-     * Results are cached for 1 hour to improve performance.
+     * Get chart data based on selected range.
+     * Paid receivables are merged into income to match dashboard summary cards.
      */
     private function getChartData(string $range): array
     {
         if ($range === 'weekly') {
-            $rows = FinancialTransaction::approved()
-                ->selectRaw("type, DATE(transaction_date) as period, SUM(amount) as total")
+            $rows = FinancialTransaction::whereIn('status', ['approved', 'paid'])
+                ->selectRaw("type, status, DATE(transaction_date) as period, SUM(amount) as total")
                 ->whereBetween('transaction_date', [now()->subDays(6)->startOfDay(), now()->endOfDay()])
-                ->groupByRaw("type, DATE(transaction_date)")
+                ->groupByRaw("type, status, DATE(transaction_date)")
                 ->get();
 
             $labels = [];
             $keys   = [];
             for ($i = 6; $i >= 0; $i--) {
                 $labels[] = now()->subDays($i)->format('D, M d');
-                $keys[]   = now()->subDays($i)->format('Y-m-d'); // ← fixed
+                $keys[]   = now()->subDays($i)->format('Y-m-d');
             }
 
         } elseif ($range === 'yearly') {
-            $rows = FinancialTransaction::approved()
-                ->selectRaw("type, DATE_FORMAT(transaction_date, '%Y-%m') as period, SUM(amount) as total")
+            $rows = FinancialTransaction::whereIn('status', ['approved', 'paid'])
+                ->selectRaw("type, status, DATE_FORMAT(transaction_date, '%Y-%m') as period, SUM(amount) as total")
                 ->where('transaction_date', '>=', now()->subMonths(11)->startOfMonth())
-                ->groupByRaw("type, DATE_FORMAT(transaction_date, '%Y-%m')")
+                ->groupByRaw("type, status, DATE_FORMAT(transaction_date, '%Y-%m')")
                 ->get();
 
             $labels = [];
@@ -166,11 +178,11 @@ class DashboardController extends Controller
             }
 
         } else {
-            // monthly
-            $rows = FinancialTransaction::approved()
-                ->selectRaw("type, MONTH(transaction_date) as period, SUM(amount) as total")
+            // monthly (default)
+            $rows = FinancialTransaction::whereIn('status', ['approved', 'paid'])
+                ->selectRaw("type, status, MONTH(transaction_date) as period, SUM(amount) as total")
                 ->whereYear('transaction_date', now()->year)
-                ->groupByRaw("type, MONTH(transaction_date)")
+                ->groupByRaw("type, status, MONTH(transaction_date)")
                 ->get();
 
             $labels = [];
@@ -181,9 +193,23 @@ class DashboardController extends Controller
             }
         }
 
+        // Build indexed totals — merge paid receivables into income bucket
         $indexed = [];
         foreach ($rows as $row) {
-            $indexed[$row->type][$row->period] = (float) $row->total;
+            $key = $row->period;
+
+            if ($row->type === 'income' && $row->status === 'approved') {
+                // Approved income
+                $indexed['income'][$key] = ($indexed['income'][$key] ?? 0) + (float) $row->total;
+
+            } elseif ($row->type === 'receivable' && $row->status === 'paid') {
+                // Paid receivables count as income — matches summary card logic
+                $indexed['income'][$key] = ($indexed['income'][$key] ?? 0) + (float) $row->total;
+
+            } elseif ($row->type === 'expense' && $row->status === 'approved') {
+                // Approved expenses
+                $indexed['expense'][$key] = ($indexed['expense'][$key] ?? 0) + (float) $row->total;
+            }
         }
 
         return [
