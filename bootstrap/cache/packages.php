@@ -18,13 +18,6 @@
       0 => 'Barryvdh\\LaravelIdeHelper\\IdeHelperServiceProvider',
     ),
   ),
-  'laravel/pail' => 
-  array (
-    'providers' => 
-    array (
-      0 => 'Laravel\\Pail\\PailServiceProvider',
-    ),
-  ),
   'laravel/tinker' => 
   array (
     'providers' => 
@@ -52,17 +45,6 @@
     'providers' => 
     array (
       0 => 'Maatwebsite\\Excel\\ExcelServiceProvider',
-    ),
-  ),
-  'mridhulka/laravel-vercel' => 
-  array (
-    'aliases' => 
-    array (
-      'LaravelVercel' => 'Mridhulka\\LaravelVercel\\Facades',
-    ),
-    'providers' => 
-    array (
-      0 => 'Mridhulka\\LaravelVercel\\LaravelVercelServiceProvider',
     ),
   ),
   'nesbot/carbon' => 
