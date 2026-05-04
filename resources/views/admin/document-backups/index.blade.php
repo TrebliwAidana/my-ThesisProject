@@ -475,6 +475,16 @@ html.dark .backup-meta-size {
     color: #7c3aed;
     border: 1px solid rgba(139,92,246,0.2);
 }
+.backup-badge-financial {
+    background: rgba(245,158,11,0.1);
+    color: #b45309;
+    border: 1px solid rgba(245,158,11,0.2);
+}
+html.dark .backup-badge-financial {
+    background: rgba(245,158,11,0.15);
+    color: #fbbf24;
+    border-color: rgba(245,158,11,0.25);
+}
 
 /* ── Progress Loader ── */
 .backups-loader {
@@ -688,6 +698,7 @@ html.dark .backups-info-list { color: #93c5fd; }
                           id="restore-form">
                         @csrf
 
+                        {{-- ZIP file upload --}}
                         <div class="mb-3">
                             <label class="backups-label">Backup ZIP File</label>
                             <input type="file"
@@ -697,6 +708,7 @@ html.dark .backups-info-list { color: #93c5fd; }
                                    class="backups-file-input">
                         </div>
 
+                        {{-- Restore mode — maps to controller: mode (merge|skip) --}}
                         <div class="mb-3">
                             <label class="backups-label">Restore Mode</label>
                             <select name="mode" class="backups-select">
@@ -705,6 +717,36 @@ html.dark .backups-info-list { color: #93c5fd; }
                             </select>
                         </div>
 
+                        {{-- Financial restore toggle — maps to controller: restore_financials --}}
+                        <div class="mb-3">
+                            <label class="backups-label">Financial Records</label>
+                            <label class="flex items-center gap-2 cursor-pointer group">
+                                <input type="checkbox"
+                                       name="restore_financials"
+                                       value="1"
+                                       checked
+                                       id="restore-financials-cb"
+                                       onchange="toggleFinancialOptions()"
+                                       class="rounded border-border accent-emerald-600">
+                                <span class="text-xs text-text-3 group-hover:text-text-2 transition">
+                                    Restore financial transactions from this backup
+                                </span>
+                            </label>
+                        </div>
+
+                        {{-- Financial restore status — maps to controller: financial_restore_status (as_is|force_pending) --}}
+                        <div id="financial-options" class="mb-3">
+                            <label class="backups-label">Financial Status on Restore</label>
+                            <select name="financial_restore_status" class="backups-select">
+                                <option value="as_is">Keep original status (approved/paid/etc.)</option>
+                                <option value="force_pending">Reset all to pending (re-audit required)</option>
+                            </select>
+                            <p class="text-xs text-text-3 mt-1.5 leading-relaxed">
+                                "Keep original" will also regenerate approval document copies for approved/paid records.
+                            </p>
+                        </div>
+
+                        {{-- Force restore override — maps to controller: force_restore --}}
                         <label class="flex items-center gap-2 mb-4 cursor-pointer group">
                             <input type="checkbox"
                                    name="force_restore"
@@ -775,17 +817,32 @@ html.dark .backups-info-list { color: #93c5fd; }
                 </div>
 
                 @if($stats['count'] > 0)
+                {{--
+                    Filter chips: array_column() works because $backups is a plain PHP array of associative arrays,
+                    not an Eloquent collection — the controller passes it via compact() after building it manually.
+                    array_unique(array_column(...)) is therefore safe here.
+                --}}
+                @php
+                    $uniqueFiletypes  = array_unique(array_column($backups, 'filetype_slug'));
+                    $uniqueCategories = array_unique(array_column($backups, 'category_slug'));
+                @endphp
                 <div class="px-5 py-3 border-b border-border flex items-center gap-3 flex-wrap">
                     <div class="flex flex-wrap gap-1.5 flex-1" id="filter-chips">
                         <button onclick="setFilter('all')" data-filter="all" class="filter-chip active">All</button>
-                        @foreach(array_unique(array_column($backups, 'filetype_slug')) as $typeSlug)
+
+                        @foreach($uniqueFiletypes as $typeSlug)
                             @if($typeSlug !== 'all')
-                            <button onclick="setFilter('type:{{ $typeSlug }}')" data-filter="type:{{ $typeSlug }}" class="filter-chip">{{ Str::title($typeSlug) }}</button>
+                            <button onclick="setFilter('type:{{ $typeSlug }}')"
+                                    data-filter="type:{{ $typeSlug }}"
+                                    class="filter-chip">{{ Str::title($typeSlug) }}</button>
                             @endif
                         @endforeach
-                        @foreach(array_unique(array_column($backups, 'category_slug')) as $catSlug)
+
+                        @foreach($uniqueCategories as $catSlug)
                             @if($catSlug !== 'all')
-                            <button onclick="setFilter('cat:{{ $catSlug }}')" data-filter="cat:{{ $catSlug }}" class="filter-chip">{{ Str::title(str_replace(['__', '_', '--'], [', ', ' ', ', '], $catSlug)) }}</button>
+                            <button onclick="setFilter('cat:{{ $catSlug }}')"
+                                    data-filter="cat:{{ $catSlug }}"
+                                    class="filter-chip">{{ Str::title(str_replace(['__', '_', '--'], [', ', ' ', ', '], $catSlug)) }}</button>
                             @endif
                         @endforeach
                     </div>
@@ -807,6 +864,11 @@ html.dark .backups-info-list { color: #93c5fd; }
                 @else
                     <div id="backup-list" class="divide-y divide-border">
                         @foreach($backups as $backup)
+                        {{--
+                            $backup keys (from controller index()):
+                              filename, path, size, size_bytes, category_slug,
+                              filetype_slug, has_financial_data, created_at, created_ts
+                        --}}
                         <div class="backup-row"
                              data-category="{{ $backup['category_slug'] }}"
                              data-filetype="{{ $backup['filetype_slug'] }}"
@@ -822,6 +884,8 @@ html.dark .backups-info-list { color: #93c5fd; }
                                     <div class="backup-meta">
                                         <span class="backup-meta-date">{{ $backup['created_at'] }}</span>
                                         <span class="backup-meta-size">{{ $backup['size'] }}</span>
+
+                                        {{-- Category badge --}}
                                         @if($backup['category_slug'] !== 'all')
                                             <span class="backup-badge backup-badge-category">
                                                 {{ Str::title(str_replace(['__', '_', '--'], [', ', ' ', ', '], $backup['category_slug'])) }}
@@ -829,21 +893,31 @@ html.dark .backups-info-list { color: #93c5fd; }
                                         @else
                                             <span class="backup-badge backup-badge-all">All categories</span>
                                         @endif
+
+                                        {{-- File type badge --}}
                                         @if($backup['filetype_slug'] !== 'all')
                                             <span class="backup-badge backup-badge-filetype">{{ Str::title($backup['filetype_slug']) }} only</span>
+                                        @endif
+
+                                        {{-- Financial data badge — driven by has_financial_data from controller --}}
+                                        @if($backup['has_financial_data'])
+                                            <span class="backup-badge backup-badge-financial">💰 Financials</span>
                                         @endif
                                     </div>
                                 </div>
 
                                 <div class="flex items-center gap-2 flex-shrink-0">
-                                    <a href="{{ route('admin.document-backups.download', $backup['filename']) }}" class="btn-blue">⬇️ Download</a>
-                                    <button type="button" onclick="showDeleteConfirm(this)"
+                                    <a href="{{ route('admin.document-backups.download', $backup['filename']) }}"
+                                       class="btn-blue">⬇️ Download</a>
+                                    <button type="button"
+                                            onclick="showDeleteConfirm(this)"
                                             data-filename="{{ $backup['filename'] }}"
                                             data-action="{{ route('admin.document-backups.destroy', $backup['filename']) }}"
                                             class="btn-red">🗑️ Delete</button>
                                 </div>
                             </div>
 
+                            {{-- Inline delete confirm panel --}}
                             <div class="delete-confirm hidden mt-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
                                 <p class="text-xs font-semibold text-red-800 dark:text-red-300 mb-0.5">Delete this backup?</p>
                                 <p class="delete-filename text-xs text-red-600 dark:text-red-400 font-mono mb-2 break-all"></p>
@@ -852,9 +926,16 @@ html.dark .backups-info-list { color: #93c5fd; }
                                     <form method="POST" class="delete-form flex-1" style="display:contents">
                                         @csrf
                                         @method('DELETE')
-                                        <button type="submit" class="flex-1 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition">Yes, delete</button>
+                                        <button type="submit"
+                                                class="flex-1 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition">
+                                            Yes, delete
+                                        </button>
                                     </form>
-                                    <button type="button" onclick="hideDeleteConfirm(this)" class="flex-1 border border-gray-200 dark:border-gray-600 text-text-3 text-xs font-semibold px-3 py-1.5 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition">Cancel</button>
+                                    <button type="button"
+                                            onclick="hideDeleteConfirm(this)"
+                                            class="flex-1 border border-gray-200 dark:border-gray-600 text-text-3 text-xs font-semibold px-3 py-1.5 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+                                        Cancel
+                                    </button>
                                 </div>
                             </div>
 
@@ -878,6 +959,7 @@ html.dark .backups-info-list { color: #93c5fd; }
                     <li>✅ Full version history for every document</li>
                     <li>✅ All physical files (PDFs, images, docs, etc.)</li>
                     <li>✅ Soft-deleted documents (trash)</li>
+                    <li>✅ Financial transactions (income, expenses, receivables)</li>
                 </ul>
             </div>
         </div>
@@ -915,6 +997,14 @@ function catClearAll() {
     syncCatUI();
 }
 
+// ─── Financial options visibility ─────────────────────────────────────────────
+// Toggles the financial_restore_status select based on the restore_financials checkbox.
+function toggleFinancialOptions() {
+    const cb      = document.getElementById('restore-financials-cb');
+    const options = document.getElementById('financial-options');
+    options.style.display = cb.checked ? '' : 'none';
+}
+
 // ─── Restore inline confirm ───────────────────────────────────────────────────
 function confirmRestore() {
     document.getElementById('restore-confirm').classList.remove('hidden');
@@ -925,6 +1015,7 @@ function cancelRestore() {
 
 // ─── Delete inline confirm ────────────────────────────────────────────────────
 function showDeleteConfirm(btn) {
+    // Collapse any other open confirm panels first
     document.querySelectorAll('.delete-confirm').forEach(el => el.classList.add('hidden'));
 
     const row     = btn.closest('.backup-row');
@@ -932,8 +1023,8 @@ function showDeleteConfirm(btn) {
     const form    = confirm.querySelector('.delete-form');
     const label   = confirm.querySelector('.delete-filename');
 
-    form.action         = btn.dataset.action;
-    label.textContent   = btn.dataset.filename;
+    form.action       = btn.dataset.action;
+    label.textContent = btn.dataset.filename;
 
     confirm.classList.remove('hidden');
 }
@@ -948,8 +1039,7 @@ let activeSort   = 'newest';
 function setFilter(value) {
     activeFilter = value;
     document.querySelectorAll('.filter-chip').forEach(btn => {
-        const isActive = btn.dataset.filter === value;
-        btn.classList.toggle('active', isActive);
+        btn.classList.toggle('active', btn.dataset.filter === value);
     });
     applyFilterSort();
 }
@@ -957,19 +1047,19 @@ function setFilter(value) {
 function setSort(value) {
     activeSort = value;
     document.querySelectorAll('.sort-btn').forEach(btn => {
-        const isActive = btn.dataset.sort === value;
-        btn.classList.toggle('active', isActive);
+        btn.classList.toggle('active', btn.dataset.sort === value);
     });
     applyFilterSort();
 }
 
 function applyFilterSort() {
-    const list    = document.getElementById('backup-list');
-    const noRes   = document.getElementById('no-results');
+    const list  = document.getElementById('backup-list');
+    const noRes = document.getElementById('no-results');
     if (!list) return;
 
     let rows = [...list.querySelectorAll('.backup-row')];
 
+    // Apply visibility filter
     rows.forEach(row => {
         const cat  = row.dataset.category ?? '';
         const type = row.dataset.filetype ?? '';
@@ -985,11 +1075,12 @@ function applyFilterSort() {
         row.style.display = visible ? '' : 'none';
     });
 
+    // Sort visible rows
     const visible = rows.filter(r => r.style.display !== 'none');
     visible.sort((a, b) => {
-        if (activeSort === 'newest')  return b.dataset.ts   - a.dataset.ts;
-        if (activeSort === 'oldest')  return a.dataset.ts   - b.dataset.ts;
-        if (activeSort === 'largest') return b.dataset.size - a.dataset.size;
+        if (activeSort === 'newest')  return Number(b.dataset.ts)   - Number(a.dataset.ts);
+        if (activeSort === 'oldest')  return Number(a.dataset.ts)   - Number(b.dataset.ts);
+        if (activeSort === 'largest') return Number(b.dataset.size) - Number(a.dataset.size);
         return 0;
     });
     visible.forEach(row => list.appendChild(row));
@@ -1008,9 +1099,9 @@ document.getElementById('backup-form').addEventListener('submit', async function
     const status   = document.getElementById('backup-status');
     const timeEl   = document.getElementById('backup-time');
 
-    btn.disabled     = true;
-    icon.textContent = '⏳';
-    text.textContent = 'Creating backup…';
+    btn.disabled       = true;
+    icon.textContent   = '⏳';
+    text.textContent   = 'Creating backup…';
     progress.classList.remove('hidden');
     status.textContent = 'Creating backup…';
     timeEl.textContent = '';
@@ -1027,9 +1118,10 @@ document.getElementById('backup-form').addEventListener('submit', async function
         const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
 
         if (res.ok && result.success) {
-            status.innerHTML   = '✅ Backup created successfully!';
+            // Controller returns: success, filename, elapsed, financial_count, message
+            status.innerHTML   = `✅ ${result.message ?? 'Backup created successfully!'}`;
             timeEl.textContent = `Completed in ${elapsed}s`;
-            setTimeout(() => location.reload(), 1500);
+            setTimeout(() => location.reload(), 1800);
         } else {
             status.innerHTML   = '❌ Error: ' + (result.error ?? 'Unknown error');
             timeEl.textContent = `Failed after ${elapsed}s`;

@@ -18,7 +18,7 @@ trait FinancialHelperTrait
 
     protected function checkGuest(): void
     {
-        if (auth()->Auth::user()->email === 'guest@gmail.com') {
+        if (Auth::user()->email === 'guest@gmail.com') {
             abort(403, 'Guest accounts cannot perform this action.');
         }
     }

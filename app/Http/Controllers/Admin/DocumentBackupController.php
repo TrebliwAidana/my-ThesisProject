@@ -38,6 +38,7 @@ class DocumentBackupController extends Controller
     // -------------------------------------------------------------------------
     // Index
     // -------------------------------------------------------------------------
+
     public function index()
     {
         $this->requirePermission('backups.view');
@@ -88,6 +89,7 @@ class DocumentBackupController extends Controller
     // -------------------------------------------------------------------------
     // Create
     // -------------------------------------------------------------------------
+
     public function create(Request $request)
     {
         $this->requirePermission('backups.create');
@@ -147,9 +149,11 @@ class DocumentBackupController extends Controller
                 throw new \RuntimeException('Failed to create ZIP archive. Check server temp directory permissions.');
             }
 
+            // ── Document categories metadata ──────────────────────────────
             $allCategories = DocumentCategory::all(['id', 'name', 'description', 'is_active'])->toArray();
             $zip->addFromString('categories.json', json_encode($allCategories, JSON_PRETTY_PRINT));
 
+            // ── Documents (physical files only) ───────────────────────────
             $documents = Document::withTrashed()
                 ->with(['versions' => fn ($q) => $q->select([
                     'id', 'document_id', 'version_number', 'file_path',
@@ -182,6 +186,11 @@ class DocumentBackupController extends Controller
                 ])
                 ->all();
 
+            // ── Financial transactions — fetched directly from ────────────
+            // ── FinancialTransaction, NOT from Documents.        ────────────
+            // ── Document copies (auto-generated) are derived     ────────────
+            // ── artifacts; the source of truth is always the     ────────────
+            // ── financial_transactions table.                    ────────────
             $financialData     = [];
             $financialCount    = 0;
             $financialSnapshot = [
@@ -194,34 +203,36 @@ class DocumentBackupController extends Controller
             ];
 
             if ($includeFinancials) {
-                $ftQuery = FinancialTransaction::withTrashed()
-                    ->with(['documents:id,title,description,document_category_id'])
+                // Pure FinancialTransaction fetch — no Document join at all.
+                $financialData = FinancialTransaction::withTrashed()
                     ->when(!empty($financialStatuses), fn ($q) => $q->whereIn('status', $financialStatuses))
                     ->when(!empty($financialTypes),    fn ($q) => $q->whereIn('type', $financialTypes))
                     ->when($financialDateFrom,         fn ($q) => $q->whereDate('transaction_date', '>=', $financialDateFrom))
-                    ->when($financialDateTo,           fn ($q) => $q->whereDate('transaction_date', '<=', $financialDateTo));
-
-                $financialData = $ftQuery->get()->map(fn ($ft) => [
-                    'id'               => $ft->id,
-                    'type'             => $ft->type,
-                    'user_id'          => $ft->user_id,
-                    'status'           => $ft->status,
-                    'description'      => $ft->description,
-                    'amount'           => $ft->amount,
-                    'category'         => $ft->category,
-                    'transaction_date' => $ft->transaction_date,
-                    'notes'            => $ft->notes,
-                    'approved_by'      => $ft->approved_by,
-                    'approved_at'      => $ft->approved_at,
-                    'audited_by'       => $ft->audited_by,
-                    'audited_at'       => $ft->audited_at,
-                    'customer_name'    => $ft->customer_name,
-                    'due_date'         => $ft->due_date,
-                    'deleted_at'       => $ft->deleted_at,
-                    'created_at'       => $ft->created_at,
-                    'updated_at'       => $ft->updated_at,
-                    'document_ids'     => $ft->documents->pluck('id')->toArray(),
-                ])->all();
+                    ->when($financialDateTo,           fn ($q) => $q->whereDate('transaction_date', '<=', $financialDateTo))
+                    ->get()
+                    ->map(fn ($ft) => [
+                        'id'               => $ft->id,
+                        'type'             => $ft->type,
+                        'user_id'          => $ft->user_id,
+                        'status'           => $ft->status,
+                        'description'      => $ft->description,
+                        'amount'           => $ft->amount,
+                        'category'         => $ft->category,
+                        'transaction_date' => $ft->transaction_date,
+                        'notes'            => $ft->notes,
+                        'approved_by'      => $ft->approved_by,
+                        'approved_at'      => $ft->approved_at,
+                        'audited_by'       => $ft->audited_by,
+                        'audited_at'       => $ft->audited_at,
+                        'customer_name'    => $ft->customer_name,
+                        'due_date'         => $ft->due_date,
+                        'deleted_at'       => $ft->deleted_at,
+                        'created_at'       => $ft->created_at,
+                        'updated_at'       => $ft->updated_at,
+                        // No document_ids — Document copies are re-derived on restore
+                        // from the transaction status, not stored as references.
+                    ])
+                    ->all();
 
                 $financialCount = count($financialData);
 
@@ -240,10 +251,11 @@ class DocumentBackupController extends Controller
                 );
             }
 
+            // ── Manifest ──────────────────────────────────────────────────
             $zip->addFromString('manifest.json', json_encode([
-                'backup_version'  => '3.0',
+                'backup_version'  => '4.0', // bumped — financial data now source-of-truth based
                 'created_at'      => now()->toISOString(),
-                'created_by'      => Auth::user()->full_name ?? Auth::user()->email,
+                'created_by'      => Auth::user()->email,
                 'scope'           => [
                     'category_ids'   => $categoryIds,
                     'category_label' => $categoryLabel,
@@ -255,6 +267,7 @@ class DocumentBackupController extends Controller
                 'documents'       => $documents,
             ], JSON_PRETTY_PRINT));
 
+            // ── Physical document files ───────────────────────────────────
             $tempFiles = [];
             $fileCount = 0;
 
@@ -295,6 +308,7 @@ class DocumentBackupController extends Controller
                 @unlink($tmp);
             }
 
+            // ── Stream sealed ZIP to private storage ──────────────────────
             $destination = "{$this->backupFolder}/{$zipName}";
             $writeStream = @fopen($tmpPath, 'rb');
 
@@ -362,6 +376,7 @@ class DocumentBackupController extends Controller
     // -------------------------------------------------------------------------
     // Download
     // -------------------------------------------------------------------------
+
     public function download(string $filename)
     {
         $this->requirePermission('backups.view');
@@ -381,6 +396,7 @@ class DocumentBackupController extends Controller
     // -------------------------------------------------------------------------
     // Restore
     // -------------------------------------------------------------------------
+
     public function restore(Request $request)
     {
         $this->requirePermission('backups.restore');
@@ -401,7 +417,7 @@ class DocumentBackupController extends Controller
         if (!$request->boolean('force_restore')) {
             $existing = RestoredBackup::where('backup_filename', $filename)->first();
             if ($existing) {
-                $restorer = $existing->restoredBy?->full_name ?? 'User #' . $existing->restored_by;
+                $restorer = $existing->restoredBy?->email ?? 'User #' . $existing->restored_by;
                 return back()->with('error', sprintf(
                     'Backup "%s" was already restored on %s by %s. Tick "Force restore" to override.',
                     $filename,
@@ -433,6 +449,7 @@ class DocumentBackupController extends Controller
                 ? json_decode($categoriesJson, true, 512, JSON_THROW_ON_ERROR)
                 : [];
 
+            // Only load financial rows if the user opted in to restore them
             $financialJson = $zip->getFromName('financial_transactions.json');
             $financialRows = ($financialJson && $request->boolean('restore_financials', true))
                 ? json_decode($financialJson, true, 512, JSON_THROW_ON_ERROR)
@@ -449,21 +466,21 @@ class DocumentBackupController extends Controller
         $actorUser              = Auth::user();
 
         $stats = [
-            'categories'           => 0,
-            'documents'            => 0,
-            'versions'             => 0,
-            'files'                => 0,
-            'skipped'              => 0,
-            'financial'            => 0,
-            'fin_skipped'          => 0,
-            'financial_docs_generated' => 0,
+            'categories'                => 0,
+            'documents'                 => 0,
+            'versions'                  => 0,
+            'files'                     => 0,
+            'skipped'                   => 0,
+            'financial'                 => 0,
+            'fin_skipped'               => 0,
+            'financial_docs_generated'  => 0,
         ];
 
         DB::beginTransaction();
         DB::statement('SET FOREIGN_KEY_CHECKS=0;');
 
         try {
-            // ── Step 1: Categories ────────────────────────────────────────
+            // ── Step 1: Restore document categories ───────────────────────
             $catNames     = array_filter(array_column($categories, 'name'));
             $existingCats = DocumentCategory::whereIn('name', $catNames)
                                             ->get(['id', 'name'])
@@ -488,14 +505,14 @@ class DocumentBackupController extends Controller
                 }
             }
 
-            // ── Step 2: Bulk-check documents ──────────────────────────────
+            // ── Step 2: Bulk-check existing documents ─────────────────────
             $backupDocIds = array_column($documents, 'id');
             $existingDocs = Document::withTrashed()
                                     ->whereIn('id', $backupDocIds)
                                     ->get(['id', 'title', 'owner_id', 'current_version_id'])
                                     ->keyBy('id');
 
-            // ── Step 3: Bulk-check versions ───────────────────────────────
+            // ── Step 3: Bulk-check existing versions ──────────────────────
             $allVersionIds = [];
             foreach ($documents as $doc) {
                 foreach ($doc['versions'] as $v) {
@@ -508,7 +525,7 @@ class DocumentBackupController extends Controller
                                                  ->flip()
                                                  ->all();
 
-            // ── Step 4: Restore documents ─────────────────────────────────
+            // ── Step 4: Restore documents and their physical files ────────
             foreach ($documents as $docData) {
                 $alreadyExists = $existingDocs->has($docData['id']);
 
@@ -602,6 +619,10 @@ class DocumentBackupController extends Controller
             }
 
             // ── Step 5: Restore financial transactions ────────────────────
+            // Financial records are the source of truth. We restore raw rows
+            // into financial_transactions first, then in Step 5b we let the
+            // same helper used by FinancialController re-derive the Document
+            // copies naturally — exactly as a real approval would do.
             if (!empty($financialRows)) {
                 $backupFtIds   = array_column($financialRows, 'id');
                 $existingFtIds = FinancialTransaction::withTrashed()
@@ -634,6 +655,7 @@ class DocumentBackupController extends Controller
                         'customer_name'    => $ftData['customer_name'] ?? null,
                         'due_date'         => $ftData['due_date'] ?? null,
                         'deleted_at'       => $ftData['deleted_at'] ?? null,
+                        // Clear approval stamps when forcing back to pending
                         'approved_by'      => $restoredStatus === 'pending' ? null : ($ftData['approved_by'] ?? null),
                         'approved_at'      => $restoredStatus === 'pending' ? null : ($ftData['approved_at'] ?? null),
                         'audited_by'       => $restoredStatus === 'pending' ? null : ($ftData['audited_by'] ?? null),
@@ -644,67 +666,61 @@ class DocumentBackupController extends Controller
                         FinancialTransaction::withTrashed()
                             ->where('id', $ftData['id'])
                             ->update($ftPayload);
-                        $ft = FinancialTransaction::withTrashed()->find($ftData['id']);
                     } else {
-                        $ft = FinancialTransaction::forceCreate(
+                        FinancialTransaction::forceCreate(
                             array_merge(['id' => $ftData['id']], $ftPayload)
                         );
-                    }
-
-                    if (!empty($ftData['document_ids'])) {
-                        $validDocIds = Document::withTrashed()
-                            ->whereIn('id', $ftData['document_ids'])
-                            ->pluck('id')
-                            ->all();
-
-                        if (!empty($validDocIds)) {
-                            $ft->documents()->syncWithoutDetaching($validDocIds);
-                        }
                     }
 
                     $stats['financial']++;
                 }
 
-                // ── Step 5b: Regenerate approval documents ────────────────
-                // For approved/paid transactions that don't yet have an
-                // auto-generated document — regenerate the PDF so that
-                // Documents module and dashboard totals stay consistent.
-                $restoredTransactions = FinancialTransaction::withTrashed()
-                    ->whereIn('id', $backupFtIds)
-                    ->whereIn('status', ['approved', 'paid'])
-                    ->whereNull('deleted_at')
-                    ->with(['user', 'approver', 'auditor', 'documents'])
-                    ->get();
+                // ── Step 5b: Re-derive Document copies for approved/paid ──
+                // We do NOT manually sync document_ids. Instead we call the
+                // exact same saveApprovedTransactionAsDocument() that
+                // FinancialController::approve() and markAsPaid() use.
+                // This guarantees the Document copy is created identically
+                // to what a real approval would produce.
+                if ($financialRestoreStatus !== 'force_pending') {
 
-                foreach ($restoredTransactions as $ft) {
-                    try {
-                        // Skip if already has an auto-generated approval doc
-                        $alreadyHasDoc = $ft->documents()
-                            ->whereJsonContains('tags', 'auto-generated')
-                            ->exists();
+                    $restoredFts = FinancialTransaction::whereIn('id', $backupFtIds)
+                        ->whereIn('status', ['approved', 'paid'])
+                        ->whereNull('deleted_at')
+                        ->with(['user', 'approver', 'auditor'])
+                        ->get();
 
-                        if ($alreadyHasDoc) continue;
+                    foreach ($restoredFts as $ft) {
+                        try {
+                            // Receivables only get a Document copy when paid,
+                            // not when merely approved — mirrors the real flow.
+                            if ($ft->type === 'receivable' && $ft->status !== 'paid') {
+                                continue;
+                            }
 
-                        // Receivables only get a doc when paid, not just approved
-                        if ($ft->type === 'receivable' && $ft->status !== 'paid') continue;
+                            // Skip if a Document copy already exists to avoid duplicates.
+                            $alreadyHasDoc = $ft->documents()
+                                ->whereJsonContains('tags', 'auto-generated')
+                                ->exists();
 
-                        // Skip if restore mode was force_pending
-                        // (status was reset so no approval doc should be generated)
-                        if ($financialRestoreStatus === 'force_pending') continue;
+                            if ($alreadyHasDoc) {
+                                continue;
+                            }
 
-                        // Use the trait method — pass actorUser so it doesn't
-                        // rely on Auth::user() being the original approver
-                        $this->saveApprovedTransactionAsDocument($ft, $actorUser);
-                        $stats['financial_docs_generated']++;
+                            // Re-use the trait method — same as FinancialController.
+                            // Pass $actorUser so it doesn't rely on Auth::user()
+                            // being the original approver.
+                            $this->saveApprovedTransactionAsDocument($ft, $actorUser);
+                            $stats['financial_docs_generated']++;
 
-                    } catch (\Throwable $e) {
-                        // Don't fail the whole restore for a single PDF error
-                        \Log::warning("Could not regenerate approval doc for transaction #{$ft->id}: " . $e->getMessage());
+                        } catch (\Throwable $e) {
+                            // A single PDF failure must not abort the whole restore.
+                            \Log::warning("Could not regenerate approval doc for transaction #{$ft->id}: " . $e->getMessage());
+                        }
                     }
                 }
             }
 
-            // ── Step 6: Record the restore ────────────────────────────────
+            // ── Step 6: Record this restore so it isn't run twice ─────────
             RestoredBackup::updateOrCreate(
                 ['backup_filename' => $filename],
                 [
@@ -747,10 +763,10 @@ class DocumentBackupController extends Controller
             "{$stats['documents']} documents,",
             "{$stats['versions']} versions,",
             "{$stats['files']} files restored.",
-            $stats['financial']                > 0 ? "{$stats['financial']} financial records restored."                                   : '',
-            $stats['financial_docs_generated'] > 0 ? "{$stats['financial_docs_generated']} approval documents regenerated."               : '',
-            $stats['fin_skipped']              > 0 ? "{$stats['fin_skipped']} financial records skipped."                                 : '',
-            $stats['skipped']                  > 0 ? "{$stats['skipped']} documents skipped (already exist)."                             : '',
+            $stats['financial']               > 0 ? "{$stats['financial']} financial records restored."                         : '',
+            $stats['financial_docs_generated'] > 0 ? "{$stats['financial_docs_generated']} approval documents regenerated."     : '',
+            $stats['fin_skipped']             > 0 ? "{$stats['fin_skipped']} financial records skipped."                        : '',
+            $stats['skipped']                 > 0 ? "{$stats['skipped']} documents skipped (already exist)."                    : '',
             $financialRestoreStatus === 'force_pending' && $stats['financial'] > 0
                 ? '⚠️ Financial records reset to pending — please re-audit and re-approve.'
                 : ($stats['financial'] > 0 ? '✅ Financial records restored with original status.' : ''),
@@ -763,6 +779,7 @@ class DocumentBackupController extends Controller
     // -------------------------------------------------------------------------
     // Destroy
     // -------------------------------------------------------------------------
+
     public function destroy(string $filename)
     {
         $this->requirePermission('backups.delete');

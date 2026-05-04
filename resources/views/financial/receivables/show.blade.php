@@ -558,45 +558,35 @@ html.dark .error-box p { color: #fca5a5; }
                             </div>
                         </div>
 
-                        {{-- MARK AS PAID BUTTON --}}
-                        @if($receivable->incomeTransaction->status === 'approved' && !$receivable->incomeTransaction->receivable_paid && $receivable->status !== 'paid')
-                            <div class="mt-4">
-                                <form method="POST" action="{{ route('financial.receivable.mark-paid', $receivable) }}">
-                                    @csrf
-                                    @method('PATCH')
-                                    <button type="submit" class="btn-emerald"
-                                            onclick="return confirm('✅ Mark this receivable as paid?\n\nThis will add the amount to income reports.')">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                                        </svg>
-                                        Mark as Paid
-                                    </button>
-                                </form>
-                                <p class="text-xs text-text-3 mt-2">This will include the amount in your financial report's Total Income.</p>
-                            </div>
-                        @elseif($receivable->incomeTransaction->status !== 'approved')
-                            <div class="warning-box">
-                                <p>⚠️ This transaction must be <strong>approved</strong> (not just audited) before it can be marked as paid.</p>
-                                <p class="text-xs mt-1">Current status: {{ $receivable->incomeTransaction->status }}</p>
-                            </div>
-                        @elseif($receivable->incomeTransaction->receivable_paid)
-                            <div class="success-box">
-                                <p>✓ Already marked as paid. Amount is included in income reports.</p>
-                            </div>
-                        @elseif($receivable->status === 'paid')
-                            <div class="success-box">
-                                <p>✓ Receivable is already marked as paid.</p>
-                            </div>
-                        @endif
-                    </div>
-                </div>
-            @else
-                <div class="linked-transaction">
-                    <div class="error-box">
-                        <p>⚠️ No linked income transaction found. Please check the database.</p>
-                    </div>
-                </div>
-            @endif
+                     {{-- MARK AS PAID BUTTON --}}
+                    @if($receivable->incomeTransaction->status === 'approved' && $receivable->status !== 'paid')
+                        <div class="mt-4">
+                            <form method="POST"
+                                action="{{ route('financial.mark-as-paid', $receivable->incomeTransaction->id) }}">
+                                @csrf
+                                @method('PATCH')
+                                <button type="submit" class="btn-emerald"
+                                        onclick="return confirm('Mark this receivable as paid?\n\nThis will add the amount to income reports.')">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                    </svg>
+                                    Mark as Paid
+                                </button>
+                            </form>
+                            <p class="text-xs text-text-3 mt-2">
+                                This will include the amount in your financial report's Total Income.
+                            </p>
+                        </div>
+                    @elseif($receivable->status === 'paid')
+                        <div class="success-box">
+                            <p>✓ Receivable is already marked as paid. Amount is included in income reports.</p>
+                        </div>
+                    @else
+                        <div class="warning-box">
+                            <p>⚠️ This transaction must be <strong>approved</strong> before it can be marked as paid.</p>
+                            <p class="text-xs mt-1">Current status: {{ $receivable->incomeTransaction->status }}</p>
+                        </div>
+                    @endif
 
             {{-- Documents / Approval Slip --}}
             @php

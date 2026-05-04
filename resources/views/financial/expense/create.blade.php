@@ -334,24 +334,13 @@ html.dark .error-list {
 @keyframes spin {
     to { transform: rotate(360deg); }
 }
-
-/* Remove number input spinners */
-input[type=number]::-webkit-inner-spin-button,
-input[type=number]::-webkit-outer-spin-button {
-    -webkit-appearance: none;
-    margin: 0;
-}
-input[type=number] {
-    -moz-appearance: textfield;
-    appearance: textfield;
-}
 </style>
 @endpush
 
 @section('content')
 
 <div class="space-y-5">
-    
+
     {{-- Hero Section --}}
     <div class="relative overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-600 to-emerald-700 dark:from-emerald-800 dark:to-emerald-900 p-6 md:p-7">
         <div class="absolute inset-0 opacity-[0.05]"
@@ -391,14 +380,14 @@ input[type=number] {
                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 13l-5 5m0 0l-5-5m5 5V6"/>
                         </svg>
-                        ↓ Expense
+                          Expense
                     </span>
                     <span class="text-xs text-text-3">Cash paid out</span>
                 </div>
 
                 @if($errors->any())
                     <div class="error-alert">
-                        <div class="error-title">Please fix the following errors:</div>
+                        <div class="error-title">Please fix the foSllowing errors:</div>
                         <ul class="error-list">
                             @foreach($errors->all() as $error)
                                 <li>{{ $error }}</li>
@@ -407,7 +396,8 @@ input[type=number] {
                     </div>
                 @endif
 
-                <form method="POST" action="{{ route('financial.expense.store') }}" enctype="multipart/form-data" id="expense-form">
+                <form method="POST" action="{{ route('financial.expense.store') }}" enctype="multipart/form-data"
+                      @submit="busy = true">
                     @csrf
 
                     {{-- Category --}}
@@ -451,12 +441,25 @@ input[type=number] {
                     </div>
 
                     {{-- Amount --}}
+                    {{--
+                        FIX: type="number" → type="text" + inputmode="decimal"
+                        type="number" with Alpine causes browser float rounding during
+                        DOM diffs (e.g. 90.25 becomes 90.23). type="text" preserves the
+                        exact string typed. Laravel's 'numeric' validation accepts it fine.
+                    --}}
                     <div class="mb-5">
                         <label class="form-label">Amount (PHP) <span class="form-label-required">*</span></label>
                         <div class="input-group">
                             <span class="input-group-prepend">₱</span>
-                            <input type="number" name="amount" value="{{ old('amount') }}" required
-                                   min="0.01" step="any" placeholder="0.00"
+                            <input type="text"
+                                   inputmode="decimal"
+                                   name="amount"
+                                   value="{{ old('amount') }}"
+                                   required
+                                   placeholder="0.00"
+                                   pattern="^\d+(\.\d{1,2})?$"
+                                   oninput="this.value = this.value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1')"
+                                   autocomplete="off"
                                    class="form-input {{ $errors->has('amount') ? 'error' : '' }}">
                         </div>
                         <p class="form-hint">Cash paid out — goes through audit → approval.</p>
@@ -491,11 +494,13 @@ input[type=number] {
                     </div>
 
                     {{-- Form Actions --}}
+                    {{--
+                        FIX: removed nested x-data="{ busy: false }" from button.
+                        busy is now a property of the parent expenseForm() scope.
+                        @submit on the <form> sets busy = true cleanly.
+                    --}}
                     <div class="button-group">
                         <button type="submit"
-                                x-data="{ busy: false }"
-                                @click="if (busy) { $event.preventDefault(); $event.stopImmediatePropagation(); return; }"
-                                @submit.window="if ($event.target === $el.closest('form')) { busy = true; }"
                                 :disabled="busy"
                                 class="btn-emerald">
                             <span x-show="!busy">
@@ -535,6 +540,7 @@ function expenseForm() {
         category:          @json(old('category_final', '')),
         categories:        [],
         loadingCategories: true,
+        busy:              false, // FIX: lifted from nested x-data on submit button
 
         init() {
             fetch('{{ route('api.financial-categories.list') }}?type=expense')

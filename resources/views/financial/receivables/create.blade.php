@@ -379,7 +379,7 @@ input[type=number] {
 @section('content')
 
 <div class="space-y-5">
-    
+
     {{-- Hero Section --}}
     <div class="relative overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-600 to-emerald-700 dark:from-emerald-800 dark:to-emerald-900 p-6 md:p-7">
         <div class="absolute inset-0 opacity-[0.05]"
@@ -397,6 +397,12 @@ input[type=number] {
     </div>
 
     {{-- Form Card --}}
+    {{--
+        FIX: busy state is now part of receivableForm() scope.
+        Removed nested x-data="{ busy: false }" from the submit button —
+        that child scope was triggering Alpine re-renders which reset the
+        number input value mid-type (e.g. 1000 → 988).
+    --}}
     <div class="form-container anim-2" x-data="receivableForm()">
         <div class="form-card">
             <div class="form-card-header">
@@ -435,7 +441,9 @@ input[type=number] {
                     </div>
                 @endif
 
-                <form method="POST" action="{{ route('financial.receivable.store') }}" enctype="multipart/form-data" id="receivable-form">
+                <form method="POST" action="{{ route('financial.receivable.store') }}" enctype="multipart/form-data" id="receivable-form"
+                      @submit="busy = true">
+
                     @csrf
 
                     {{-- Category --}}
@@ -477,12 +485,27 @@ input[type=number] {
                     </div>
 
                     {{-- Amount --}}
+                    {{--
+                        FIX: type="number" replaced with type="text" + inputmode="decimal".
+                        Browser number inputs apply float rounding during Alpine DOM diffs,
+                        causing typed values like 90.25 to become 90.23. Using type="text"
+                        preserves the exact string the user typed. inputmode="decimal" still
+                        shows the numeric keyboard on mobile. pattern and oninput guard against
+                        non-numeric entry. Laravel's 'numeric' validation rule accepts the string.
+                    --}}
                     <div class="mb-5">
                         <label class="form-label">Amount (PHP) <span class="form-label-required">*</span></label>
                         <div class="input-group">
                             <span class="input-group-prepend">₱</span>
-                            <input type="number" name="amount" value="{{ old('amount') }}" required
-                                   min="0.01" step="any" placeholder="0.00"
+                            <input type="text"
+                                   inputmode="decimal"
+                                   name="amount"
+                                   value="{{ old('amount') }}"
+                                   required
+                                   placeholder="0.00"
+                                   pattern="^\d+(\.\d{1,2})?$"
+                                   oninput="this.value = this.value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1')"
+                                   autocomplete="off"
                                    class="form-input {{ $errors->has('amount') ? 'error' : '' }}">
                         </div>
                         <p class="form-hint">Amount the customer owes — will be added to income only after marked as paid.</p>
@@ -533,20 +556,23 @@ input[type=number] {
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                             </svg>
                             <p>
-                                <strong>Workflow:</strong> This receivable will go through 
-                                <em>pending → audit → approved</em>. Once approved, use 
-                                <em>Mark as Paid</em> on the detail page when the customer settles — 
+                                <strong>Workflow:</strong> This receivable will go through
+                                <em>pending → audit → approved</em>. Once approved, use
+                                <em>Mark as Paid</em> on the detail page when the customer settles —
                                 only then will the amount be counted in Total Income.
                             </p>
                         </div>
                     </div>
 
                     {{-- Form Actions --}}
+                    {{--
+                        FIX: x-data="{ busy: false }" removed from button.
+                        busy is now a property of the parent receivableForm() scope.
+                        @submit on the <form> sets busy = true instead of
+                        @submit.window on the button (which caused scope conflicts).
+                    --}}
                     <div class="button-group">
                         <button type="submit"
-                                x-data="{ busy: false }"
-                                @click="if (busy) { $event.preventDefault(); $event.stopImmediatePropagation(); return; }"
-                                @submit.window="if ($event.target === $el.closest('form')) { busy = true; }"
                                 :disabled="busy"
                                 class="btn-emerald">
                             <span x-show="!busy">
@@ -586,16 +612,17 @@ function receivableForm() {
         category: @json(old('category_final', '')),
         categories: [],
         loadingCategories: true,
+        busy: false, // FIX: lifted from nested x-data on submit button
 
         init() {
             fetch('{{ route('api.financial-categories.list') }}?type=receivable')
                 .then(r => r.json())
-                .then(data => { 
-                    this.categories = data; 
-                    this.loadingCategories = false; 
+                .then(data => {
+                    this.categories = data;
+                    this.loadingCategories = false;
                 })
-                .catch(() => { 
-                    this.loadingCategories = false; 
+                .catch(() => {
+                    this.loadingCategories = false;
                 });
         },
     };

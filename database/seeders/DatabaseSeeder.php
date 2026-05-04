@@ -21,9 +21,10 @@ class DatabaseSeeder extends Seeder
             PermissionMatrixSeeder::class,  // ✅ replaced PermissionSeeder
             UserSeeder::class,
             MemberSeeder::class,
-            DocumentSeeder::class,
+         //   DocumentSeeder::class,
             DocumentCategorySeeder::class,
             FinancialCategorySeeder::class,
+            FinancialRecordSeeder::class,
         ]);
     }
 }

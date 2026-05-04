@@ -329,7 +329,7 @@ body {
     Received the amount of 
     <span class="underline">{{ number_format($net_final, 2) }}</span>
     (PHP <span class="underline short">{{ number_format($net_final, 2) }}</span>)
-    from the Organization Treasurer being designated as VSUIHS Treasurer on 
+    from the Organization Treasurer being designated as VSULHS Treasurer on 
     <span class="underline short">{{ now()->format('m/d/Y') }}</span>.
 </div>
 
@@ -338,7 +338,7 @@ body {
         <strong>{{ $treasurer_name }}</strong>
     </div>
     <br>
-    VSUIHS Treasurer
+    VSULHS Treasurer
 </div>
 
 <!-- NOTE -->

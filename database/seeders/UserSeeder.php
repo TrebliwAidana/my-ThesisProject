@@ -24,7 +24,7 @@ class UserSeeder extends Seeder
         User::firstOrCreate(
             ['email' => 'sysadmin@gmail.com'],
             [
-                'full_name'       => 'Wilbert B. Anadia',
+                //'full_name'       => 'Wilbert B. Anadia',
                 'first_name'      => 'Wilbert',
                 'last_name'       => 'Anadia',
                 'password'        => Hash::make('password123'),
@@ -39,7 +39,7 @@ class UserSeeder extends Seeder
         User::firstOrCreate(
             ['email' => 'adviser@gmail.com'],
             [
-                'full_name'       => 'Club Adviser',
+                //'full_name'       => 'Club Adviser',
                 'first_name'      => 'Club',
                 'last_name'       => 'Adviser',
                 'password'        => Hash::make('password123'),
@@ -54,7 +54,7 @@ class UserSeeder extends Seeder
         User::firstOrCreate(
             ['email' => 'treasurer@gmail.com'],
             [
-                'full_name'       => 'Treasurer User',
+                //'full_name'       => 'Treasurer User',
                 'first_name'      => 'Treasurer',
                 'last_name'       => 'User',
                 'password'        => Hash::make('password123'),
@@ -69,7 +69,7 @@ class UserSeeder extends Seeder
         User::firstOrCreate(
             ['email' => 'auditor@gmail.com'],
             [
-                'full_name'       => 'Auditor User',
+                //'full_name'       => 'Auditor User',
                 'first_name'      => 'Auditor',
                 'last_name'       => 'User',
                 'password'        => Hash::make('password123'),
@@ -85,7 +85,7 @@ class UserSeeder extends Seeder
         User::firstOrCreate(
             ['email' => 'guest@gmail.com'],
             [
-                'full_name'       => 'Guest User',
+                //'full_name'       => 'Guest User',
                 'first_name'      => 'Guest',
                 'last_name'       => 'User',
                 'password'        => Hash::make(Str::random(40)),
