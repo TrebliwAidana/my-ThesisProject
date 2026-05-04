@@ -9,6 +9,6 @@
       "src": "/(.*)",
       "dest": "/api/index.php"
     }
-  ],
-  "buildCommand": "composer install --no-dev --optimize-autoloader && php artisan config:clear && php artisan package:discover && php artisan optimize"
+  ]
+  
 }
