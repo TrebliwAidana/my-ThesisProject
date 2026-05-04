@@ -1,9 +1,0 @@
-/vendor/
-Homestead.yaml
-Homestead.json
-/.vagrant
-.phpunit.result.cache
-php.dockerfile
-docker-compose.yml
-composer.dockerfile
-/php
