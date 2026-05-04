@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "5681ea6f2aaa4c56894ea906ca0abb17",
+    "content-hash": "9e752c251ff0c8d1a86635eda85446c6",
     "packages": [
         {
             "name": "aws/aws-crt-php",
@@ -9173,6 +9173,64 @@
             "time": "2024-05-16T03:13:13+00:00"
         },
         {
+            "name": "mridhulka/laravel-vercel",
+            "version": "v1.0.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/mridhulka/laravel-vercel.git",
+                "reference": "9f9b9ddd6e4d2189cdbf2c228d49052aedf723ad"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/mridhulka/laravel-vercel/zipball/9f9b9ddd6e4d2189cdbf2c228d49052aedf723ad",
+                "reference": "9f9b9ddd6e4d2189cdbf2c228d49052aedf723ad",
+                "shasum": ""
+            },
+            "require": {
+                "php": "^8.0"
+            },
+            "require-dev": {
+                "friendsofphp/php-cs-fixer": "^3.13",
+                "nunomaduro/larastan": "^2.0",
+                "orchestra/testbench": "^7.11",
+                "pestphp/pest": "^1.22",
+                "phpunit/phpunit": "^9.5"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "aliases": {
+                        "LaravelVercel": "Mridhulka\\LaravelVercel\\Facades"
+                    },
+                    "providers": [
+                        "Mridhulka\\LaravelVercel\\LaravelVercelServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Mridhulka\\LaravelVercel\\": "src/",
+                    "Mridhulka\\LaravelVercel\\Tests\\": "tests"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Mridhul",
+                    "email": "mridhulka@gmail.com"
+                }
+            ],
+            "description": "Publish assets required for deploying laravel on vercel.",
+            "support": {
+                "issues": "https://github.com/mridhulka/laravel-vercel/issues",
+                "source": "https://github.com/mridhulka/laravel-vercel/tree/v1.0.0"
+            },
+            "time": "2022-11-03T17:03:54+00:00"
+        },
+        {
             "name": "myclabs/deep-copy",
             "version": "1.13.4",
             "source": {
@@ -10981,6 +11039,7 @@
     "prefer-lowest": false,
     "platform": {
         "php": "^8.3",
+        "ext-gd": "*",
         "ext-zip": "*"
     },
     "platform-dev": {},
