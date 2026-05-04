@@ -84,7 +84,13 @@
     },
     "extra": {
         "laravel": {
-            "dont-discover": []
+            "dont-discover": ["nunomaduro/collision",
+            "nunomaduro/termwind",
+            "barryvdh/laravel-ide-helper",
+            "laravel/pail",
+            "mridhulka/laravel-vercel",
+            "laravel/tinker",
+            "spatie/laravel-ignition"]
         }
     },
     "config": {
