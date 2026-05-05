@@ -746,7 +746,7 @@
 <div class="mobile-menu" id="mobileMenu" role="navigation" aria-label="Mobile navigation">
     <a href="#features">Features</a>
     <a href="#about">About</a>
-    <a href="#testing">System Testing</a>
+    {{-- <a href="#testing">System Testing</a> --}}
     <a href="#contact">Contact</a>
     <button @click="loginModalOpen = true; closeMobileMenu()">Sign in</button>
     <div class="mobile-dark-row">
@@ -991,9 +991,9 @@
     </div>
 </section>
 
-{{-- ═══ SYSTEM TESTING & SURVEY BANNER ═══ --}}
+
 {{-- 📝 Replace SYSTEM_TESTING_LINK and SURVEY_LINK with your actual URLs.
-     Remove this section after the evaluation period. --}}
+     Remove this section after the evaluation period. 
 <section class="survey-banner" id="testing" aria-labelledby="survey-heading">
     <div class="survey-banner-inner reveal">
         <div class="survey-eyebrow">
@@ -1031,7 +1031,7 @@
             Available during the evaluation period only · Responses are anonymous
         </p>
     </div>
-</section>
+</section> 
 
 {{-- ═══ CTA ═══ --}}
 <section class="cta-section reveal" aria-labelledby="cta-heading">
