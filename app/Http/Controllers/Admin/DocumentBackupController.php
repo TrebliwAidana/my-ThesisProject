@@ -542,16 +542,17 @@ class DocumentBackupController extends Controller
                 $newCategoryId = $categoryIdMap[$docData['document_category_id']] ?? null;
 
                 // Build document row (upsert handles insert & update)
+                // ***** DATETIME NORMALIZATION APPLIED HERE *****
                 $documentsForUpsert[] = [
                     'id'                   => $docData['id'],
                     'owner_id'             => $docData['owner_id'],
                     'title'                => $docData['title'],
                     'description'          => $docData['description'],
                     'document_category_id' => $newCategoryId,
-                    'uploaded_at'          => $docData['uploaded_at'],
-                    'deleted_at'           => $docData['deleted_at'],
-                    'created_at'           => $docData['created_at'] ?? now(),
-                    'updated_at'           => now(),
+                    'uploaded_at'          => $this->normalizeDatetime($docData['uploaded_at']),
+                    'deleted_at'           => $this->normalizeDatetime($docData['deleted_at']),
+                    'created_at'           => $this->normalizeDatetime($docData['created_at']) ?? now()->toDateTimeString(),
+                    'updated_at'           => now()->toDateTimeString(),
                 ];
 
                 $stats['documents']++;
@@ -568,6 +569,7 @@ class DocumentBackupController extends Controller
                     }
 
                     // Build version row
+                    // ***** DATETIME NORMALIZATION APPLIED HERE *****
                     $versionsForUpsert[] = [
                         'id'             => $versionData['id'],
                         'document_id'    => $docData['id'],
@@ -578,8 +580,8 @@ class DocumentBackupController extends Controller
                         'file_size'      => $versionData['file_size'],
                         'change_notes'   => $versionData['change_notes'],
                         'uploaded_by'    => $versionData['uploaded_by'],
-                        'created_at'     => $versionData['created_at'] ?? now(),
-                        'updated_at'     => now(),
+                        'created_at'     => $this->normalizeDatetime($versionData['created_at']) ?? now()->toDateTimeString(),
+                        'updated_at'     => now()->toDateTimeString(),
                     ];
 
                     $stats['versions']++;
@@ -649,6 +651,7 @@ class DocumentBackupController extends Controller
                         ? 'pending'
                         : $ftData['status'];
 
+                    // ***** DATETIME NORMALIZATION APPLIED HERE *****
                     $financialsForUpsert[] = [
                         'id'               => $ftData['id'],
                         'type'             => $ftData['type'],
@@ -657,17 +660,17 @@ class DocumentBackupController extends Controller
                         'description'      => $ftData['description'],
                         'amount'           => $ftData['amount'],
                         'category'         => $ftData['category'],
-                        'transaction_date' => $ftData['transaction_date'],
+                        'transaction_date' => $this->normalizeDatetime($ftData['transaction_date']),
                         'notes'            => $ftData['notes'],
                         'customer_name'    => $ftData['customer_name'] ?? null,
-                        'due_date'         => $ftData['due_date'] ?? null,
-                        'deleted_at'       => $ftData['deleted_at'] ?? null,
+                        'due_date'         => $this->normalizeDatetime($ftData['due_date'] ?? null),
+                        'deleted_at'       => $this->normalizeDatetime($ftData['deleted_at'] ?? null),
                         'approved_by'      => $restoredStatus === 'pending' ? null : ($ftData['approved_by'] ?? null),
-                        'approved_at'      => $restoredStatus === 'pending' ? null : ($ftData['approved_at'] ?? null),
+                        'approved_at'      => $restoredStatus === 'pending' ? null : $this->normalizeDatetime($ftData['approved_at'] ?? null),
                         'audited_by'       => $restoredStatus === 'pending' ? null : ($ftData['audited_by'] ?? null),
-                        'audited_at'       => $restoredStatus === 'pending' ? null : ($ftData['audited_at'] ?? null),
-                        'created_at'       => $ftData['created_at'] ?? now(),
-                        'updated_at'       => now(),
+                        'audited_at'       => $restoredStatus === 'pending' ? null : $this->normalizeDatetime($ftData['audited_at'] ?? null),
+                        'created_at'       => $this->normalizeDatetime($ftData['created_at']) ?? now()->toDateTimeString(),
+                        'updated_at'       => now()->toDateTimeString(),
                     ];
 
                     $stats['financial']++;
@@ -794,6 +797,23 @@ class DocumentBackupController extends Controller
     // -------------------------------------------------------------------------
     // Helpers
     // -------------------------------------------------------------------------
+
+    /**
+     * Convert an ISO 8601 or other Carbon‑parsable date to MySQL DATETIME format (Y‑m‑d H:i:s).
+     * Returns null for empty/unparsable values.
+     */
+    private function normalizeDatetime($value): ?string
+    {
+        if (empty($value) || $value instanceof \DateTimeInterface) {
+            return $value;
+        }
+
+        try {
+            return \Carbon\Carbon::parse($value)->toDateTimeString();
+        } catch (\Throwable) {
+            return null;
+        }
+    }
 
     private function backupHasFinancialData(string $storagePath): bool
     {
