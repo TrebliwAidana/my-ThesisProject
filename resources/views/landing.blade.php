@@ -247,6 +247,7 @@
             margin: 0 auto 44px; line-height: 1.7; font-weight: 300;
         }
 
+        /* Improved hero buttons layout */
         .hero-btns {
             display: flex; flex-direction: column; align-items: center; gap: 16px;
         }
@@ -265,6 +266,7 @@
         }
         .hero-btns-secondary a:hover { color: #fff; border-color: rgba(255,255,255,.6); }
 
+        /* Trust badge */
         .hero-trust {
             display: inline-flex; align-items: center; gap: 6px;
             margin-top: 8px;
@@ -273,6 +275,7 @@
         }
         .hero-trust svg { width: 12px; height: 12px; stroke: rgba(255,255,255,.35); fill: none; stroke-width: 1.8; }
 
+        /* Scroll indicator */
         .hero-scroll {
             position: absolute; bottom: 28px; left: 50%; transform: translateX(-50%);
             z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 6px;
@@ -416,158 +419,184 @@
         .about .section-sub { color: rgba(255,255,255,.48); max-width: 100%; margin: 0 auto; }
 
         /* ════════════════════════════════════
-           ROLES
+           ROLES (Access Control + Members)
         ════════════════════════════════════ */
-        .roles { padding: 80px 48px; background: var(--mist); }
+        .roles {
+            padding: 80px 48px;
+            background: var(--mist);
+        }
         .dark .roles { background: #060D09; }
-        .roles-grid { display: grid; grid-template-columns: 1fr 1.2fr; gap: 72px; align-items: start; }
-        .roles-left { display: flex; flex-direction: column; }
-        .role-list { display: flex; flex-direction: column; gap: 10px; margin-top: 36px; flex: 1; }
-        .role-card { display: flex; align-items: flex-start; gap: 16px; padding: 20px; background: #fff; border: 1px solid var(--cloud); border-radius: 12px; transition: border-color .2s, box-shadow .2s; }
+        .roles-grid {
+            display: grid;
+            grid-template-columns: 1fr 1.2fr;
+            gap: 72px;
+            align-items: start;
+        }
+
+        /* Left column: intro + role list stacked */
+        .roles-left {
+            display: flex;
+            flex-direction: column;
+        }
+        .roles-left-intro {
+            /* intro text block — its height determines the shared header baseline */
+        }
+        .role-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 36px;
+            flex: 1;
+        }
+        .role-card {
+            display: flex;
+            align-items: flex-start;
+            gap: 16px;
+            padding: 20px;
+            background: #fff;
+            border: 1px solid var(--cloud);
+            border-radius: 12px;
+            transition: border-color .2s, box-shadow .2s;
+        }
         .dark .role-card { background: #0D1B12; border-color: rgba(255,255,255,.07); }
         .role-card:hover { border-color: var(--brilliant-gold); box-shadow: 0 4px 20px rgba(212,175,55,.1); }
-        .role-pip { width: 36px; height: 36px; border-radius: 8px; background: var(--pale); flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+        .role-pip {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            background: var(--pale);
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
         .dark .role-pip { background: rgba(5,150,105,.12); }
         .role-pip svg { width: 16px; height: 16px; stroke: var(--emerald); fill: none; stroke-width: 1.8; }
         .dark .role-pip svg { stroke: #1DB384; }
-        .role-info { flex: 1; min-width: 0; }
-        .role-info h4 { font-size: 14.5px; font-weight: 500; color: var(--ink); margin-bottom: 3px; }
-        .role-info p { font-size: 13px; color: var(--slate); font-weight: 300; line-height: 1.5; }
-        .role-badge { font-size: 11px; font-weight: 500; padding: 4px 12px; border-radius: 100px; background: var(--pale); color: var(--emerald); flex-shrink: 0; }
+        .role-info {
+            flex: 1;
+            min-width: 0;
+        }
+        .role-info h4 {
+            font-size: 14.5px;
+            font-weight: 500;
+            color: var(--ink);
+            margin-bottom: 3px;
+        }
+        .role-info p {
+            font-size: 13px;
+            color: var(--slate);
+            font-weight: 300;
+            line-height: 1.5;
+        }
+        .role-badge {
+            font-size: 11px;
+            font-weight: 500;
+            padding: 4px 12px;
+            border-radius: 100px;
+            background: var(--pale);
+            color: var(--emerald);
+            flex-shrink: 0;
+        }
         .dark .role-badge { background: rgba(5,150,105,.15); color: #5DDCAA; }
-        .roles-right { display: flex; flex-direction: column; }
-        .roles-right-spacer { flex-shrink: 0; }
-        .members-panel { background: #fff; border: 1px solid var(--cloud); border-radius: 16px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,.06); flex: 1; }
+
+        /* ── RIGHT COLUMN: members panel ── */
+        /* The right column is a flex column:
+           1) A spacer that mirrors the left intro block height (via JS measurement)
+           2) The panel card itself
+           This keeps the panel's top edge aligned with the role list on the left. */
+        .roles-right {
+            display: flex;
+            flex-direction: column;
+        }
+        .roles-right-spacer {
+            /* Height is set by JS to match .roles-left-intro height */
+            flex-shrink: 0;
+        }
+        .members-panel {
+            background: #fff;
+            border: 1px solid var(--cloud);
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 4px 24px rgba(0,0,0,.06);
+            flex: 1;
+        }
         .dark .members-panel { background: #0D1B12; border-color: rgba(255,255,255,.07); }
-        .mp-header { padding: 16px 20px; border-bottom: 1px solid var(--cloud); display: flex; justify-content: space-between; align-items: center; }
+        .mp-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--cloud);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
         .dark .mp-header { border-bottom-color: rgba(255,255,255,.07); }
         .mp-title { font-family: var(--serif); font-size: 15px; color: var(--ink); }
-        .mp-badge { font-size: 11px; font-weight: 500; padding: 4px 12px; border-radius: 100px; background: var(--pale); color: var(--emerald); }
+        .mp-badge {
+            font-size: 11px;
+            font-weight: 500;
+            padding: 4px 12px;
+            border-radius: 100px;
+            background: var(--pale);
+            color: var(--emerald);
+        }
         .dark .mp-badge { background: rgba(5,150,105,.15); color: #5DDCAA; }
-        .mp-row { display: flex; align-items: center; gap: 14px; padding: 14px 20px; border-bottom: 1px solid var(--cloud); transition: background .15s; }
+        .mp-row {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--cloud);
+            transition: background .15s;
+        }
         .dark .mp-row { border-bottom-color: rgba(255,255,255,.06); }
         .mp-row:last-child { border-bottom: none; }
         .mp-row:hover { background: var(--mist); }
         .dark .mp-row:hover { background: rgba(255,255,255,.03); }
-        .mp-avatar { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 500; flex-shrink: 0; }
+        .mp-avatar {
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 500;
+            flex-shrink: 0;
+        }
         .mp-name  { font-size: 13.5px; font-weight: 500; color: var(--ink); }
         .mp-pos   { font-size: 12px; color: var(--slate); font-weight: 300; }
-        .mp-role  { margin-left: auto; font-size: 11px; font-weight: 500; padding: 3px 12px; border-radius: 100px; white-space: nowrap; }
-        .mp-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 24px; gap: 12px; text-align: center; }
-        .mp-empty-ico { width: 48px; height: 48px; border-radius: 12px; background: var(--pale); display: flex; align-items: center; justify-content: center; }
+        .mp-role  {
+            margin-left: auto;
+            font-size: 11px;
+            font-weight: 500;
+            padding: 3px 12px;
+            border-radius: 100px;
+            white-space: nowrap;
+        }
+
+        /* Empty state */
+        .mp-empty {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 24px;
+            gap: 12px;
+            text-align: center;
+        }
+        .mp-empty-ico {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            background: var(--pale);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
         .dark .mp-empty-ico { background: rgba(5,150,105,.12); }
         .mp-empty-ico svg { width: 22px; height: 22px; stroke: var(--emerald); fill: none; stroke-width: 1.6; }
         .mp-empty h4 { font-size: 14px; font-weight: 500; color: var(--ink); }
         .mp-empty p { font-size: 13px; color: var(--slate); font-weight: 300; max-width: 200px; }
-
-        /* ════════════════════════════════════
-           SURVEY BANNER
-        ════════════════════════════════════ */
-        .survey-banner {
-            padding: 80px 48px;
-            background: linear-gradient(135deg, #051a10 0%, #0A4A38 60%, #082e22 100%);
-            position: relative;
-            overflow: hidden;
-            text-align: center;
-            border-top: 1px solid rgba(29,179,132,.15);
-            border-bottom: 1px solid rgba(29,179,132,.15);
-        }
-        .survey-banner::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background-image: radial-gradient(rgba(29,179,132,.13) 1px, transparent 1px);
-            background-size: 28px 28px;
-            pointer-events: none;
-        }
-        .survey-banner::after {
-            content: '';
-            position: absolute;
-            top: -80px; left: 50%;
-            transform: translateX(-50%);
-            width: 700px; height: 500px;
-            background: radial-gradient(ellipse, rgba(29,179,132,.2) 0%, transparent 70%);
-            pointer-events: none;
-        }
-        .survey-banner-inner {
-            position: relative;
-            z-index: 1;
-            max-width: 600px;
-            margin: 0 auto;
-        }
-        .survey-eyebrow {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            background: rgba(29,179,132,.12);
-            border: 1px solid rgba(29,179,132,.3);
-            border-radius: 100px;
-            padding: 5px 16px;
-            font-size: 12px;
-            font-weight: 500;
-            color: #6BE8BF;
-            letter-spacing: .04em;
-            margin-bottom: 28px;
-        }
-        .survey-pulse {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: #1DB384;
-            display: inline-block;
-            animation: surveyPing 2s ease-in-out infinite;
-        }
-        @keyframes surveyPing {
-            0%, 100% { opacity: 1; transform: scale(1); }
-            50%       { opacity: .5; transform: scale(.75); }
-        }
-        .survey-hed {
-            font-family: var(--serif);
-            font-size: clamp(30px, 4vw, 48px);
-            color: #fff;
-            line-height: 1.1;
-            letter-spacing: -.02em;
-            margin-bottom: 16px;
-        }
-        .survey-hed em { font-style: italic; color: #5DDCAA; }
-        .survey-sub {
-            font-size: 15px;
-            color: rgba(255,255,255,.55);
-            font-weight: 300;
-            line-height: 1.7;
-            max-width: 460px;
-            margin: 0 auto 36px;
-        }
-        .survey-actions {
-            display: flex;
-            justify-content: center;
-            gap: 12px;
-            flex-wrap: wrap;
-            margin-bottom: 20px;
-        }
-        .survey-btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            font-family: var(--sans);
-            font-size: 14px;
-            font-weight: 500;
-            padding: 13px 26px;
-            border-radius: 10px;
-            text-decoration: none;
-            letter-spacing: .02em;
-            transition: background .2s, transform .15s, box-shadow .2s, border-color .2s;
-            cursor: pointer;
-        }
-        .survey-btn svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 1.8; flex-shrink: 0; }
-        .survey-btn .arrow { width: 14px; height: 14px; stroke-width: 2.2; transition: transform .2s; }
-        .survey-btn:hover .arrow { transform: translateX(3px); }
-        .survey-btn--primary { background: var(--emerald); color: #fff; border: 1px solid transparent; }
-        .survey-btn--primary:hover { background: var(--brilliant-gold); transform: translateY(-2px); box-shadow: 0 8px 32px rgba(212,175,55,.3); }
-        .survey-btn--secondary { background: rgba(255,255,255,.07); color: rgba(255,255,255,.8); border: 1px solid rgba(255,255,255,.18); }
-        .survey-btn--secondary:hover { background: rgba(255,255,255,.13); color: #fff; border-color: rgba(255,255,255,.32); transform: translateY(-2px); }
-        .survey-note { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: rgba(255,255,255,.3); font-weight: 300; letter-spacing: .02em; }
-        .survey-note svg { width: 13px; height: 13px; stroke: rgba(255,255,255,.3); fill: none; stroke-width: 1.7; flex-shrink: 0; }
 
         /* ════════════════════════════════════
            CTA
@@ -631,7 +660,24 @@
         .dark .field input { background: rgba(255,255,255,.06); border-color: rgba(255,255,255,.1); color: #e2efe8; }
         .field input:focus { border-color: var(--emerald); box-shadow: 0 0 0 3px rgba(5,150,105,.1); background: #fff; }
         .dark .field input:focus { border-color: #1DB384; box-shadow: 0 0 0 3px rgba(29,179,132,.15); background: rgba(255,255,255,.08); }
-        .pw-toggle { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--slate); padding: 4px; display: flex; align-items: center; justify-content: center; width: 20px; height: 20px; flex-shrink: 0; transition: color .15s; }
+        .pw-toggle { 
+            position: absolute; 
+            right: 8px; 
+            top: 50%; 
+            transform: translateY(-50%); 
+            background: none; 
+            border: none; 
+            cursor: pointer; 
+            color: var(--slate); 
+            padding: 4px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center;
+            width: 20px;
+            height: 20px;
+            flex-shrink: 0;
+            transition: color .15s; 
+        }
         .pw-toggle:hover { color: var(--ink); }
         .pw-toggle svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 1.8; }
         .form-opts { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; font-size: 12px; }
@@ -681,10 +727,8 @@
             .about { padding: 64px 24px; }
             .roles { padding: 56px 24px; }
             .roles-grid { grid-template-columns: 1fr; gap: 40px; }
+            /* On mobile, reset the spacer so it stacks naturally */
             .roles-right-spacer { height: 0 !important; }
-            .survey-banner { padding: 56px 24px; }
-            .survey-actions { flex-direction: column; align-items: center; }
-            .survey-btn { width: 100%; max-width: 320px; justify-content: center; }
             .cta-section { padding: 64px 24px; }
             footer { padding: 48px 24px 24px; }
             .footer-grid { grid-template-columns: 1fr; gap: 32px; }
@@ -726,7 +770,6 @@
     <ul class="nav-links" role="list">
         <li><a href="#features">Features</a></li>
         <li><a href="#about">About</a></li>
-        {{-- <li><a href="#testing">System Testing</a></li> --}}
         <li><a href="#contact">Contact</a></li>
     </ul>
 
@@ -746,7 +789,6 @@
 <div class="mobile-menu" id="mobileMenu" role="navigation" aria-label="Mobile navigation">
     <a href="#features">Features</a>
     <a href="#about">About</a>
-    {{-- <a href="#testing">System Testing</a> --}}
     <a href="#contact">Contact</a>
     <button @click="loginModalOpen = true; closeMobileMenu()">Sign in</button>
     <div class="mobile-dark-row">
@@ -769,6 +811,7 @@
         <h1 id="hero-heading">The official portal of<br><em>VSULHS SSLG</em></h1>
         <p class="hero-sub">Financial records, documents, and member management — purpose-built for the Supreme Student Learner Government of VSU Laboratory High School.</p>
 
+        {{-- Improved CTA layout --}}
         <div class="hero-btns">
             <div class="hero-btns-primary">
                 <button @click="loginModalOpen = true" class="btn-primary">
@@ -787,6 +830,7 @@
                 <span>or</span>
                 <a href="#features">Explore features</a>
             </div>
+            {{-- Trust badge --}}
             <div class="hero-trust" aria-label="Protected under Philippine Data Privacy Act">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-2V9a2 2 0 00-2-2H8a2 2 0 00-2 2v4"/></svg>
                 Protected under RA 10173 · Data Privacy Act of 2012
@@ -794,6 +838,7 @@
         </div>
     </div>
 
+    {{-- Scroll indicator --}}
     <a href="#stats" class="hero-scroll" aria-label="Scroll down to see more">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
     </a>
@@ -919,7 +964,9 @@
 <section class="roles" aria-labelledby="roles-heading">
     <div class="roles-grid">
 
+        {{-- LEFT COLUMN --}}
         <div class="roles-left reveal">
+            {{-- Intro block — its rendered height is measured by JS --}}
             <div class="roles-left-intro" id="rolesLeftIntro">
                 <div class="section-eyebrow">Access control</div>
                 <div class="section-hed" id="roles-heading">Built around your<br>org structure</div>
@@ -956,6 +1003,9 @@
             </div>
         </div>
 
+        {{-- RIGHT COLUMN --}}
+        {{-- A spacer div whose height is set by JS to match the left intro block,
+             so the members panel card top-edge aligns with the role list top-edge. --}}
         <div class="roles-right reveal" id="rolesRight">
             <div class="roles-right-spacer" id="rolesRightSpacer"></div>
             <div class="members-panel" role="region" aria-label="Featured members">
@@ -991,48 +1041,6 @@
     </div>
 </section>
 
-
-{{-- 📝 Replace SYSTEM_TESTING_LINK and SURVEY_LINK with your actual URLs.
-     Remove this section after the evaluation period. 
-<section class="survey-banner" id="testing" aria-labelledby="survey-heading">
-    <div class="survey-banner-inner reveal">
-        <div class="survey-eyebrow">
-            <span class="survey-pulse"></span>
-            System Evaluation — Open Now
-        </div>
-        <h2 class="survey-hed" id="survey-heading">
-            Help us improve<br><em>VSULHS SSLG</em>
-        </h2>
-        <p class="survey-sub">
-            We're currently in the testing phase. Explore the system and share your experience through our short usability survey — it only takes a few minutes.
-        </p>
-        <div class="survey-actions">
-            <a href="SYSTEM_TESTING_LINK" target="_blank" rel="noopener noreferrer" class="survey-btn survey-btn--primary">
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
-                </svg>
-                Try the System
-                <svg class="arrow" viewBox="0 0 24 24" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
-                </svg>
-            </a>
-            <a href="SURVEY_LINK" target="_blank" rel="noopener noreferrer" class="survey-btn survey-btn--secondary">
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
-                </svg>
-                Take the Survey
-                <svg class="arrow" viewBox="0 0 24 24" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
-                </svg>
-            </a>
-        </div>
-        <p class="survey-note">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-            Available during the evaluation period only · Responses are anonymous
-        </p>
-    </div>
-</section> 
-
 {{-- ═══ CTA ═══ --}}
 <section class="cta-section reveal" aria-labelledby="cta-heading">
     <div class="section-eyebrow" style="margin-bottom:16px">Access portal</div>
@@ -1059,7 +1067,6 @@
             <ul>
                 <li><a href="#features">Features</a></li>
                 <li><a href="#about">About</a></li>
-                <li><a href="#testing">System Testing</a></li>
                 <li><a href="#contact">Contact</a></li>
                 <li><button @click="loginModalOpen = true">Sign in</button></li>
             </ul>
@@ -1070,7 +1077,6 @@
                 <li><a href="{{ route('help') }}">Help Centre</a></li>
                 <li><a href="{{ route('data-privacy-act') }}">Data Privacy Act of 2012</a></li>
                 <li><a href="{{ route('terms-of-service') }}">Terms of Service</a></li>
-                <li><a href="https://docs.google.com/forms/d/e/1FAIpQLSfI7UpPZXBwkfs0Z9EozPZAtxDKrU1VeZmoBJkNoG6qVpPnKg/viewform?usp=dialog" target="_blank" rel="noopener noreferrer">System Survey</a></li>
             </ul>
         </div>
         <div>
@@ -1080,6 +1086,7 @@
                 <li><a href="mailto:sslg@vsulhs.edu.ph">sslg@vsulhs.edu.ph</a></li>
                 <li><a href="tel:+639256353456">+63 925 635 3456</a></li>
             </ul>
+        </div>
     </div>
     <div class="footer-bottom">
         &copy; {{ date('Y') }} VSULHS Supreme Student Learner Government. All rights reserved.<br>
@@ -1087,7 +1094,7 @@
     </div>
 </footer>
 
-{{-- ═══ LOGIN MODAL ═══ --}}
+{{-- ═══ LOGIN MODAL (with full accessibility) ═══ --}}
 <div x-show="loginModalOpen"
      x-cloak
      class="modal-overlay"
@@ -1255,20 +1262,26 @@
         setTimeout(() => { el.style.opacity = '0'; setTimeout(() => el.remove(), 400); }, 4000);
     });
 
-    // Align members panel top with role list top
+    // ── ALIGN MEMBERS PANEL TOP WITH ROLE LIST TOP ──
+    // Measures the left intro block height and applies it as a spacer on the right,
+    // so both card-tops sit at exactly the same vertical position.
     function alignRolesPanels() {
         const introEl  = document.getElementById('rolesLeftIntro');
         const spacerEl = document.getElementById('rolesRightSpacer');
         if (!introEl || !spacerEl) return;
+        // Only apply on wider screens where the grid is 2-column
         if (window.innerWidth > 768) {
+            // intro height + the role-list's margin-top (36px) = total offset before the panel
             spacerEl.style.height = introEl.offsetHeight + 36 + 'px';
         } else {
             spacerEl.style.height = '0px';
         }
     }
 
+    // Run on load and on resize
     alignRolesPanels();
     window.addEventListener('resize', alignRolesPanels);
+    // Also run after fonts load (DM Serif Display affects intro block height)
     if (document.fonts && document.fonts.ready) {
         document.fonts.ready.then(alignRolesPanels);
     }
