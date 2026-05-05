@@ -767,6 +767,7 @@
 
         {{-- Profile Card --}}
         <div class="lg:col-span-1 anim-fade-up d4">
+             @if($user->hasPermission('profile.index') && $user->role->name !== 'Guest')
             <div class="dash-card dash-card-hover lg:sticky lg:top-6" style="overflow:visible;">
                 {{-- Card header --}}
                 <div class="hero-gradient px-5 py-5 relative overflow-hidden rounded-t-2xl">
@@ -803,33 +804,35 @@
 
                 {{-- Fields --}}
                 <div class="p-5">
-                    @php
-                    $profileRows = [
-                        ['Role',         $user->role->name],
-                        ['Position',     $user->member?->position ?? $user->position ?? '—'],
-                        ['Member Since', optional($user->member?->joined_at ?? $user->member?->term_start ?? $user->created_at)->format('M d, Y') ?? '—'],
-                        ['Last Login',   optional($user->last_login_at)->format('M d · H:i') ?? 'Never'],
-                        ['Last Updated', optional($user->updated_at)->format('M d, Y')],
-                    ];
-                    @endphp
-                    <div class="space-y-0">
-                        @foreach($profileRows as $row)
-                        <div class="flex justify-between items-center py-2.5 border-b dash-divider last:border-0">
-                            <span class="text-xs" style="color:var(--text-3);">{{ $row[0] }}</span>
-                            <span class="text-xs font-semibold text-right max-w-[56%] truncate" style="color:var(--text);">{{ $row[1] }}</span>
+                        @php
+                        $profileRows = [
+                            ['Role',         $user->role->name],
+                            ['Position',     $user->member?->position ?? $user->position ?? '—'],
+                            ['Member Since', optional($user->member?->joined_at ?? $user->member?->term_start ?? $user->created_at)->format('M d, Y') ?? '—'],
+                            ['Last Login',   optional($user->last_login_at)->format('M d · H:i') ?? 'Never'],
+                            ['Last Updated', optional($user->updated_at)->format('M d, Y')],
+                        ];
+                        @endphp
+                        <div class="space-y-0">
+                            @foreach($profileRows as $row)
+                            <div class="flex justify-between items-center py-2.5 border-b dash-divider last:border-0">
+                                <span class="text-xs" style="color:var(--text-3);">{{ $row[0] }}</span>
+                                <span class="text-xs font-semibold text-right max-w-[56%] truncate" style="color:var(--text);">{{ $row[1] }}</span>
+                            </div>
+                            @endforeach
                         </div>
-                        @endforeach
-                    </div>
-
-                    {{-- Edit Profile Button — Gold (Gold → Emerald) --}}
+                       
+                        {{-- Edit Profile Button — Gold (Gold → Emerald) --}}
                         <a href="{{ route('profile.index') }}" class="btn-emerald w-full justify-center mt-4">
                             Edit Profile
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                             </svg>
                         </a>
+                        
                 </div>
             </div>
+            @endif
         </div>
 
         {{-- Right Column --}}

@@ -726,7 +726,7 @@
     <ul class="nav-links" role="list">
         <li><a href="#features">Features</a></li>
         <li><a href="#about">About</a></li>
-        <li><a href="#testing">System Testing</a></li>
+        {{-- <li><a href="#testing">System Testing</a></li> --}}
         <li><a href="#contact">Contact</a></li>
     </ul>
 

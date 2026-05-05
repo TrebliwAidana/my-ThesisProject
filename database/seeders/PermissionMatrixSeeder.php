@@ -183,7 +183,7 @@ class PermissionMatrixSeeder extends Seeder
 
             // Guest — public reports only
             'Guest' => [
-                'reports.public',
+                'reports.public', 'documents.view',
             ],
         ];
 

@@ -24,22 +24,7 @@ use Illuminate\Http\Request;
 use App\Http\Controllers\LandingController;
 use Illuminate\Support\Facades\Storage;
 
-/*
-|--------------------------------------------------------------------------
-| Role Access Matrix
-|--------------------------------------------------------------------------
-| Role                  | ID | Dashboard | Members | Financial | Documents | Admin | Profile |
-| System Administrator  |  1 |     ✅    |    ✅   |     ✅    |     ✅    |   ✅  |    ✅   |
-| Club Adviser          |  2 |     ✅    |    ✅   |     ✅    |     ✅    |   ✅* |    ✅   |
-| Treasurer             |  3 |     ✅    |    ✅   |     ✅    |     ✅    |   ✅* |    ✅   |
-| Auditor               |  4 |     ✅    |    ✅   |     ✅    |     ✅    |   ✅* |    ✅   |
-| Guest                 |  5 |     ✅    |    ❌   |  ✅ r/o   |  ✅ r/o   |   ❌  |    ❌   |
-|
-| * Permission-based — controllers enforce fine-grained access via requirePermission()
-| Unauthorized access → redirect to dashboard with error toast (no raw 403).
-| Read-only enforcement for Guest on Financial/Documents is done in controllers.
-|--------------------------------------------------------------------------
-*/
+
 
 // ── Root redirect ─────────────────────────────────────────────────────────────
 Route::get('/', [LandingController::class, 'index'])->name('landing');
