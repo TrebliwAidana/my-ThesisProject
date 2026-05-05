@@ -413,6 +413,7 @@ class DocumentBackupController extends Controller
         $filename     = $uploadedFile->getClientOriginalName();
         $tmpPath      = $uploadedFile->getPathname();
         $backupHash   = hash_file('sha256', $tmpPath);
+        ini_set('max_execution_time', 300);
 
         if (!$request->boolean('force_restore')) {
             $existing = RestoredBackup::where('backup_filename', $filename)->first();
@@ -521,11 +522,15 @@ class DocumentBackupController extends Controller
             }
 
             $existingVersionIds = DocumentVersion::whereIn('id', $allVersionIds)
-                                                 ->pluck('id')
-                                                 ->flip()
-                                                 ->all();
+                                                ->pluck('id')
+                                                ->flip()
+                                                ->all();
 
-            // ── Step 4: Restore documents and their physical files ────────
+            // ── Step 4: Restore documents and versions (batch upsert) ─────
+            $documentsForUpsert = [];
+            $versionsForUpsert  = [];
+            $docVersionUpdates  = [];  // [document_id => version_id]
+
             foreach ($documents as $docData) {
                 $alreadyExists = $existingDocs->has($docData['id']);
 
@@ -536,27 +541,18 @@ class DocumentBackupController extends Controller
 
                 $newCategoryId = $categoryIdMap[$docData['document_category_id']] ?? null;
 
-                if ($alreadyExists) {
-                    $doc = $existingDocs[$docData['id']];
-                    $doc->update([
-                        'owner_id'             => $docData['owner_id'],
-                        'title'                => $docData['title'],
-                        'description'          => $docData['description'],
-                        'document_category_id' => $newCategoryId,
-                        'uploaded_at'          => $docData['uploaded_at'],
-                        'deleted_at'           => $docData['deleted_at'],
-                    ]);
-                } else {
-                    $doc = Document::withTrashed()->forceCreate([
-                        'id'                   => $docData['id'],
-                        'owner_id'             => $docData['owner_id'],
-                        'title'                => $docData['title'],
-                        'description'          => $docData['description'],
-                        'document_category_id' => $newCategoryId,
-                        'uploaded_at'          => $docData['uploaded_at'],
-                        'deleted_at'           => $docData['deleted_at'],
-                    ]);
-                }
+                // Build document row (upsert handles insert & update)
+                $documentsForUpsert[] = [
+                    'id'                   => $docData['id'],
+                    'owner_id'             => $docData['owner_id'],
+                    'title'                => $docData['title'],
+                    'description'          => $docData['description'],
+                    'document_category_id' => $newCategoryId,
+                    'uploaded_at'          => $docData['uploaded_at'],
+                    'deleted_at'           => $docData['deleted_at'],
+                    'created_at'           => $docData['created_at'] ?? now(),
+                    'updated_at'           => now(),
+                ];
 
                 $stats['documents']++;
                 $resolvedCurrentVersionId = null;
@@ -571,33 +567,24 @@ class DocumentBackupController extends Controller
                         continue;
                     }
 
-                    if ($versionExists) {
-                        DocumentVersion::where('id', $versionData['id'])->update([
-                            'document_id'    => $doc->id,
-                            'version_number' => $versionData['version_number'],
-                            'file_path'      => $versionData['file_path'],
-                            'file_name'      => $versionData['file_name'],
-                            'mime_type'      => $versionData['mime_type'],
-                            'file_size'      => $versionData['file_size'],
-                            'change_notes'   => $versionData['change_notes'],
-                            'uploaded_by'    => $versionData['uploaded_by'],
-                        ]);
-                    } else {
-                        DocumentVersion::forceCreate([
-                            'id'             => $versionData['id'],
-                            'document_id'    => $doc->id,
-                            'version_number' => $versionData['version_number'],
-                            'file_path'      => $versionData['file_path'],
-                            'file_name'      => $versionData['file_name'],
-                            'mime_type'      => $versionData['mime_type'],
-                            'file_size'      => $versionData['file_size'],
-                            'change_notes'   => $versionData['change_notes'],
-                            'uploaded_by'    => $versionData['uploaded_by'],
-                        ]);
-                    }
+                    // Build version row
+                    $versionsForUpsert[] = [
+                        'id'             => $versionData['id'],
+                        'document_id'    => $docData['id'],
+                        'version_number' => $versionData['version_number'],
+                        'file_path'      => $versionData['file_path'],
+                        'file_name'      => $versionData['file_name'],
+                        'mime_type'      => $versionData['mime_type'],
+                        'file_size'      => $versionData['file_size'],
+                        'change_notes'   => $versionData['change_notes'],
+                        'uploaded_by'    => $versionData['uploaded_by'],
+                        'created_at'     => $versionData['created_at'] ?? now(),
+                        'updated_at'     => now(),
+                    ];
 
                     $stats['versions']++;
 
+                    // Write physical file (lightweight, kept per file)
                     $stream = $zip->getStream("files/{$versionData['file_path']}");
                     if ($stream !== false) {
                         Storage::disk($this->backupDisk)->writeStream(
@@ -614,16 +601,35 @@ class DocumentBackupController extends Controller
                 }
 
                 if ($resolvedCurrentVersionId !== null) {
-                    $doc->update(['current_version_id' => $resolvedCurrentVersionId]);
+                    $docVersionUpdates[$docData['id']] = $resolvedCurrentVersionId;
                 }
             }
 
-            // ── Step 5: Restore financial transactions ────────────────────
-            // Financial records are the source of truth. We restore raw rows
-            // into financial_transactions first, then in Step 5b we let the
-            // same helper used by FinancialController re-derive the Document
-            // copies naturally — exactly as a real approval would do.
+            // Execute batch upserts (chunked to avoid huge statements)
+            $chunkSize = 200;
+
+            foreach (array_chunk($documentsForUpsert, $chunkSize) as $chunk) {
+                Document::upsert($chunk, ['id'], [
+                    'owner_id', 'title', 'description', 'document_category_id',
+                    'uploaded_at', 'deleted_at', 'updated_at',
+                ]);
+            }
+
+            foreach (array_chunk($versionsForUpsert, $chunkSize) as $chunk) {
+                DocumentVersion::upsert($chunk, ['id'], [
+                    'document_id', 'version_number', 'file_path', 'file_name',
+                    'mime_type', 'file_size', 'change_notes', 'uploaded_by', 'updated_at',
+                ]);
+            }
+
+            // Update current_version_id for documents that need it
+            foreach ($docVersionUpdates as $docId => $versionId) {
+                Document::where('id', $docId)->update(['current_version_id' => $versionId]);
+            }
+
+            // ── Step 5: Restore financial transactions (batch upsert) ─────
             if (!empty($financialRows)) {
+                $financialsForUpsert = [];
                 $backupFtIds   = array_column($financialRows, 'id');
                 $existingFtIds = FinancialTransaction::withTrashed()
                     ->whereIn('id', $backupFtIds)
@@ -643,7 +649,8 @@ class DocumentBackupController extends Controller
                         ? 'pending'
                         : $ftData['status'];
 
-                    $ftPayload = [
+                    $financialsForUpsert[] = [
+                        'id'               => $ftData['id'],
                         'type'             => $ftData['type'],
                         'user_id'          => $ftData['user_id'],
                         'status'           => $restoredStatus,
@@ -655,34 +662,29 @@ class DocumentBackupController extends Controller
                         'customer_name'    => $ftData['customer_name'] ?? null,
                         'due_date'         => $ftData['due_date'] ?? null,
                         'deleted_at'       => $ftData['deleted_at'] ?? null,
-                        // Clear approval stamps when forcing back to pending
                         'approved_by'      => $restoredStatus === 'pending' ? null : ($ftData['approved_by'] ?? null),
                         'approved_at'      => $restoredStatus === 'pending' ? null : ($ftData['approved_at'] ?? null),
                         'audited_by'       => $restoredStatus === 'pending' ? null : ($ftData['audited_by'] ?? null),
                         'audited_at'       => $restoredStatus === 'pending' ? null : ($ftData['audited_at'] ?? null),
+                        'created_at'       => $ftData['created_at'] ?? now(),
+                        'updated_at'       => now(),
                     ];
-
-                    if ($ftExists) {
-                        FinancialTransaction::withTrashed()
-                            ->where('id', $ftData['id'])
-                            ->update($ftPayload);
-                    } else {
-                        FinancialTransaction::forceCreate(
-                            array_merge(['id' => $ftData['id']], $ftPayload)
-                        );
-                    }
 
                     $stats['financial']++;
                 }
 
-                // ── Step 5b: Re-derive Document copies for approved/paid ──
-                // We do NOT manually sync document_ids. Instead we call the
-                // exact same saveApprovedTransactionAsDocument() that
-                // FinancialController::approve() and markAsPaid() use.
-                // This guarantees the Document copy is created identically
-                // to what a real approval would produce.
-                if ($financialRestoreStatus !== 'force_pending') {
+                // Execute batch upsert
+                foreach (array_chunk($financialsForUpsert, 200) as $chunk) {
+                    FinancialTransaction::upsert($chunk, ['id'], [
+                        'type', 'user_id', 'status', 'description', 'amount', 'category',
+                        'transaction_date', 'notes', 'customer_name', 'due_date',
+                        'deleted_at', 'approved_by', 'approved_at', 'audited_by', 'audited_at',
+                        'updated_at',
+                    ]);
+                }
 
+                // ── Step 5b: Re-derive Document copies (same as before) ──
+                if ($financialRestoreStatus !== 'force_pending') {
                     $restoredFts = FinancialTransaction::whereIn('id', $backupFtIds)
                         ->whereIn('status', ['approved', 'paid'])
                         ->whereNull('deleted_at')
@@ -691,13 +693,10 @@ class DocumentBackupController extends Controller
 
                     foreach ($restoredFts as $ft) {
                         try {
-                            // Receivables only get a Document copy when paid,
-                            // not when merely approved — mirrors the real flow.
                             if ($ft->type === 'receivable' && $ft->status !== 'paid') {
                                 continue;
                             }
 
-                            // Skip if a Document copy already exists to avoid duplicates.
                             $alreadyHasDoc = $ft->documents()
                                 ->whereJsonContains('tags', 'auto-generated')
                                 ->exists();
@@ -706,21 +705,16 @@ class DocumentBackupController extends Controller
                                 continue;
                             }
 
-                            // Re-use the trait method — same as FinancialController.
-                            // Pass $actorUser so it doesn't rely on Auth::user()
-                            // being the original approver.
                             $this->saveApprovedTransactionAsDocument($ft, $actorUser);
                             $stats['financial_docs_generated']++;
-
                         } catch (\Throwable $e) {
-                            // A single PDF failure must not abort the whole restore.
                             \Log::warning("Could not regenerate approval doc for transaction #{$ft->id}: " . $e->getMessage());
                         }
                     }
                 }
             }
 
-            // ── Step 6: Record this restore so it isn't run twice ─────────
+            // ── Step 6: Record this restore ───────────────────────────────
             RestoredBackup::updateOrCreate(
                 ['backup_filename' => $filename],
                 [
