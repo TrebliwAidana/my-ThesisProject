@@ -1,0 +1,114 @@
+[1mdiff --git a/database/migrations/2026_04_16_122343_create_financial_transactions_table.php b/database/migrations/2026_04_16_122343_create_financial_transactions_table.php[m
+[1mindex 8f689d13..058db013 100644[m
+[1m--- a/database/migrations/2026_04_16_122343_create_financial_transactions_table.php[m
+[1m+++ b/database/migrations/2026_04_16_122343_create_financial_transactions_table.php[m
+[36m@@ -12,15 +12,15 @@[m [mpublic function up()[m
+             $table->id();[m
+             $table->string('description');[m
+             $table->decimal('amount', 12, 2);[m
+[31m-            $table->enum('type', ['income', 'expense']);[m
+[32m+[m[32m            $table->string('type')->default('income');        // ← was enum[m
+             $table->string('category')->nullable();[m
+             $table->date('transaction_date');[m
+[31m-            $table->foreignId('user_id')->constrained()->onDelete('cascade'); // who submitted[m
+[31m-            $table->enum('status', ['pending', 'approved', 'rejected'])->default('pending');[m
+[32m+[m[32m            $table->foreignId('user_id')->constrained()->onDelete('cascade');[m
+[32m+[m[32m            $table->string('status')->default('pending');     // ← was enum[m
+             $table->foreignId('approved_by')->nullable()->constrained('users')->onDelete('set null');[m
+             $table->timestamp('approved_at')->nullable();[m
+             $table->text('notes')->nullable();[m
+[31m-            $table->string('receipt_path')->nullable(); // optional attachment[m
+[32m+[m[32m            $table->string('receipt_path')->nullable();[m
+             $table->timestamps();[m
+ [m
+             $table->index(['type', 'transaction_date']);[m
+[1mdiff --git a/database/migrations/2026_04_22_225710_create_receivables_table.php b/database/migrations/2026_04_22_225710_create_receivables_table.php[m
+[1mindex b7314e4d..e9dd1b54 100644[m
+[1m--- a/database/migrations/2026_04_22_225710_create_receivables_table.php[m
+[1m+++ b/database/migrations/2026_04_22_225710_create_receivables_table.php[m
+[36m@@ -16,7 +16,7 @@[m [mpublic function up()[m
+             $table->decimal('total_amount', 12, 2);[m
+             $table->decimal('paid_amount', 12, 2)->default(0);[m
+             $table->date('due_date')->nullable();[m
+[31m-            $table->enum('status', ['pending', 'partial', 'paid', 'overdue'])->default('pending');[m
+[32m+[m[32m            $table->string('status')->default('pending');     // ← was enum[m
+             $table->foreignId('created_by')->constrained('users');[m
+             $table->timestamps();[m
+         });[m
+[1mdiff --git a/database/migrations/2026_04_27_035245_add_receivable_fields_to_financial_transactions.php b/database/migrations/2026_04_27_035245_add_receivable_fields_to_financial_transactions.php[m
+[1mindex 93312bdf..9ee89c1f 100644[m
+[1m--- a/database/migrations/2026_04_27_035245_add_receivable_fields_to_financial_transactions.php[m
+[1m+++ b/database/migrations/2026_04_27_035245_add_receivable_fields_to_financial_transactions.php[m
+[36m@@ -9,10 +9,14 @@[m
+ {[m
+     public function up(): void[m
+     {[m
+[31m-        // Step 1 — Modify the type ENUM to include 'receivable'[m
+[31m-        DB::statement("ALTER TABLE financial_transactions MODIFY COLUMN `type` ENUM('income', 'expense', 'receivable') NOT NULL");[m
+[32m+[m[32m        // Since type is now a string (not enum), just update the check constraint[m
+[32m+[m[32m        if (DB::getDriverName() !== 'mysql') {[m
+[32m+[m[32m            // Drop old check constraint if exists, then add new one with 'receivable'[m
+[32m+[m[32m            DB::statement("ALTER TABLE financial_transactions DROP CONSTRAINT IF EXISTS financial_transactions_type_check");[m
+[32m+[m[32m            DB::statement("ALTER TABLE financial_transactions ADD CONSTRAINT financial_transactions_type_check CHECK (type IN ('income', 'expense', 'receivable'))");[m
+[32m+[m[32m        }[m
+ [m
+[31m-        // Step 2 — Add receivable-specific columns (nullable so existing rows are unaffected)[m
+[32m+[m[32m        // Add receivable-specific columns[m
+         Schema::table('financial_transactions', function (Blueprint $table) {[m
+             if (!Schema::hasColumn('financial_transactions', 'customer_name')) {[m
+                 $table->string('customer_name')->nullable()->after('notes');[m
+[36m@@ -25,11 +29,14 @@[m [mpublic function up(): void[m
+ [m
+     public function down(): void[m
+     {[m
+[31m-        // Revert type ENUM back to original[m
+[31m-        DB::statement("ALTER TABLE financial_transactions MODIFY COLUMN `type` ENUM('income', 'expense') NOT NULL");[m
+[32m+[m[32m        // Revert check constraint[m
+[32m+[m[32m        if (DB::getDriverName() !== 'mysql') {[m
+[32m+[m[32m            DB::statement("ALTER TABLE financial_transactions DROP CONSTRAINT IF EXISTS financial_transactions_type_check");[m
+[32m+[m[32m            DB::statement("ALTER TABLE financial_transactions ADD CONSTRAINT financial_transactions_type_check CHECK (type IN ('income', 'expense'))");[m
+[32m+[m[32m        }[m
+ [m
+         Schema::table('financial_transactions', function (Blueprint $table) {[m
+             $table->dropColumn(['customer_name', 'due_date']);[m
+         });[m
+     }[m
+[31m-};[m
+[32m+[m[32m};[m
+\ No newline at end of file[m
+[1mdiff --git a/database/migrations/2026_04_27_040404_add_paid_status_to_financial_transactions.php b/database/migrations/2026_04_27_040404_add_paid_status_to_financial_transactions.php[m
+[1mindex ee49fc8b..66d86169 100644[m
+[1m--- a/database/migrations/2026_04_27_040404_add_paid_status_to_financial_transactions.php[m
+[1m+++ b/database/migrations/2026_04_27_040404_add_paid_status_to_financial_transactions.php[m
+[36m@@ -7,14 +7,25 @@[m
+ {[m
+     public function up(): void[m
+     {[m
+[31m-        // Add 'paid' to the status ENUM — used exclusively by receivables[m
+[31m-        // that have been manually marked as collected[m
+[31m-        DB::statement("ALTER TABLE financial_transactions MODIFY COLUMN `status` ENUM('pending','audited','approved','rejected','paid') NOT NULL DEFAULT 'pending'");[m
+[32m+[m[32m        // Add 'paid' to status — used by receivables marked as collected[m
+[32m+[m[32m        if (DB::getDriverName() === 'mysql') {[m
+[32m+[m[32m            // MySQL still uses MODIFY (local Laragon dev)[m
+[32m+[m[32m            DB::statement("ALTER TABLE financial_transactions MODIFY COLUMN `status` ENUM('pending','audited','approved','rejected','paid') NOT NULL DEFAULT 'pending'");[m
+[32m+[m[32m        } else {[m
+[32m+[m[32m            // PostgreSQL (Render) — update check constraint[m
+[32m+[m[32m            DB::statement("ALTER TABLE financial_transactions DROP CONSTRAINT IF EXISTS financial_transactions_status_check");[m
+[32m+[m[32m            DB::statement("ALTER TABLE financial_transactions ADD CONSTRAINT financial_transactions_status_check CHECK (status IN ('pending','audited','approved','rejected','paid'))");[m
+[32m+[m[32m        }[m
+     }[m
+ [m
+     public function down(): void[m
+     {[m
+[31m-        // Revert — WARNING: any rows with status='paid' will break this rollback[m
+[31m-        DB::statement("ALTER TABLE financial_transactions MODIFY COLUMN `status` ENUM('pending','audited','approved','rejected') NOT NULL DEFAULT 'pending'");[m
+[32m+[m[32m        // WARNING: any rows with status='paid' will break this rollback[m
+[32m+[m[32m        if (DB::getDriverName() === 'mysql') {[m
+[32m+[m[32m            DB::statement("ALTER TABLE financial_transactions MODIFY COLUMN `status` ENUM('pending','audited','approved','rejected') NOT NULL DEFAULT 'pending'");[m
+[32m+[m[32m        } else {[m
+[32m+[m[32m            DB::statement("ALTER TABLE financial_transactions DROP CONSTRAINT IF EXISTS financial_transactions_status_check");[m
+[32m+[m[32m            DB::statement("ALTER TABLE financial_transactions ADD CONSTRAINT financial_transactions_status_check CHECK (status IN ('pending','audited','approved','rejected'))");[m
+[32m+[m[32m        }[m
+     }[m
+ };[m
+\ No newline at end of file[m
