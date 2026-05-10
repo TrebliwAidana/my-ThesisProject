@@ -59,8 +59,8 @@ return [
         'strict' => true,
         'engine' => null,
         'options' => extension_loaded('pdo_mysql') ? array_filter([
-            PDO::MYSQL_ATTR_SSL_CA => env('CLOUD_DB_SSL_CA'),    // optional
-            PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT => false,
+            Pdo\Mysql::ATTR_SSL_CA => env('CLOUD_DB_SSL_CA'),    // optional
+            Pdo\Mysql::ATTR_SSL_VERIFY_SERVER_CERT => false,
         ]) : [],
     ],
 
