@@ -12,15 +12,15 @@ return new class extends Migration
             $table->id();
             $table->string('description');
             $table->decimal('amount', 12, 2);
-            $table->enum('type', ['income', 'expense']);
+            $table->string('type')->default('income');        // ← was enum
             $table->string('category')->nullable();
             $table->date('transaction_date');
-            $table->foreignId('user_id')->constrained()->onDelete('cascade'); // who submitted
-            $table->enum('status', ['pending', 'approved', 'rejected'])->default('pending');
+            $table->foreignId('user_id')->constrained()->onDelete('cascade');
+            $table->string('status')->default('pending');     // ← was enum
             $table->foreignId('approved_by')->nullable()->constrained('users')->onDelete('set null');
             $table->timestamp('approved_at')->nullable();
             $table->text('notes')->nullable();
-            $table->string('receipt_path')->nullable(); // optional attachment
+            $table->string('receipt_path')->nullable();
             $table->timestamps();
 
             $table->index(['type', 'transaction_date']);

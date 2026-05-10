@@ -16,7 +16,7 @@ return new class extends Migration
             $table->decimal('total_amount', 12, 2);
             $table->decimal('paid_amount', 12, 2)->default(0);
             $table->date('due_date')->nullable();
-            $table->enum('status', ['pending', 'partial', 'paid', 'overdue'])->default('pending');
+            $table->string('status')->default('pending');     // ← was enum
             $table->foreignId('created_by')->constrained('users');
             $table->timestamps();
         });
