@@ -77,6 +77,11 @@ RUN composer dump-autoload --optimize --no-scripts
 RUN chown -R www-data:www-data storage bootstrap/cache
 RUN chmod -R 775 storage bootstrap/cache
 
+RUN mkdir -p /var/www/html/storage/logs \
+    && touch /var/www/html/storage/logs/laravel.log \
+    && chown -R www-data:www-data /var/www/html/storage \
+    && chmod -R 775 /var/www/html/storage
+
 COPY nginx.conf /etc/nginx/sites-available/default
 COPY scripts/deploy.sh /deploy.sh
 RUN chmod +x /deploy.sh

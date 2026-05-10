@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
 
+# Fix permissions on every deploy
+chmod -R 775 /var/www/html/storage
+chmod -R 775 /var/www/html/bootstrap/cache
+chown -R www-data:www-data /var/www/html/storage
+
 echo "Discovering packages..."
 php artisan package:discover --ansi
 
@@ -12,8 +17,9 @@ php artisan view:clear
 echo "Running migrations..."
 php artisan migrate --force
 
-echo "Running seeders..."
-php artisan db:seed --force
+# Uncomment below ONLY after confirming seeders use firstOrCreate
+# echo "Running seeders..."
+# php artisan db:seed --force
 
 echo "Caching config..."
 php artisan config:cache

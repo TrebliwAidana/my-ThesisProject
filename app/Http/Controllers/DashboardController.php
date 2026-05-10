@@ -8,6 +8,7 @@ use App\Models\FinancialTransaction;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class DashboardController extends Controller
@@ -47,17 +48,11 @@ class DashboardController extends Controller
         }
 
         // ── Financial Summaries ─────────────────────────────────────────────
-        // Approved income transactions
-        $incomeTotal = (float) FinancialTransaction::income()->approved()->sum('amount');
-
-        // Paid receivables count toward income (same logic as FinancialController)
+        $incomeTotal         = (float) FinancialTransaction::income()->approved()->sum('amount');
         $receivablePaidTotal = (float) FinancialTransaction::receivable()->paid()->sum('amount');
-
-        // Combined income
-        $totalIncome  = $incomeTotal + $receivablePaidTotal;
-        $expenseTotal = (float) FinancialTransaction::expense()->approved()->sum('amount');
-        $balance      = $totalIncome - $expenseTotal;
-
+        $totalIncome         = $incomeTotal + $receivablePaidTotal;
+        $expenseTotal        = (float) FinancialTransaction::expense()->approved()->sum('amount');
+        $balance             = $totalIncome - $expenseTotal;
         $pendingTransactions = FinancialTransaction::pending()->count();
 
         // ── Recent Transactions ─────────────────────────────────────────────
@@ -112,8 +107,7 @@ class DashboardController extends Controller
         }
 
         // ── Chart Data ──────────────────────────────────────────────────────
-        $chartData = $this->getChartData($range);
-
+        $chartData    = $this->getChartData($range);
         $totalExpense = $expenseTotal;
         $netBalance   = $balance;
 
@@ -131,7 +125,7 @@ class DashboardController extends Controller
             'balance',
             'totalIncome',
             'receivablePaidTotal',
-            'netBalance', 
+            'netBalance',
             'pendingTransactions',
             'pendingApprovals',
             'pendingTasksCount',
@@ -142,12 +136,10 @@ class DashboardController extends Controller
         ));
     }
 
-    /**
-     * Get chart data based on selected range.
-     * Paid receivables are merged into income to match dashboard summary cards.
-     */
     private function getChartData(string $range): array
     {
+        $isPostgres = DB::getDriverName() === 'pgsql';
+
         if ($range === 'weekly') {
             $rows = FinancialTransaction::whereIn('status', ['approved', 'paid'])
                 ->selectRaw("type, status, DATE(transaction_date) as period, SUM(amount) as total")
@@ -163,10 +155,20 @@ class DashboardController extends Controller
             }
 
         } elseif ($range === 'yearly') {
+
+            // ✅ Fixed: DATE_FORMAT → TO_CHAR for PostgreSQL
+            $periodExpr = $isPostgres
+                ? "TO_CHAR(transaction_date, 'YYYY-MM') as period"
+                : "DATE_FORMAT(transaction_date, '%Y-%m') as period";
+
+            $groupExpr = $isPostgres
+                ? "type, status, TO_CHAR(transaction_date, 'YYYY-MM')"
+                : "type, status, DATE_FORMAT(transaction_date, '%Y-%m')";
+
             $rows = FinancialTransaction::whereIn('status', ['approved', 'paid'])
-                ->selectRaw("type, status, DATE_FORMAT(transaction_date, '%Y-%m') as period, SUM(amount) as total")
+                ->selectRaw("type, status, $periodExpr, SUM(amount) as total")
                 ->where('transaction_date', '>=', now()->subMonths(11)->startOfMonth())
-                ->groupByRaw("type, status, DATE_FORMAT(transaction_date, '%Y-%m')")
+                ->groupByRaw($groupExpr)
                 ->get();
 
             $labels = [];
@@ -179,10 +181,19 @@ class DashboardController extends Controller
 
         } else {
             // monthly (default)
+            // ✅ Fixed: MONTH() → EXTRACT(MONTH FROM) for PostgreSQL
+            $periodExpr = $isPostgres
+                ? "EXTRACT(MONTH FROM transaction_date)::integer as period"
+                : "MONTH(transaction_date) as period";
+
+            $groupExpr = $isPostgres
+                ? "type, status, EXTRACT(MONTH FROM transaction_date)"
+                : "type, status, MONTH(transaction_date)";
+
             $rows = FinancialTransaction::whereIn('status', ['approved', 'paid'])
-                ->selectRaw("type, status, MONTH(transaction_date) as period, SUM(amount) as total")
+                ->selectRaw("type, status, $periodExpr, SUM(amount) as total")
                 ->whereYear('transaction_date', now()->year)
-                ->groupByRaw("type, status, MONTH(transaction_date)")
+                ->groupByRaw($groupExpr)
                 ->get();
 
             $labels = [];
@@ -193,29 +204,24 @@ class DashboardController extends Controller
             }
         }
 
-        // Build indexed totals — merge paid receivables into income bucket
+        // Build indexed totals
         $indexed = [];
         foreach ($rows as $row) {
-            $key = $row->period;
+            $key = (string) $row->period;
 
             if ($row->type === 'income' && $row->status === 'approved') {
-                // Approved income
                 $indexed['income'][$key] = ($indexed['income'][$key] ?? 0) + (float) $row->total;
-
             } elseif ($row->type === 'receivable' && $row->status === 'paid') {
-                // Paid receivables count as income — matches summary card logic
                 $indexed['income'][$key] = ($indexed['income'][$key] ?? 0) + (float) $row->total;
-
             } elseif ($row->type === 'expense' && $row->status === 'approved') {
-                // Approved expenses
                 $indexed['expense'][$key] = ($indexed['expense'][$key] ?? 0) + (float) $row->total;
             }
         }
 
         return [
             'labels'  => $labels,
-            'income'  => array_map(fn($k) => $indexed['income'][$k]  ?? 0, $keys),
-            'expense' => array_map(fn($k) => $indexed['expense'][$k] ?? 0, $keys),
+            'income'  => array_map(fn($k) => $indexed['income'][(string)$k]  ?? 0, $keys),
+            'expense' => array_map(fn($k) => $indexed['expense'][(string)$k] ?? 0, $keys),
         ];
     }
 }
