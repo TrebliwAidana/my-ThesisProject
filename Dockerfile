@@ -1,6 +1,6 @@
 FROM php:8.3-fpm
 
-# Step 1 — Install system packages
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
     nginx \
     git \
@@ -21,13 +21,15 @@ RUN apt-get update && apt-get install -y \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Step 2 — Configure GD
+# Install Node.js
+RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
+    && apt-get install -y nodejs
+
 RUN docker-php-ext-configure gd \
     --with-freetype \
     --with-jpeg \
     --with-webp
 
-# Step 3 — Install PHP extensions
 RUN docker-php-ext-install \
     pdo \
     pdo_mysql \
@@ -41,18 +43,15 @@ RUN docker-php-ext-install \
     zip \
     intl
 
-# Step 4 — Install soap separately (needs special handling)
 RUN docker-php-ext-install soap
 
-# Step 5 — PHP config
 RUN echo "memory_limit=512M" > /usr/local/etc/php/conf.d/memory.ini
 
-# Step 6 — Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www/html
 
-# Step 7 — Install dependencies
+# Install PHP dependencies
 COPY composer.json composer.lock ./
 RUN composer install \
     --no-dev \
@@ -61,15 +60,23 @@ RUN composer install \
     --no-interaction \
     --ignore-platform-reqs
 
-# Step 8 — Copy project & generate autoloader
+# Install Node dependencies & build assets
+COPY package.json package-lock.json ./
+RUN npm ci
+
+# Copy full project
 COPY . .
+
+# Build Vite assets ← this generates public/build/manifest.json
+RUN npm run build
+
+# Generate optimized autoloader
 RUN composer dump-autoload --optimize --no-scripts
 
-# Step 9 — Permissions
+# Set permissions
 RUN chown -R www-data:www-data storage bootstrap/cache
 RUN chmod -R 775 storage bootstrap/cache
 
-# Step 10 — Config files
 COPY nginx.conf /etc/nginx/sites-available/default
 COPY scripts/deploy.sh /deploy.sh
 RUN chmod +x /deploy.sh
