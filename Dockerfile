@@ -58,11 +58,12 @@ RUN composer install \
     --no-dev \
     --no-scripts \
     --no-autoloader \
+    --no-interaction \
     --ignore-platform-reqs
 
 # Step 8 — Copy project & generate autoloader
 COPY . .
-RUN composer dump-autoload --optimize
+RUN composer dump-autoload --optimize --no-scripts
 
 # Step 9 — Permissions
 RUN chown -R www-data:www-data storage bootstrap/cache

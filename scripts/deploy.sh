@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+echo "Discovering packages..."
+php artisan package:discover --ansi
+
 echo "Caching config..."
 php artisan config:cache
 
