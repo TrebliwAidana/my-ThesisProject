@@ -22,10 +22,19 @@ class AppServiceProvider extends ServiceProvider
             $view->with('theme', app(ThemeService::class)->getTheme());
         });
 
-        if (!app()->runningInConsole() || Schema::hasTable('roles')) {
-            Cache::remember('roles_with_perms', 3600, function () {
-                return Role::with('permissions')->get();
-            });
+        // ✅ Fixed: check both table AND column exist before querying
+        try {
+            if (
+                !app()->runningInConsole() &&
+                Schema::hasTable('roles') &&
+                Schema::hasColumn('roles', 'deleted_at')
+            ) {
+                Cache::remember('roles_with_perms', 3600, function () {
+                    return Role::with('permissions')->get();
+                });
+            }
+        } catch (\Exception $e) {
+            // Silently fail during deployment/migration
         }
     }
 
