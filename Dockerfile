@@ -1,6 +1,6 @@
 FROM php:8.3-fpm
 
-# Install system dependencies
+# Step 1 — Install system packages
 RUN apt-get update && apt-get install -y \
     nginx \
     git \
@@ -17,53 +17,58 @@ RUN apt-get update && apt-get install -y \
     libwebp-dev \
     libxrender1 \
     libfontconfig1 \
-    && docker-php-ext-configure gd \
-        --with-freetype \
-        --with-jpeg \
-        --with-webp \
-    && docker-php-ext-install \
-        pdo \
-        pdo_mysql \
-        pdo_pgsql \
-        pgsql \
-        mbstring \
-        exif \
-        pcntl \
-        bcmath \
-        gd \
-        zip \
-        xml \
-        intl \
-        soap
+    libicu-dev \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
-# Memory limit for Composer & dompdf
+# Step 2 — Configure GD
+RUN docker-php-ext-configure gd \
+    --with-freetype \
+    --with-jpeg \
+    --with-webp
+
+# Step 3 — Install PHP extensions
+RUN docker-php-ext-install \
+    pdo \
+    pdo_mysql \
+    pdo_pgsql \
+    pgsql \
+    mbstring \
+    exif \
+    pcntl \
+    bcmath \
+    gd \
+    zip \
+    intl
+
+# Step 4 — Install soap separately (needs special handling)
+RUN docker-php-ext-install soap
+
+# Step 5 — PHP config
 RUN echo "memory_limit=512M" > /usr/local/etc/php/conf.d/memory.ini
 
-# Install Composer
+# Step 6 — Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www/html
 
-# Copy composer files first (layer caching)
+# Step 7 — Install dependencies
 COPY composer.json composer.lock ./
-
-# Install PHP dependencies
 RUN composer install \
     --no-dev \
     --no-scripts \
     --no-autoloader \
     --ignore-platform-reqs
 
-# Copy full project
+# Step 8 — Copy project & generate autoloader
 COPY . .
-
-# Generate optimized autoloader
 RUN composer dump-autoload --optimize
 
-# Set permissions
-RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
-RUN chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
+# Step 9 — Permissions
+RUN chown -R www-data:www-data storage bootstrap/cache
+RUN chmod -R 775 storage bootstrap/cache
 
+# Step 10 — Config files
 COPY nginx.conf /etc/nginx/sites-available/default
 COPY scripts/deploy.sh /deploy.sh
 RUN chmod +x /deploy.sh
