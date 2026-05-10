@@ -1,8 +1,28 @@
-# render.yaml
 services:
   - type: web
-    name: https://api.render.com/deploy/srv-d80b5d37uimc73fcnkcg?key=toUPQb5oQW8
-    env: node
-    buildCommand: npm install && npm run build
-    startCommand: npm start
-    initialDeployHook: ./seed_database.sh
+    name: vsulhs-sslg
+    env: docker
+    dockerfilePath: ./Dockerfile
+    region: singapore
+    plan: free
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: false
+      - key: APP_KEY
+        sync: false       # ← set manually on Render dashboard
+      - key: APP_URL
+        value: https://my-thesisproject.onrender.com
+      - key: DB_CONNECTION
+        value: pgsql
+      - key: DATABASE_URL
+        fromDatabase:
+          name: vsulhs-sslg-db
+          property: connectionString
+    autoDeploy: true
+
+databases:
+  - name: vsulhs-sslg-db
+    region: singapore
+    plan: free
