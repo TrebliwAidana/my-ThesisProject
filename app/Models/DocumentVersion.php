@@ -14,6 +14,7 @@ class DocumentVersion extends Model
         'document_id',
         'version_number',
         'file_path',
+        'cloudinary_public_id', // ✅ added
         'file_name',
         'mime_type',
         'file_size',
@@ -38,6 +39,12 @@ class DocumentVersion extends Model
 
     public function getDownloadUrlAttribute(): string
     {
+        // ✅ If Cloudinary URL exists, use it directly
+        if ($this->file_path && str_starts_with($this->file_path, 'https://')) {
+            return $this->file_path;
+        }
+
+        // Fallback to route-based download
         return route('documents.version.download', [$this->document_id, $this->id]);
     }
 }

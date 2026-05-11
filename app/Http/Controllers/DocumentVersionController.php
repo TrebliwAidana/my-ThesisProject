@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Document;
 use App\Models\DocumentVersion;
-use Illuminate\Support\Facades\Storage;
 
 class DocumentVersionController extends Controller
 {
@@ -18,12 +17,13 @@ class DocumentVersionController extends Controller
         // Authorize using DocumentPolicy
         $this->authorize('view', $document);
 
-        // Check if the file actually exists on disk
-        if (!Storage::disk('private')->exists($version->file_path)) {
+        // ✅ Check if Cloudinary URL exists
+        if (! $version->file_path) {
             return redirect()->route('documents.show', $document)
-                ->with('error', 'The file is missing from the server. Please contact the administrator.');
+                ->with('error', 'The file is missing. Please contact the administrator.');
         }
 
-        return Storage::disk('private')->download($version->file_path, $version->file_name);
+        // ✅ Redirect to public Cloudinary URL
+        return redirect($version->file_path);
     }
 }
