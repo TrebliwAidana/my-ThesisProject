@@ -7,6 +7,7 @@ use App\Models\DocumentCategory;
 use App\Models\FinancialTransaction;
 use App\Models\Receivable;
 use App\Services\AuditLogger;
+use App\Services\CloudinaryService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
@@ -80,25 +81,32 @@ trait FinancialHelperTrait
         $file,
         ?string $changeNotes = null
     ): void {
+        // ✅ Upload receipt to Cloudinary
+        $cloudinary = new CloudinaryService();
+        $uploaded   = $cloudinary->upload($file, 'vsulhs-sslg/receipts');
+
         $document = Document::create([
             'title'       => 'Receipt: ' . $transaction->description,
             'description' => 'Attached to financial transaction #' . $transaction->id,
-            'category'    => 'Financial Receipt',
-            'is_public'   => false,
+            'tags'        => ['receipt', 'financial'],
             'owner_id'    => Auth::id(),
         ]);
 
-        $document->addVersion($file, $changeNotes ?? 'Receipt uploaded');
+        // ✅ Use new addVersion() signature with Cloudinary URL
+        $document->addVersion(
+            $uploaded['url'],
+            $uploaded['public_id'],
+            $changeNotes ?? 'Receipt uploaded',
+            $file->getSize(),
+            $file->getClientOriginalName(),
+            $file->getMimeType(),
+        );
+
         $transaction->documents()->syncWithoutDetaching([$document->id]);
     }
 
     // ── Approval PDF Helpers ───────────────────────────────────────────────
 
-    /**
-     * Generates and saves the income/expense/receivable approval PDF to Documents.
-     * Supports an optional $actorUser for restore context where Auth::user()
-     * may not be the original approver.
-     */
     protected function saveApprovedTransactionAsDocument(
         FinancialTransaction $transaction,
         ?\App\Models\User $actorUser = null
@@ -117,9 +125,6 @@ trait FinancialHelperTrait
         $this->writePdfToDocument($pdf, $filename, $title, $transaction, $typeLabel, $documentCategory, $actorUser);
     }
 
-    /**
-     * Generates and saves the receivable paid PDF to Documents.
-     */
     protected function saveApprovedReceivableAsDocument(
         Receivable $receivable,
         FinancialTransaction $linkedTransaction
@@ -128,10 +133,6 @@ trait FinancialHelperTrait
         $documentCategory = DocumentCategory::where('name', $categoryName)->first();
         $title            = "Approved Receivable: {$receivable->description} [Ref: {$receivable->reference_no}]";
         $filename         = "receivable_{$receivable->id}_paid.pdf";
-
-        $tempDir  = storage_path('app/temp/financial');
-        if (!is_dir($tempDir)) mkdir($tempDir, 0755, true);
-        $tempPath = "{$tempDir}/{$filename}";
 
         $pdf = Pdf::loadView('financial.approval-slip-pdf', [
             'transaction'   => $linkedTransaction,
@@ -152,14 +153,18 @@ trait FinancialHelperTrait
             'margin_bottom'        => 20,
         ]);
 
-        file_put_contents($tempPath, $pdf->output());
+        // ✅ Write PDF to temp file then upload to Cloudinary
+        $tempPath = $this->writePdfToTemp($filename, $pdf);
 
-        if (!file_exists($tempPath) || filesize($tempPath) === 0) {
-            \Illuminate\Support\Facades\Log::error("Failed to write receivable PDF to {$tempPath}");
-            return;
-        }
+        if (! $tempPath) return;
 
         try {
+            $cloudinary = new CloudinaryService();
+            $uploaded   = $cloudinary->upload(
+                new \Illuminate\Http\UploadedFile($tempPath, $filename, 'application/pdf', null, true),
+                'vsulhs-sslg/financial'
+            );
+
             $document = Document::create([
                 'title'                => $title,
                 'description'          => "Auto-generated receivable paid slip for Ref #{$receivable->reference_no}. "
@@ -170,17 +175,14 @@ trait FinancialHelperTrait
                 'owner_id'             => Auth::id(),
             ]);
 
-            $uploadedFile = new \Illuminate\Http\UploadedFile(
-                $tempPath,
+            // ✅ New addVersion() signature
+            $document->addVersion(
+                $uploaded['url'],
+                $uploaded['public_id'],
+                "Auto-saved — Receivable #{$receivable->reference_no} paid via transaction #{$linkedTransaction->id}",
+                filesize($tempPath),
                 $filename,
                 'application/pdf',
-                null,
-                true
-            );
-
-            $document->addVersion(
-                $uploadedFile,
-                "Auto-saved — Receivable #{$receivable->reference_no} paid via transaction #{$linkedTransaction->id}"
             );
 
             $linkedTransaction->documents()->syncWithoutDetaching([$document->id]);
@@ -202,10 +204,6 @@ trait FinancialHelperTrait
         }
     }
 
-    /**
-     * Builds the DomPDF instance for a transaction approval slip.
-     * Accepts optional $actorUser for restore context.
-     */
     protected function buildTransactionApprovalPdf(
         FinancialTransaction $transaction,
         string $typeLabel,
@@ -234,11 +232,6 @@ trait FinancialHelperTrait
         ]);
     }
 
-    /**
-     * Writes a DomPDF instance to a temp file, creates a Document record,
-     * versions it, and attaches it to the transaction via the pivot.
-     * Accepts optional $actorUser for restore context.
-     */
     protected function writePdfToDocument(
         \Barryvdh\DomPDF\PDF $pdf,
         string $filename,
@@ -249,12 +242,18 @@ trait FinancialHelperTrait
         ?\App\Models\User $actorUser = null
     ): void {
         $actor    = $actorUser ?? Auth::user();
-        $tempDir  = storage_path('app/temp/financial');
-        if (!is_dir($tempDir)) mkdir($tempDir, 0755, true);
-        $tempPath = "{$tempDir}/{$filename}";
-        file_put_contents($tempPath, $pdf->output());
+        $tempPath = $this->writePdfToTemp($filename, $pdf);
+
+        if (! $tempPath) return;
 
         try {
+            // ✅ Upload PDF to Cloudinary
+            $cloudinary = new CloudinaryService();
+            $uploaded   = $cloudinary->upload(
+                new \Illuminate\Http\UploadedFile($tempPath, $filename, 'application/pdf', null, true),
+                'vsulhs-sslg/financial'
+            );
+
             $document = Document::create([
                 'title'                => $title,
                 'description'          => "Auto-generated approval slip for {$typeLabel} #{$transaction->id}. "
@@ -266,13 +265,14 @@ trait FinancialHelperTrait
                 'owner_id'             => $actor?->id ?? Auth::id(),
             ]);
 
-            $uploadedFile = new \Illuminate\Http\UploadedFile(
-                $tempPath, $filename, 'application/pdf', null, true
-            );
-
+            // ✅ New addVersion() signature
             $document->addVersion(
-                $uploadedFile,
-                "Auto-saved on approval — {$typeLabel} transaction #{$transaction->id}"
+                $uploaded['url'],
+                $uploaded['public_id'],
+                "Auto-saved on approval — {$typeLabel} transaction #{$transaction->id}",
+                filesize($tempPath),
+                $filename,
+                'application/pdf',
             );
 
             $transaction->documents()->syncWithoutDetaching([$document->id]);
@@ -287,5 +287,24 @@ trait FinancialHelperTrait
         } finally {
             if (file_exists($tempPath)) @unlink($tempPath);
         }
+    }
+
+    // ── Private Helpers ────────────────────────────────────────────────────
+
+    // ✅ New helper — writes PDF to temp file, returns path or null on failure
+    private function writePdfToTemp(string $filename, \Barryvdh\DomPDF\PDF $pdf): ?string
+    {
+        $tempDir  = storage_path('app/temp/financial');
+        if (! is_dir($tempDir)) mkdir($tempDir, 0755, true);
+        $tempPath = "{$tempDir}/{$filename}";
+
+        file_put_contents($tempPath, $pdf->output());
+
+        if (! file_exists($tempPath) || filesize($tempPath) === 0) {
+            \Illuminate\Support\Facades\Log::error("Failed to write PDF to {$tempPath}");
+            return null;
+        }
+
+        return $tempPath;
     }
 }
