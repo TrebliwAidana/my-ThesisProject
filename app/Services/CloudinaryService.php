@@ -11,17 +11,25 @@ class CloudinaryService
 
     public function __construct()
     {
-        $this->cloudinary = new Cloudinary(env('CLOUDINARY_URL'));
+        $this->cloudinary = new Cloudinary(
+            Configuration::instance([
+                'cloud' => [
+                    'cloud_name' => config('cloudinary.cloud_name'),
+                    'api_key'    => config('cloudinary.api_key'),
+                    'api_secret' => config('cloudinary.api_secret'),
+                ],
+                'url' => ['secure' => true],
+            ])
+        );
     }
 
-    // Upload any file — returns ['url', 'public_id']
     public function upload($file, string $folder = 'vsulhs-sslg/documents'): array
     {
         $result = $this->cloudinary->uploadApi()->upload(
             $file->getRealPath(),
             [
                 'folder'        => $folder,
-                'resource_type' => 'auto', // handles pdf, docx, images, etc.
+                'resource_type' => 'auto',
                 'access_mode'   => 'public',
             ]
         );
@@ -32,7 +40,6 @@ class CloudinaryService
         ];
     }
 
-    // Delete a file from Cloudinary
     public function delete(string $publicId): void
     {
         try {

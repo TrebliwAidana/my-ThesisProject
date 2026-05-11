@@ -782,9 +782,9 @@ class MemberController extends Controller
         return new \Cloudinary\Cloudinary(
             \Cloudinary\Configuration\Configuration::instance([
                 'cloud' => [
-                    'cloud_name' => env('CLOUDINARY_CLOUD_NAME'),
-                    'api_key'    => env('CLOUDINARY_API_KEY'),
-                    'api_secret' => env('CLOUDINARY_API_SECRET'),
+                    'cloud_name' => config('cloudinary.cloud_name'), // ✅
+                    'api_key'    => config('cloudinary.api_key'),    // ✅
+                    'api_secret' => config('cloudinary.api_secret'), // ✅
                 ],
                 'url' => ['secure' => true],
             ])
@@ -831,11 +831,10 @@ class MemberController extends Controller
 
     private function useCloudinary(): bool
     {
-        $hasCredentials = !empty(env('CLOUDINARY_CLOUD_NAME'))
-                       && !empty(env('CLOUDINARY_API_KEY'))
-                       && !empty(env('CLOUDINARY_API_SECRET'));
+        $hasCredentials = !empty(config('cloudinary.cloud_name'))
+                    && !empty(config('cloudinary.api_key'))
+                    && !empty(config('cloudinary.api_secret'));
 
-        return $hasCredentials
-            && (app()->environment('production') || env('FORCE_CLOUDINARY', false));
+        return $hasCredentials && app()->environment('production');
     }
 }
