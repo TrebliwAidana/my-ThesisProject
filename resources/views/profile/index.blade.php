@@ -5,7 +5,6 @@
 
 @push('styles')
 <style>
-/* ── Profile Page Tokens ── */
 .profile-page {
     --em:   var(--emerald);
     --em-d: var(--emerald-dark);
@@ -15,7 +14,6 @@
     --gd-l: var(--gold-light);
 }
 
-/* ── Card shell ── */
 .prof-card {
     background: var(--surface);
     border: 1px solid var(--border);
@@ -24,14 +22,9 @@
     box-shadow: 0 4px 24px rgba(0,0,0,0.05);
     transition: box-shadow 0.25s ease;
 }
-html.dark .prof-card {
-    box-shadow: 0 4px 24px rgba(0,0,0,0.25);
-}
-.prof-card:hover {
-    box-shadow: 0 8px 32px rgba(0,0,0,0.08), 0 0 0 1px rgba(212,175,55,0.12);
-}
+html.dark .prof-card { box-shadow: 0 4px 24px rgba(0,0,0,0.25); }
+.prof-card:hover { box-shadow: 0 8px 32px rgba(0,0,0,0.08), 0 0 0 1px rgba(212,175,55,0.12); }
 
-/* ── Card header ── */
 .prof-card-header {
     position: relative;
     padding: 1rem 1.4rem;
@@ -83,11 +76,7 @@ html.dark .prof-card {
     margin-top: 0.1rem;
 }
 
-/* ── Avatar ring ── */
-.avatar-ring {
-    position: relative;
-    flex-shrink: 0;
-}
+.avatar-ring { position: relative; flex-shrink: 0; }
 .avatar-ring::before {
     content: '';
     position: absolute;
@@ -98,7 +87,6 @@ html.dark .prof-card {
 }
 .avatar-ring > * { position: relative; z-index: 1; }
 
-/* ── Form fields ── */
 .prof-label {
     display: block;
     font-size: 0.65rem;
@@ -130,6 +118,7 @@ html.dark .prof-card {
 .prof-input::placeholder { color: var(--text-3); }
 html.dark .prof-input { background: rgba(15,23,42,0.6); }
 html.dark .prof-input:focus { background: rgba(15,23,42,0.8); }
+.prof-input.error { border-color: #f43f5e !important; }
 
 .prof-select {
     width: 100%;
@@ -150,9 +139,6 @@ html.dark .prof-input:focus { background: rgba(15,23,42,0.8); }
 }
 html.dark .prof-select { background: rgba(15,23,42,0.6); }
 
-.prof-input.error { border-color: #f43f5e; }
-
-/* ── Phone prefix ── */
 .phone-prefix {
     display: inline-flex;
     align-items: center;
@@ -186,7 +172,6 @@ html.dark .prof-select { background: rgba(15,23,42,0.6); }
 }
 html.dark .phone-input { background: rgba(15,23,42,0.6); }
 
-/* ── Divider ── */
 .prof-divider {
     border: none;
     border-top: 1px solid var(--border);
@@ -201,7 +186,6 @@ html.dark .phone-input { background: rgba(15,23,42,0.6); }
     background: linear-gradient(90deg, transparent, rgba(212,175,55,0.3), transparent);
 }
 
-/* ── Buttons ── */
 .btn-primary {
     display: inline-flex;
     align-items: center;
@@ -248,7 +232,6 @@ html.dark .phone-input { background: rgba(15,23,42,0.6); }
 }
 html.dark .btn-secondary:hover { color: var(--gold-light); }
 
-/* ── Password toggle ── */
 .pass-toggle {
     position: absolute;
     right: 0.625rem;
@@ -266,7 +249,6 @@ html.dark .btn-secondary:hover { color: var(--gold-light); }
 .pass-toggle:hover { color: var(--gold-dark); }
 html.dark .pass-toggle:hover { color: var(--gold-light); }
 
-/* ── Activity stats ── */
 .activity-stat {
     display: flex;
     flex-direction: column;
@@ -286,7 +268,6 @@ html.dark .pass-toggle:hover { color: var(--gold-light); }
     transition: transform 0.3s ease;
 }
 .activity-stat:hover::after { transform: scaleX(1); }
-
 .activity-stat-label {
     font-size: 0.65rem;
     font-weight: 700;
@@ -307,7 +288,6 @@ html.dark .pass-toggle:hover { color: var(--gold-light); }
 .activity-stat-num.gold  { color: var(--gold-dark); }
 html.dark .activity-stat-num.gold { color: var(--gold-light); }
 
-/* ── File input ── */
 .file-btn {
     display: inline-flex;
     align-items: center;
@@ -331,7 +311,15 @@ html.dark .activity-stat-num.gold { color: var(--gold-light); }
 html.dark .file-btn { color: var(--emerald-light); }
 html.dark .file-btn:hover { color: var(--gold-light); }
 
-/* ── Entrance animations ── */
+.field-error {
+    font-size: 0.7rem;
+    color: #f43f5e;
+    margin-top: 0.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
 @keyframes fadeUp {
     from { opacity: 0; transform: translateY(14px); }
     to   { opacity: 1; transform: translateY(0); }
@@ -365,28 +353,41 @@ html.dark .file-btn:hover { color: var(--gold-light); }
             </div>
 
             <div class="p-5">
+                {{-- ✅ Show validation errors summary if any --}}
+                @if($errors->any() && !$errors->has('current_password') && !$errors->has('new_password'))
+                    <div class="mb-4 p-3 rounded-xl text-sm"
+                         style="background: rgba(244,63,94,0.08); border: 1px solid rgba(244,63,94,0.25); color: #f43f5e;">
+                        <div class="font-semibold mb-1">Please fix the following errors:</div>
+                        <ul class="list-disc list-inside space-y-0.5">
+                            @foreach($errors->all() as $error)
+                                <li>{{ $error }}</li>
+                            @endforeach
+                        </ul>
+                    </div>
+                @endif
+
                 <form method="POST" action="{{ route('profile.update') }}" enctype="multipart/form-data">
                     @csrf
                     @method('PUT')
 
-                   {{-- Avatar --}}
+                    {{-- Avatar --}}
                     <div class="flex items-center gap-4 mb-4 pb-4" style="border-bottom:1px solid var(--border);">
                         <div class="avatar-ring">
                             @if(auth()->user()->avatar)
                                 <img id="avatarPreview"
-                                    src="{{ Str::startsWith($user->avatar, 'http') 
-                                        ? $user->avatar 
-                                        : asset('storage/' . $user->avatar) }}"
-                                    alt="Avatar"
-                                    class="w-14 h-14 rounded-full object-cover">
+                                     src="{{ Str::startsWith($user->avatar, 'http')
+                                         ? $user->avatar
+                                         : asset('storage/' . $user->avatar) }}"
+                                     alt="Avatar"
+                                     class="w-14 h-14 rounded-full object-cover">
                             @else
                                 <div id="avatarInitials"
-                                    class="w-14 h-14 rounded-full flex items-center justify-center text-white text-base font-bold"
-                                    style="background: linear-gradient(135deg, var(--emerald), var(--emerald-dark)); font-family:'DM Mono',monospace;">
+                                     class="w-14 h-14 rounded-full flex items-center justify-center text-white text-base font-bold"
+                                     style="background: linear-gradient(135deg, var(--emerald), var(--emerald-dark)); font-family:'DM Mono',monospace;">
                                     {{ strtoupper(substr(auth()->user()->full_name, 0, 2)) }}
                                 </div>
                                 <img id="avatarPreview" src="" alt="Avatar"
-                                    class="w-14 h-14 rounded-full object-cover hidden">
+                                     class="w-14 h-14 rounded-full object-cover hidden">
                             @endif
                         </div>
                         <div class="flex-1 min-w-0">
@@ -400,45 +401,83 @@ html.dark .file-btn:hover { color: var(--gold-light); }
                                        accept="image/jpeg,image/png,image/gif,image/webp"
                                        class="hidden">
                             </label>
-                            <p class="text-xs mt-1.5" style="color:var(--text-3);">JPG, PNG, GIF, WEBP — Max 2MB</p>
+                            {{-- ✅ Show selected file name --}}
+                            <p id="avatarFileName" class="text-xs mt-1" style="color:var(--emerald); display:none;"></p>
+                            <p class="text-xs mt-1" style="color:var(--text-3);">JPG, PNG, GIF, WEBP — Max 2MB</p>
+                            {{-- ✅ Avatar validation error --}}
+                            @error('avatar')
+                                <p class="field-error">
+                                    <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                                    </svg>
+                                    {{ $message }}
+                                </p>
+                            @enderror
                         </div>
                     </div>
 
                     {{-- First / Middle / Last --}}
                     <div class="grid grid-cols-3 gap-2 mb-3">
                         <div>
-                            <label class="prof-label">First</label>
-                            <input type="text" name="first_name" value="{{ old('first_name', $user->first_name) }}" class="prof-input">
+                            <label class="prof-label">First <span style="color:#f43f5e;">*</span></label>
+                            <input type="text" name="first_name"
+                                   value="{{ old('first_name', $user->first_name) }}"
+                                   class="prof-input {{ $errors->has('first_name') ? 'error' : '' }}">
+                            @error('first_name')
+                                <p class="field-error">{{ $message }}</p>
+                            @enderror
                         </div>
                         <div>
                             <label class="prof-label">Middle</label>
-                            <input type="text" name="middle_name" value="{{ old('middle_name', $user->middle_name) }}" class="prof-input">
+                            <input type="text" name="middle_name"
+                                   value="{{ old('middle_name', $user->middle_name) }}"
+                                   class="prof-input {{ $errors->has('middle_name') ? 'error' : '' }}">
+                            @error('middle_name')
+                                <p class="field-error">{{ $message }}</p>
+                            @enderror
                         </div>
                         <div>
-                            <label class="prof-label">Last</label>
-                            <input type="text" name="last_name" value="{{ old('last_name', $user->last_name) }}" class="prof-input">
+                            <label class="prof-label">Last <span style="color:#f43f5e;">*</span></label>
+                            <input type="text" name="last_name"
+                                   value="{{ old('last_name', $user->last_name) }}"
+                                   class="prof-input {{ $errors->has('last_name') ? 'error' : '' }}">
+                            @error('last_name')
+                                <p class="field-error">{{ $message }}</p>
+                            @enderror
                         </div>
                     </div>
 
                     {{-- Email --}}
                     <div class="mb-3">
                         <label class="prof-label">Email <span style="color:#f43f5e;">*</span></label>
-                        <input type="email" name="email" value="{{ old('email', $user->email) }}" required class="prof-input">
+                        <input type="email" name="email"
+                               value="{{ old('email', $user->email) }}"
+                               required
+                               class="prof-input {{ $errors->has('email') ? 'error' : '' }}">
+                        @error('email')
+                            <p class="field-error">{{ $message }}</p>
+                        @enderror
                     </div>
 
                     {{-- Student ID + Year Level --}}
                     <div class="grid grid-cols-2 gap-2 mb-3">
                         <div>
                             <label class="prof-label">Student ID</label>
-                            <input type="text" name="student_id" value="{{ old('student_id', $user->student_id) }}"
-                                   placeholder="2020-12345" class="prof-input">
+                            <input type="text" name="student_id"
+                                   value="{{ old('student_id', $user->student_id) }}"
+                                   placeholder="2020-12345"
+                                   class="prof-input {{ $errors->has('student_id') ? 'error' : '' }}">
+                            @error('student_id')
+                                <p class="field-error">{{ $message }}</p>
+                            @enderror
                         </div>
                         <div>
                             <label class="prof-label">Year Level</label>
                             <select name="year_level" class="prof-select">
                                 <option value="">Select Grade</option>
                                 @for($i = 7; $i <= 12; $i++)
-                                    <option value="Grade {{ $i }}" {{ old('year_level', $user->year_level) == "Grade $i" ? 'selected' : '' }}>
+                                    <option value="Grade {{ $i }}"
+                                        {{ old('year_level', $user->year_level) == "Grade $i" ? 'selected' : '' }}>
                                         Grade {{ $i }}
                                     </option>
                                 @endfor
@@ -450,18 +489,25 @@ html.dark .file-btn:hover { color: var(--gold-light); }
                     <div class="grid grid-cols-2 gap-2 mb-3">
                         <div>
                             <label class="prof-label">Gender</label>
-                            <select name="gender" class="prof-select">
+                            <select name="gender"
+                                    class="prof-select {{ $errors->has('gender') ? 'error' : '' }}">
                                 <option value="">Select Gender</option>
                                 <option value="Male"   {{ old('gender', $user->gender) == 'Male'   ? 'selected' : '' }}>Male</option>
                                 <option value="Female" {{ old('gender', $user->gender) == 'Female' ? 'selected' : '' }}>Female</option>
                                 <option value="Other"  {{ old('gender', $user->gender) == 'Other'  ? 'selected' : '' }}>Other</option>
                             </select>
+                            @error('gender')
+                                <p class="field-error">{{ $message }}</p>
+                            @enderror
                         </div>
                         <div>
                             <label class="prof-label">Birthday</label>
                             <input type="date" name="birthday"
                                    value="{{ old('birthday', optional($user->birthday)->format('Y-m-d')) }}"
-                                   class="prof-input">
+                                   class="prof-input {{ $errors->has('birthday') ? 'error' : '' }}">
+                            @error('birthday')
+                                <p class="field-error">{{ $message }}</p>
+                            @enderror
                         </div>
                     </div>
 
@@ -472,8 +518,13 @@ html.dark .file-btn:hover { color: var(--gold-light); }
                             <span class="phone-prefix">+63</span>
                             <input type="tel" name="phone"
                                    value="{{ old('phone', $user->phone ? substr($user->phone, 3) : '') }}"
-                                   maxlength="10" placeholder="9123456789" class="phone-input">
+                                   maxlength="10"
+                                   placeholder="9123456789"
+                                   class="phone-input {{ $errors->has('phone') ? 'error' : '' }}">
                         </div>
+                        @error('phone')
+                            <p class="field-error">{{ $message }}</p>
+                        @enderror
                         <p class="text-xs mt-1" style="color:var(--text-3);">Enter 10-digit number. +63 added automatically.</p>
                     </div>
 
@@ -486,7 +537,7 @@ html.dark .file-btn:hover { color: var(--gold-light); }
                             </svg>
                             Save Changes
                         </button>
-                        <button type="reset" class="btn-secondary">Reset</button>
+                        <button type="reset" class="btn-secondary" onclick="resetAvatarPreview()">Reset</button>
                     </div>
                 </form>
             </div>
@@ -513,21 +564,43 @@ html.dark .file-btn:hover { color: var(--gold-light); }
                 </div>
 
                 <div class="p-5">
+                    {{-- ✅ Password errors summary --}}
+                    @if($errors->has('current_password') || $errors->has('new_password') || $errors->has('new_password_confirmation'))
+                        <div class="mb-4 p-3 rounded-xl text-sm"
+                             style="background: rgba(244,63,94,0.08); border: 1px solid rgba(244,63,94,0.25); color: #f43f5e;">
+                            <div class="font-semibold mb-1">Password update failed:</div>
+                            <ul class="list-disc list-inside space-y-0.5">
+                                @foreach($errors->only(['current_password','new_password','new_password_confirmation']) as $error)
+                                    <li>{{ $error }}</li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    @endif
+
+                    {{-- ✅ Same password error --}}
+                    @if(session('password_error') === 'same_password')
+                        <div class="mb-4 p-3 rounded-xl text-sm"
+                             style="background: rgba(244,63,94,0.08); border: 1px solid rgba(244,63,94,0.25); color: #f43f5e;">
+                            New password cannot be the same as your current password.
+                        </div>
+                    @endif
+
                     <form method="POST" action="{{ route('profile.password') }}"
                           x-data="{ showCurrent: false, showNew: false, showConfirm: false }">
                         @csrf
                         @method('PUT')
 
                         @php
-                            $eyeOpen  = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>';
-                            $eyeOff   = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/>';
+                            $eyeOpen = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>';
+                            $eyeOff  = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/>';
                         @endphp
 
                         {{-- Current --}}
                         <div class="mb-3">
                             <label class="prof-label">Current Password</label>
                             <div class="relative">
-                                <input :type="showCurrent ? 'text' : 'password'" name="current_password" required
+                                <input :type="showCurrent ? 'text' : 'password'"
+                                       name="current_password" required
                                        class="prof-input {{ $errors->has('current_password') ? 'error' : '' }}"
                                        style="padding-right:2.25rem;">
                                 <button type="button" @click="showCurrent = !showCurrent" class="pass-toggle">
@@ -536,7 +609,7 @@ html.dark .file-btn:hover { color: var(--gold-light); }
                                 </button>
                             </div>
                             @error('current_password')
-                                <p class="text-xs mt-1" style="color:#f43f5e;">{{ $message }}</p>
+                                <p class="field-error">{{ $message }}</p>
                             @enderror
                         </div>
 
@@ -544,7 +617,8 @@ html.dark .file-btn:hover { color: var(--gold-light); }
                         <div class="mb-3">
                             <label class="prof-label">New Password</label>
                             <div class="relative">
-                                <input :type="showNew ? 'text' : 'password'" name="new_password" required
+                                <input :type="showNew ? 'text' : 'password'"
+                                       name="new_password" required
                                        class="prof-input {{ $errors->has('new_password') ? 'error' : '' }}"
                                        style="padding-right:2.25rem;">
                                 <button type="button" @click="showNew = !showNew" class="pass-toggle">
@@ -553,7 +627,7 @@ html.dark .file-btn:hover { color: var(--gold-light); }
                                 </button>
                             </div>
                             @error('new_password')
-                                <p class="text-xs mt-1" style="color:#f43f5e;">{{ $message }}</p>
+                                <p class="field-error">{{ $message }}</p>
                             @enderror
                         </div>
 
@@ -561,7 +635,8 @@ html.dark .file-btn:hover { color: var(--gold-light); }
                         <div class="mb-4">
                             <label class="prof-label">Confirm Password</label>
                             <div class="relative">
-                                <input :type="showConfirm ? 'text' : 'password'" name="new_password_confirmation" required
+                                <input :type="showConfirm ? 'text' : 'password'"
+                                       name="new_password_confirmation" required
                                        class="prof-input {{ $errors->has('new_password_confirmation') ? 'error' : '' }}"
                                        style="padding-right:2.25rem;">
                                 <button type="button" @click="showConfirm = !showConfirm" class="pass-toggle">
@@ -570,7 +645,7 @@ html.dark .file-btn:hover { color: var(--gold-light); }
                                 </button>
                             </div>
                             @error('new_password_confirmation')
-                                <p class="text-xs mt-1" style="color:#f43f5e;">{{ $message }}</p>
+                                <p class="field-error">{{ $message }}</p>
                             @enderror
                         </div>
 
@@ -620,24 +695,60 @@ html.dark .file-btn:hover { color: var(--gold-light); }
         </div>
     </div>
 </div>
+@endsection
 
 @push('scripts')
 <script>
-// Avatar preview
+// ── Avatar preview ──────────────────────────────────────────────
 document.getElementById('avatarInput').addEventListener('change', function (e) {
     const file = e.target.files[0];
     if (!file) return;
+
+    // ✅ Client-side file size validation
+    if (file.size > 2 * 1024 * 1024) {
+        window.showNotification('File is too large. Maximum size is 2MB.', 'error');
+        this.value = '';
+        return;
+    }
+
+    // ✅ Show selected file name
+    const fileNameEl = document.getElementById('avatarFileName');
+    if (fileNameEl) {
+        fileNameEl.textContent = '✓ ' + file.name;
+        fileNameEl.style.display = 'block';
+    }
+
     const reader = new FileReader();
     reader.onload = function (event) {
         const preview  = document.getElementById('avatarPreview');
         const initials = document.getElementById('avatarInitials');
-        preview.src = event.target.result;
-        preview.classList.remove('hidden');
+        if (preview) {
+            preview.src = event.target.result;
+            preview.classList.remove('hidden');
+        }
         if (initials) initials.classList.add('hidden');
     };
     reader.readAsDataURL(file);
 });
 
+// ── Reset avatar preview on form reset ─────────────────────────
+function resetAvatarPreview() {
+    const preview  = document.getElementById('avatarPreview');
+    const initials = document.getElementById('avatarInitials');
+    const fileNameEl = document.getElementById('avatarFileName');
+
+    if (fileNameEl) { fileNameEl.style.display = 'none'; fileNameEl.textContent = ''; }
+
+    // ✅ Restore original avatar or initials
+    @if(auth()->user()->avatar)
+        if (preview) {
+            preview.src = "{{ Str::startsWith($user->avatar, 'http') ? $user->avatar : asset('storage/' . $user->avatar) }}";
+            preview.classList.remove('hidden');
+        }
+    @else
+        if (preview) { preview.src = ''; preview.classList.add('hidden'); }
+        if (initials) initials.classList.remove('hidden');
+    @endif
+}
 </script>
 @endpush
-@endsection

@@ -377,16 +377,23 @@ class DocumentBackupController extends Controller
         $backupHash   = hash_file('sha256', $tmpPath);
         ini_set('max_execution_time', 300);
 
+        // ✅ Always ensure clean connection state before starting
+        try { DB::rollBack(); } catch (\Throwable) {}
+
         if (! $request->boolean('force_restore')) {
-            $existing = RestoredBackup::where('backup_filename', $filename)->first();
-            if ($existing) {
-                $restorer = $existing->restoredBy?->email ?? 'User #' . $existing->restored_by;
-                return back()->with('error', sprintf(
-                    'Backup "%s" was already restored on %s by %s. Tick "Force restore" to override.',
-                    $filename,
-                    $existing->restored_at->format('Y-m-d H:i:s'),
-                    $restorer
-                ));
+            try {
+                $existing = RestoredBackup::where('backup_filename', $filename)->first();
+                if ($existing) {
+                    $restorer = $existing->restoredBy?->email ?? 'User #' . $existing->restored_by;
+                    return back()->with('error', sprintf(
+                        'Backup "%s" was already restored on %s by %s. Tick "Force restore" to override.',
+                        $filename,
+                        $existing->restored_at->format('Y-m-d H:i:s'),
+                        $restorer
+                    ));
+                }
+            } catch (\Throwable $e) {
+                return back()->with('error', 'Failed to check restore history: ' . $e->getMessage());
             }
         }
 
@@ -438,9 +445,9 @@ class DocumentBackupController extends Controller
             'financial_docs_generated' => 0,
         ];
 
-        DB::beginTransaction();
-
         try {
+            DB::beginTransaction();
+
             // ── Step 1: Restore categories ────────────────────────────────
             $catNames     = array_filter(array_column($categories, 'name'));
             $existingCats = DocumentCategory::whereIn('name', $catNames)
@@ -501,14 +508,20 @@ class DocumentBackupController extends Controller
 
                 $newCategoryId = $categoryIdMap[$docData['document_category_id']] ?? null;
 
+                // ✅ Fix tags for PostgreSQL — must be valid JSON string
+                $tags = $docData['tags'] ?? null;
+                if (is_array($tags)) {
+                    $tags = json_encode($tags);
+                } elseif (is_string($tags) && ! $this->isValidJson($tags)) {
+                    $tags = null;
+                }
+
                 $documentsForUpsert[] = [
                     'id'                   => $docData['id'],
                     'owner_id'             => $docData['owner_id'],
                     'title'                => $docData['title'],
                     'description'          => $docData['description'],
-                    'tags'                 => is_array($docData['tags'] ?? null)
-                        ? json_encode($docData['tags'])
-                        : ($docData['tags'] ?? null),
+                    'tags'                 => $tags,
                     'document_category_id' => $newCategoryId,
                     'uploaded_at'          => $this->normalizeDatetime($docData['uploaded_at']),
                     'deleted_at'           => $this->normalizeDatetime($docData['deleted_at']),
@@ -529,12 +542,11 @@ class DocumentBackupController extends Controller
                         continue;
                     }
 
-                    // ✅ file_path is Cloudinary URL — no file restoration needed
                     $versionsForUpsert[] = [
                         'id'                   => $versionData['id'],
                         'document_id'          => $docData['id'],
                         'version_number'       => $versionData['version_number'],
-                        'file_path'            => $versionData['file_path'],            // ✅ Cloudinary URL
+                        'file_path'            => $versionData['file_path'],
                         'cloudinary_public_id' => $versionData['cloudinary_public_id'] ?? null,
                         'file_name'            => $versionData['file_name'],
                         'mime_type'            => $versionData['mime_type'],
@@ -546,7 +558,6 @@ class DocumentBackupController extends Controller
                     ];
 
                     $stats['versions']++;
-                    // ✅ No file streaming needed — Cloudinary URL is permanent
 
                     if ($versionData['id'] == $docData['current_version_id']) {
                         $resolvedCurrentVersionId = $versionData['id'];
@@ -558,14 +569,24 @@ class DocumentBackupController extends Controller
                 }
             }
 
-            // ── Batch upserts ─────────────────────────────────────────────
+            // ✅ Insert documents one by one to avoid upsert jsonb issues on PostgreSQL
             $chunkSize = 200;
 
-            foreach (array_chunk($documentsForUpsert, $chunkSize) as $chunk) {
-                Document::upsert($chunk, ['id'], [
-                    'owner_id', 'title', 'description', 'tags',
-                    'document_category_id', 'uploaded_at', 'deleted_at', 'updated_at',
-                ]);
+            if ($isPostgres) {
+                // PostgreSQL — use individual upsert queries to handle jsonb correctly
+                foreach ($documentsForUpsert as $docRow) {
+                    DB::table('documents')->upsert([$docRow], ['id'], [
+                        'owner_id', 'title', 'description', 'tags',
+                        'document_category_id', 'uploaded_at', 'deleted_at', 'updated_at',
+                    ]);
+                }
+            } else {
+                foreach (array_chunk($documentsForUpsert, $chunkSize) as $chunk) {
+                    Document::upsert($chunk, ['id'], [
+                        'owner_id', 'title', 'description', 'tags',
+                        'document_category_id', 'uploaded_at', 'deleted_at', 'updated_at',
+                    ]);
+                }
             }
 
             foreach (array_chunk($versionsForUpsert, $chunkSize) as $chunk) {
@@ -647,7 +668,6 @@ class DocumentBackupController extends Controller
                         try {
                             if ($ft->type === 'receivable' && $ft->status !== 'paid') continue;
 
-                            // ✅ PostgreSQL compatible jsonb check
                             $alreadyHasDoc = $isPostgres
                                 ? $ft->documents()->whereRaw("tags::jsonb @> '[\"auto-generated\"]'::jsonb")->exists()
                                 : $ft->documents()->whereJsonContains('tags', 'auto-generated')->exists();
@@ -677,7 +697,8 @@ class DocumentBackupController extends Controller
             $zip->close();
 
         } catch (\Throwable $e) {
-            DB::rollBack();
+            // ✅ Always rollback on any error
+            try { DB::rollBack(); } catch (\Throwable) {}
             $zip->close();
 
             \Log::error('Backup restore failed', [
@@ -761,5 +782,11 @@ class DocumentBackupController extends Controller
         $i     = (int) floor(log($bytes, 1024));
         $i     = min($i, count($units) - 1);
         return round($bytes / (1024 ** $i), 2) . ' ' . $units[$i];
+    }
+    private function isValidJson(?string $value): bool
+    {
+        if ($value === null) return false;
+        json_decode($value);
+        return json_last_error() === JSON_ERROR_NONE;
     }
 }

@@ -9,6 +9,7 @@ use App\Models\Document;
 use App\Models\FinancialTransaction;
 use Illuminate\Support\Facades\Storage;
 use App\Models\Member;
+use App\Services\CloudinaryService;
 
 class ProfileController extends Controller
 {
@@ -64,29 +65,49 @@ class ProfileController extends Controller
         $user = Auth::user();
 
         $validated = $request->validate([
-            'full_name'  => 'required|string|max:255',
-            'email'      => 'required|email|unique:users,email,' . $user->id,
-            'first_name' => 'nullable|string|max:255',
-            'last_name'  => 'nullable|string|max:255',
-            'middle_name'=> 'nullable|string|max:255',
-            'student_id' => 'nullable|string|max:50|unique:users,student_id,' . $user->id,
-            'year_level' => 'nullable|string|max:50',
-            'gender'     => 'nullable|string|in:Male,Female,Other',
-            'phone'      => 'nullable|string|max:20|unique:users,phone,' . $user->id,
-            'birthday'   => 'nullable|date',
-            'avatar'     => 'nullable|image|mimes:jpg,jpeg,png,gif,webp|max:2048',
+            'full_name'   => 'required|string|max:255',
+            'email'       => 'required|email|unique:users,email,' . $user->id,
+            'first_name'  => 'nullable|string|max:255',
+            'last_name'   => 'nullable|string|max:255',
+            'middle_name' => 'nullable|string|max:255',
+            'student_id'  => 'nullable|string|max:50|unique:users,student_id,' . $user->id,
+            'year_level'  => 'nullable|string|max:50',
+            'gender'      => 'nullable|string|in:Male,Female,Other',
+            'phone'       => 'nullable|string|max:20|unique:users,phone,' . $user->id,
+            'birthday'    => 'nullable|date',
+            'avatar'      => 'nullable|image|mimes:jpg,jpeg,png,gif,webp|max:2048',
         ]);
 
-        // Handle avatar upload
+        // ✅ Handle avatar upload
         if ($request->hasFile('avatar') && $request->file('avatar')->isValid()) {
-            if ($user->avatar && !str_starts_with($user->avatar, 'http')) {
-                Storage::disk('public')->delete($user->avatar);
+
+            $hasCloudinary = !empty(config('cloudinary.cloud_name'))
+                        && !empty(config('cloudinary.api_key'))
+                        && !empty(config('cloudinary.api_secret'));
+
+            if ($hasCloudinary) {
+                $cloudinary = new CloudinaryService();
+
+                // Delete old Cloudinary avatar
+                if ($user->avatar && str_starts_with($user->avatar, 'https://res.cloudinary.com')) {
+                    preg_match('/\/v\d+\/(.+)\.[a-z]+$/i', parse_url($user->avatar, PHP_URL_PATH), $matches);
+                    if (! empty($matches[1])) {
+                        $cloudinary->delete($matches[1]);
+                    }
+                }
+
+                $uploaded     = $cloudinary->upload($request->file('avatar'), 'vsulhs-sslg/avatars');
+                $user->avatar = $uploaded['url'];
+
+            } else {
+                // Local fallback for Laragon dev
+                if ($user->avatar && ! str_starts_with($user->avatar, 'http')) {
+                    Storage::disk('public')->delete($user->avatar);
+                }
+                $user->avatar = $request->file('avatar')->store('avatars', 'public');
             }
-            $path = $request->file('avatar')->store('avatars', 'public');
-            $user->avatar = $path;
         }
 
-        // Year level clearing based on role and position
         if ($this->shouldClearYearLevel($user->role_id, $user->position)) {
             $validated['year_level'] = null;
         }
@@ -94,12 +115,11 @@ class ProfileController extends Controller
         $user->first_name  = $validated['first_name'];
         $user->middle_name = $validated['middle_name'] ?? null;
         $user->last_name   = $validated['last_name'];
-        
-        // Build full_name manually WITHOUT triggering setFullNameAttribute
+
         $user->attributes['full_name'] = trim(
-        $validated['first_name'] . ' ' .
-        (!empty($validated['middle_name']) ? $validated['middle_name'] . ' ' : '') .
-        $validated['last_name']
+            $validated['first_name'] . ' ' .
+            (! empty($validated['middle_name']) ? $validated['middle_name'] . ' ' : '') .
+            $validated['last_name']
         );
 
         $user->email = $validated['email'];
@@ -108,6 +128,7 @@ class ProfileController extends Controller
         if (isset($validated['year_level'])) $user->year_level = $validated['year_level'];
         if (isset($validated['gender']))     $user->gender     = $validated['gender'];
         if (isset($validated['birthday']))   $user->birthday   = $validated['birthday'];
+
         if (isset($validated['phone'])) {
             $phone = preg_replace('/[^0-9]/', '', $validated['phone']);
             if (str_starts_with($phone, '63')) $phone = substr($phone, 2);
