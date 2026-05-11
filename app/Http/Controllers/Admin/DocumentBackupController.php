@@ -10,11 +10,11 @@ use App\Models\DocumentVersion;
 use App\Models\FinancialTransaction;
 use App\Models\RestoredBackup;
 use App\Services\AuditLogger;
+use App\Services\CloudinaryService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use ZipArchive;
 
@@ -22,9 +22,7 @@ class DocumentBackupController extends Controller
 {
     use FinancialHelperTrait;
 
-    private string $backupDisk   = 'private';
-    private string $backupFolder = 'backups/documents';
-
+    // ✅ No more local disk — backups are JSON metadata only
     private array $fileTypeGroups = [
         'all'        => [],
         'pdf'        => ['application/pdf'],
@@ -43,41 +41,33 @@ class DocumentBackupController extends Controller
     {
         $this->requirePermission('backups.view');
 
-        $files = Storage::disk($this->backupDisk)->files($this->backupFolder);
+        // ✅ Load backups from DB instead of local disk
+        $backups = \App\Models\DocumentBackup::with('creator')
+            ->latest()
+            ->get()
+            ->map(fn ($b) => [
+                'id'                 => $b->id,
+                'filename'           => $b->filename,
+                'cloudinary_url'     => $b->cloudinary_url,
+                'cloudinary_public_id' => $b->cloudinary_public_id,
+                'size'               => $this->formatBytes($b->size_bytes),
+                'size_bytes'         => $b->size_bytes,
+                'category_slug'      => $b->category_slug,
+                'filetype_slug'      => $b->file_type,
+                'has_financial_data' => $b->financial_count > 0,
+                'document_count'     => $b->document_count,
+                'financial_count'    => $b->financial_count,
+                'created_at'         => $b->created_at->format('M d, Y h:i A'),
+                'created_ts'         => $b->created_at->timestamp,
+                'creator'            => $b->creator?->full_name,
+            ]);
 
-        $backups = [];
-        foreach ($files as $file) {
-            if (!str_ends_with($file, '.zip')) {
-                continue;
-            }
-
-            $basename  = basename($file, '.zip');
-            $sizeBytes = Storage::disk($this->backupDisk)->size($file);
-            $modified  = Storage::disk($this->backupDisk)->lastModified($file);
-
-            [$categorySlug, $filetypeSlug] = $this->parseBackupSlug($basename);
-
-            $backups[] = [
-                'filename'           => basename($file),
-                'path'               => $file,
-                'size'               => $this->formatBytes($sizeBytes),
-                'size_bytes'         => $sizeBytes,
-                'category_slug'      => $categorySlug,
-                'filetype_slug'      => $filetypeSlug,
-                'has_financial_data' => $this->backupHasFinancialData($file),
-                'created_at'         => Carbon::createFromTimestamp($modified)->format('M d, Y h:i A'),
-                'created_ts'         => $modified,
-            ];
-        }
-
-        usort($backups, fn ($a, $b) => $b['created_ts'] - $a['created_ts']);
-
-        $totalBytes = array_sum(array_column($backups, 'size_bytes'));
+        $totalBytes = $backups->sum('size_bytes');
         $stats = [
-            'count'      => count($backups),
+            'count'      => $backups->count(),
             'total_size' => $this->formatBytes($totalBytes),
-            'latest'     => $backups[0]['created_at'] ?? null,
-            'oldest'     => !empty($backups) ? end($backups)['created_at'] : null,
+            'latest'     => $backups->first()['created_at'] ?? null,
+            'oldest'     => $backups->last()['created_at']  ?? null,
         ];
 
         $categories     = DocumentCategory::withCount('documents')->orderBy('name')->get();
@@ -124,20 +114,19 @@ class DocumentBackupController extends Controller
         $categorySlug  = 'all';
         $categoryLabel = 'All Categories';
 
-        if (!empty($categoryIds)) {
+        if (! empty($categoryIds)) {
             $cats = DocumentCategory::whereIn('id', $categoryIds)
-                                    ->orderBy('name')
-                                    ->get(['id', 'name']);
-
+                ->orderBy('name')
+                ->get(['id', 'name']);
             $categorySlug  = $cats->map(fn ($c) => Str::slug($c->name, '_'))->join('--');
             $categoryLabel = $cats->pluck('name')->join(', ');
         }
 
-        $includeFinancials  = $request->boolean('include_financials', true);
-        $financialStatuses  = $request->input('financial_status', []);
-        $financialTypes     = $request->input('financial_type', []);
-        $financialDateFrom  = $request->input('financial_date_from');
-        $financialDateTo    = $request->input('financial_date_to');
+        $includeFinancials = $request->boolean('include_financials', true);
+        $financialStatuses = $request->input('financial_status', []);
+        $financialTypes    = $request->input('financial_type', []);
+        $financialDateFrom = $request->input('financial_date_from');
+        $financialDateTo   = $request->input('financial_date_to');
 
         $timestamp = now()->format('Y-m-d_His');
         $zipName   = "doc_backup__{$categorySlug}__{$fileTypeKey}__{$timestamp}.zip";
@@ -146,24 +135,25 @@ class DocumentBackupController extends Controller
         try {
             $zip = new ZipArchive;
             if ($zip->open($tmpPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
-                throw new \RuntimeException('Failed to create ZIP archive. Check server temp directory permissions.');
+                throw new \RuntimeException('Failed to create ZIP archive.');
             }
 
-            // ── Document categories metadata ──────────────────────────────
+            // ── Categories metadata ───────────────────────────────────────
             $allCategories = DocumentCategory::all(['id', 'name', 'description', 'is_active'])->toArray();
             $zip->addFromString('categories.json', json_encode($allCategories, JSON_PRETTY_PRINT));
 
-            // ── Documents (physical files only) ───────────────────────────
+            // ── Documents metadata (Cloudinary URLs stored as file_path) ──
             $documents = Document::withTrashed()
                 ->with(['versions' => fn ($q) => $q->select([
                     'id', 'document_id', 'version_number', 'file_path',
-                    'file_name', 'mime_type', 'file_size', 'change_notes',
-                    'uploaded_by', 'created_at',
+                    'cloudinary_public_id', 'file_name', 'mime_type',
+                    'file_size', 'change_notes', 'uploaded_by', 'created_at',
                 ])])
-                ->when(!empty($categoryIds), fn ($q) => $q->whereIn('document_category_id', $categoryIds))
+                ->when(! empty($categoryIds), fn ($q) => $q->whereIn('document_category_id', $categoryIds))
                 ->get([
                     'id', 'owner_id', 'current_version_id', 'title', 'description',
-                    'document_category_id', 'uploaded_at', 'created_at', 'updated_at', 'deleted_at',
+                    'document_category_id', 'tags', 'uploaded_at', 'created_at',
+                    'updated_at', 'deleted_at',
                 ])
                 ->map(fn ($doc) => [
                     'id'                   => $doc->id,
@@ -172,25 +162,35 @@ class DocumentBackupController extends Controller
                     'title'                => $doc->title,
                     'description'          => $doc->description,
                     'document_category_id' => $doc->document_category_id,
+                    'tags'                 => $doc->tags,
                     'uploaded_at'          => $doc->uploaded_at,
                     'created_at'           => $doc->created_at,
                     'updated_at'           => $doc->updated_at,
                     'deleted_at'           => $doc->deleted_at,
                     'versions'             => $doc->versions
                         ->when(
-                            !empty($allowedMimes),
+                            ! empty($allowedMimes),
                             fn ($col) => $col->filter(fn ($v) => in_array($v->mime_type, $allowedMimes))
                         )
                         ->values()
+                        ->map(fn ($v) => [
+                            'id'                   => $v->id,
+                            'document_id'          => $v->document_id,
+                            'version_number'       => $v->version_number,
+                            'file_path'            => $v->file_path,            // ✅ Cloudinary URL
+                            'cloudinary_public_id' => $v->cloudinary_public_id, // ✅ for re-deletion if needed
+                            'file_name'            => $v->file_name,
+                            'mime_type'            => $v->mime_type,
+                            'file_size'            => $v->file_size,
+                            'change_notes'         => $v->change_notes,
+                            'uploaded_by'          => $v->uploaded_by,
+                            'created_at'           => $v->created_at,
+                        ])
                         ->toArray(),
                 ])
                 ->all();
 
-            // ── Financial transactions — fetched directly from ────────────
-            // ── FinancialTransaction, NOT from Documents.        ────────────
-            // ── Document copies (auto-generated) are derived     ────────────
-            // ── artifacts; the source of truth is always the     ────────────
-            // ── financial_transactions table.                    ────────────
+            // ── Financial transactions ────────────────────────────────────
             $financialData     = [];
             $financialCount    = 0;
             $financialSnapshot = [
@@ -203,12 +203,11 @@ class DocumentBackupController extends Controller
             ];
 
             if ($includeFinancials) {
-                // Pure FinancialTransaction fetch — no Document join at all.
                 $financialData = FinancialTransaction::withTrashed()
-                    ->when(!empty($financialStatuses), fn ($q) => $q->whereIn('status', $financialStatuses))
-                    ->when(!empty($financialTypes),    fn ($q) => $q->whereIn('type', $financialTypes))
-                    ->when($financialDateFrom,         fn ($q) => $q->whereDate('transaction_date', '>=', $financialDateFrom))
-                    ->when($financialDateTo,           fn ($q) => $q->whereDate('transaction_date', '<=', $financialDateTo))
+                    ->when(! empty($financialStatuses), fn ($q) => $q->whereIn('status', $financialStatuses))
+                    ->when(! empty($financialTypes),    fn ($q) => $q->whereIn('type', $financialTypes))
+                    ->when($financialDateFrom,          fn ($q) => $q->whereDate('transaction_date', '>=', $financialDateFrom))
+                    ->when($financialDateTo,            fn ($q) => $q->whereDate('transaction_date', '<=', $financialDateTo))
                     ->get()
                     ->map(fn ($ft) => [
                         'id'               => $ft->id,
@@ -229,13 +228,10 @@ class DocumentBackupController extends Controller
                         'deleted_at'       => $ft->deleted_at,
                         'created_at'       => $ft->created_at,
                         'updated_at'       => $ft->updated_at,
-                        // No document_ids — Document copies are re-derived on restore
-                        // from the transaction status, not stored as references.
                     ])
                     ->all();
 
-                $financialCount = count($financialData);
-
+                $financialCount    = count($financialData);
                 $financialSnapshot = [
                     'included'     => true,
                     'statuses'     => $financialStatuses,
@@ -253,81 +249,49 @@ class DocumentBackupController extends Controller
 
             // ── Manifest ──────────────────────────────────────────────────
             $zip->addFromString('manifest.json', json_encode([
-                'backup_version'  => '4.0', // bumped — financial data now source-of-truth based
-                'created_at'      => now()->toISOString(),
-                'created_by'      => Auth::user()->email,
-                'scope'           => [
+                'backup_version' => '5.0', // ✅ Cloudinary-aware, no physical files
+                'storage'        => 'cloudinary', // ✅ Flag for restore to know file_path = URL
+                'created_at'     => now()->toISOString(),
+                'created_by'     => Auth::user()->email,
+                'scope'          => [
                     'category_ids'   => $categoryIds,
                     'category_label' => $categoryLabel,
                     'file_type'      => $fileTypeKey,
                     'allowed_mimes'  => $allowedMimes,
                 ],
-                'financial'       => $financialSnapshot,
-                'document_count'  => count($documents),
-                'documents'       => $documents,
+                'financial'      => $financialSnapshot,
+                'document_count' => count($documents),
+                'documents'      => $documents,
+                // ✅ No 'files' section — Cloudinary URLs are permanent
             ], JSON_PRETTY_PRINT));
-
-            // ── Physical document files ───────────────────────────────────
-            $tempFiles = [];
-            $fileCount = 0;
-
-            foreach ($documents as $doc) {
-                foreach ($doc['versions'] as $version) {
-                    $filePath = $version['file_path'];
-
-                    if (!Storage::disk($this->backupDisk)->exists($filePath)) {
-                        continue;
-                    }
-
-                    $readStream = Storage::disk($this->backupDisk)->readStream($filePath);
-                    if (!is_resource($readStream)) {
-                        continue;
-                    }
-
-                    $tmpFile = tempnam(sys_get_temp_dir(), 'bkf_');
-                    $dest    = fopen($tmpFile, 'wb');
-
-                    if ($dest === false) {
-                        fclose($readStream);
-                        continue;
-                    }
-
-                    stream_copy_to_stream($readStream, $dest);
-                    fclose($dest);
-                    fclose($readStream);
-
-                    $zip->addFile($tmpFile, "files/{$filePath}");
-                    $tempFiles[] = $tmpFile;
-                    $fileCount++;
-                }
-            }
 
             $zip->close();
 
-            foreach ($tempFiles as $tmp) {
-                @unlink($tmp);
-            }
+            // ✅ Upload ZIP to Cloudinary instead of local disk
+            $cloudinary = new CloudinaryService();
+            $zipFile    = new \Illuminate\Http\UploadedFile(
+                $tmpPath, $zipName, 'application/zip', null, true
+            );
+            $uploaded = $cloudinary->upload($zipFile, 'vsulhs-sslg/backups');
 
-            // ── Stream sealed ZIP to private storage ──────────────────────
-            $destination = "{$this->backupFolder}/{$zipName}";
-            $writeStream = @fopen($tmpPath, 'rb');
+            $sizeBytes = filesize($tmpPath);
 
-            if ($writeStream === false) {
-                throw new \RuntimeException('Failed to open sealed ZIP for streaming to storage.');
-            }
-
-            Storage::disk($this->backupDisk)->writeStream($destination, $writeStream);
-
-            if (is_resource($writeStream)) {
-                fclose($writeStream);
-            }
-
-            @unlink($tmpPath);
+            // ✅ Save backup record to DB
+            \App\Models\DocumentBackup::create([
+                'filename'             => $zipName,
+                'cloudinary_url'       => $uploaded['url'],
+                'cloudinary_public_id' => $uploaded['public_id'],
+                'category_slug'        => $categorySlug,
+                'category_label'       => $categoryLabel,
+                'file_type'            => $fileTypeKey,
+                'document_count'       => count($documents),
+                'financial_count'      => $financialCount,
+                'file_count'           => 0, // ✅ No physical files — Cloudinary handles storage
+                'size_bytes'           => $sizeBytes,
+                'created_by'           => Auth::id(),
+            ]);
 
         } catch (\Throwable $e) {
-            foreach ($tempFiles ?? [] as $tmp) {
-                @unlink($tmp);
-            }
             @unlink($tmpPath);
 
             \Log::error('Backup creation failed', [
@@ -340,6 +304,8 @@ class DocumentBackupController extends Controller
             return $isAjax
                 ? response()->json(['success' => false, 'error' => $error], 500)
                 : back()->with('error', $error);
+        } finally {
+            @unlink($tmpPath);
         }
 
         $elapsed = round(microtime(true) - $startTime, 2);
@@ -347,7 +313,7 @@ class DocumentBackupController extends Controller
         AuditLogger::log(
             'backup_created',
             null,
-            "Document backup created: {$zipName} (category: {$categoryLabel}, type: {$fileTypeKey}, {$fileCount} files, " . count($documents) . ' documents, ' . $financialCount . ' financial records)',
+            "Document backup created: {$zipName} (category: {$categoryLabel}, type: {$fileTypeKey}, " . count($documents) . " documents, {$financialCount} financial records)",
             [],
             [
                 'filename'        => $zipName,
@@ -365,36 +331,32 @@ class DocumentBackupController extends Controller
                 'filename'        => $zipName,
                 'elapsed'         => $elapsed,
                 'financial_count' => $financialCount,
-                'message'         => "Backup created in {$elapsed}s — {$fileCount} files, {$financialCount} financial records from \"{$categoryLabel}\" ({$fileTypeKey}).",
+                'message'         => "Backup created in {$elapsed}s — " . count($documents) . " documents, {$financialCount} financial records from \"{$categoryLabel}\" ({$fileTypeKey}).",
             ]);
         }
 
         return redirect()->route('admin.document-backups.index')
-            ->with('success', "Backup created: {$zipName} ({$fileCount} files · {$financialCount} financial records · category: {$categoryLabel} · type: {$fileTypeKey})");
+            ->with('success', "Backup created: {$zipName} (" . count($documents) . " documents · {$financialCount} financial records · category: {$categoryLabel} · type: {$fileTypeKey})");
     }
 
     // -------------------------------------------------------------------------
-    // Download
+    // Download — redirect to Cloudinary URL
     // -------------------------------------------------------------------------
 
     public function download(string $filename)
     {
         $this->requirePermission('backups.view');
 
-        $filename = basename($filename);
-        $path     = "{$this->backupFolder}/{$filename}";
-
-        if (!Storage::disk($this->backupDisk)->exists($path)) {
-            abort(404, 'Backup file not found.');
-        }
+        // ✅ Find backup in DB and redirect to Cloudinary URL
+        $backup = \App\Models\DocumentBackup::where('filename', basename($filename))->firstOrFail();
 
         AuditLogger::log('backup_downloaded', null, "Backup downloaded: {$filename}");
 
-        return Storage::disk($this->backupDisk)->download($path, $filename);
+        return redirect($backup->cloudinary_url);
     }
 
     // -------------------------------------------------------------------------
-    // Restore
+    // Restore — DB records only, no file restoration needed
     // -------------------------------------------------------------------------
 
     public function restore(Request $request)
@@ -415,7 +377,7 @@ class DocumentBackupController extends Controller
         $backupHash   = hash_file('sha256', $tmpPath);
         ini_set('max_execution_time', 300);
 
-        if (!$request->boolean('force_restore')) {
+        if (! $request->boolean('force_restore')) {
             $existing = RestoredBackup::where('backup_filename', $filename)->first();
             if ($existing) {
                 $restorer = $existing->restoredBy?->email ?? 'User #' . $existing->restored_by;
@@ -450,7 +412,6 @@ class DocumentBackupController extends Controller
                 ? json_decode($categoriesJson, true, 512, JSON_THROW_ON_ERROR)
                 : [];
 
-            // Only load financial rows if the user opted in to restore them
             $financialJson = $zip->getFromName('financial_transactions.json');
             $financialRows = ($financialJson && $request->boolean('restore_financials', true))
                 ? json_decode($financialJson, true, 512, JSON_THROW_ON_ERROR)
@@ -465,27 +426,26 @@ class DocumentBackupController extends Controller
         $documents              = $manifest['documents'];
         $financialRestoreStatus = $request->input('financial_restore_status', 'as_is');
         $actorUser              = Auth::user();
+        $isPostgres             = DB::getDriverName() === 'pgsql';
 
         $stats = [
-            'categories'                => 0,
-            'documents'                 => 0,
-            'versions'                  => 0,
-            'files'                     => 0,
-            'skipped'                   => 0,
-            'financial'                 => 0,
-            'fin_skipped'               => 0,
-            'financial_docs_generated'  => 0,
+            'categories'               => 0,
+            'documents'                => 0,
+            'versions'                 => 0,
+            'skipped'                  => 0,
+            'financial'                => 0,
+            'fin_skipped'              => 0,
+            'financial_docs_generated' => 0,
         ];
 
         DB::beginTransaction();
-        DB::statement('SET FOREIGN_KEY_CHECKS=0;');
 
         try {
-            // ── Step 1: Restore document categories ───────────────────────
+            // ── Step 1: Restore categories ────────────────────────────────
             $catNames     = array_filter(array_column($categories, 'name'));
             $existingCats = DocumentCategory::whereIn('name', $catNames)
-                                            ->get(['id', 'name'])
-                                            ->keyBy('name');
+                ->get(['id', 'name'])
+                ->keyBy('name');
 
             $categoryIdMap = [];
 
@@ -509,9 +469,9 @@ class DocumentBackupController extends Controller
             // ── Step 2: Bulk-check existing documents ─────────────────────
             $backupDocIds = array_column($documents, 'id');
             $existingDocs = Document::withTrashed()
-                                    ->whereIn('id', $backupDocIds)
-                                    ->get(['id', 'title', 'owner_id', 'current_version_id'])
-                                    ->keyBy('id');
+                ->whereIn('id', $backupDocIds)
+                ->get(['id'])
+                ->keyBy('id');
 
             // ── Step 3: Bulk-check existing versions ──────────────────────
             $allVersionIds = [];
@@ -522,14 +482,14 @@ class DocumentBackupController extends Controller
             }
 
             $existingVersionIds = DocumentVersion::whereIn('id', $allVersionIds)
-                                                ->pluck('id')
-                                                ->flip()
-                                                ->all();
+                ->pluck('id')
+                ->flip()
+                ->all();
 
-            // ── Step 4: Restore documents and versions (batch upsert) ─────
+            // ── Step 4: Restore documents and versions ────────────────────
             $documentsForUpsert = [];
             $versionsForUpsert  = [];
-            $docVersionUpdates  = [];  // [document_id => version_id]
+            $docVersionUpdates  = [];
 
             foreach ($documents as $docData) {
                 $alreadyExists = $existingDocs->has($docData['id']);
@@ -541,13 +501,14 @@ class DocumentBackupController extends Controller
 
                 $newCategoryId = $categoryIdMap[$docData['document_category_id']] ?? null;
 
-                // Build document row (upsert handles insert & update)
-                // ***** DATETIME NORMALIZATION APPLIED HERE *****
                 $documentsForUpsert[] = [
                     'id'                   => $docData['id'],
                     'owner_id'             => $docData['owner_id'],
                     'title'                => $docData['title'],
                     'description'          => $docData['description'],
+                    'tags'                 => is_array($docData['tags'] ?? null)
+                        ? json_encode($docData['tags'])
+                        : ($docData['tags'] ?? null),
                     'document_category_id' => $newCategoryId,
                     'uploaded_at'          => $this->normalizeDatetime($docData['uploaded_at']),
                     'deleted_at'           => $this->normalizeDatetime($docData['deleted_at']),
@@ -568,34 +529,24 @@ class DocumentBackupController extends Controller
                         continue;
                     }
 
-                    // Build version row
-                    // ***** DATETIME NORMALIZATION APPLIED HERE *****
+                    // ✅ file_path is Cloudinary URL — no file restoration needed
                     $versionsForUpsert[] = [
-                        'id'             => $versionData['id'],
-                        'document_id'    => $docData['id'],
-                        'version_number' => $versionData['version_number'],
-                        'file_path'      => $versionData['file_path'],
-                        'file_name'      => $versionData['file_name'],
-                        'mime_type'      => $versionData['mime_type'],
-                        'file_size'      => $versionData['file_size'],
-                        'change_notes'   => $versionData['change_notes'],
-                        'uploaded_by'    => $versionData['uploaded_by'],
-                        'created_at'     => $this->normalizeDatetime($versionData['created_at']) ?? now()->toDateTimeString(),
-                        'updated_at'     => now()->toDateTimeString(),
+                        'id'                   => $versionData['id'],
+                        'document_id'          => $docData['id'],
+                        'version_number'       => $versionData['version_number'],
+                        'file_path'            => $versionData['file_path'],            // ✅ Cloudinary URL
+                        'cloudinary_public_id' => $versionData['cloudinary_public_id'] ?? null,
+                        'file_name'            => $versionData['file_name'],
+                        'mime_type'            => $versionData['mime_type'],
+                        'file_size'            => $versionData['file_size'],
+                        'change_notes'         => $versionData['change_notes'],
+                        'uploaded_by'          => $versionData['uploaded_by'],
+                        'created_at'           => $this->normalizeDatetime($versionData['created_at']) ?? now()->toDateTimeString(),
+                        'updated_at'           => now()->toDateTimeString(),
                     ];
 
                     $stats['versions']++;
-
-                    // Write physical file (lightweight, kept per file)
-                    $stream = $zip->getStream("files/{$versionData['file_path']}");
-                    if ($stream !== false) {
-                        Storage::disk($this->backupDisk)->writeStream(
-                            $versionData['file_path'],
-                            $stream
-                        );
-                        fclose($stream);
-                        $stats['files']++;
-                    }
+                    // ✅ No file streaming needed — Cloudinary URL is permanent
 
                     if ($versionData['id'] == $docData['current_version_id']) {
                         $resolvedCurrentVersionId = $versionData['id'];
@@ -607,33 +558,33 @@ class DocumentBackupController extends Controller
                 }
             }
 
-            // Execute batch upserts (chunked to avoid huge statements)
+            // ── Batch upserts ─────────────────────────────────────────────
             $chunkSize = 200;
 
             foreach (array_chunk($documentsForUpsert, $chunkSize) as $chunk) {
                 Document::upsert($chunk, ['id'], [
-                    'owner_id', 'title', 'description', 'document_category_id',
-                    'uploaded_at', 'deleted_at', 'updated_at',
+                    'owner_id', 'title', 'description', 'tags',
+                    'document_category_id', 'uploaded_at', 'deleted_at', 'updated_at',
                 ]);
             }
 
             foreach (array_chunk($versionsForUpsert, $chunkSize) as $chunk) {
                 DocumentVersion::upsert($chunk, ['id'], [
-                    'document_id', 'version_number', 'file_path', 'file_name',
-                    'mime_type', 'file_size', 'change_notes', 'uploaded_by', 'updated_at',
+                    'document_id', 'version_number', 'file_path', 'cloudinary_public_id',
+                    'file_name', 'mime_type', 'file_size', 'change_notes',
+                    'uploaded_by', 'updated_at',
                 ]);
             }
 
-            // Update current_version_id for documents that need it
             foreach ($docVersionUpdates as $docId => $versionId) {
                 Document::where('id', $docId)->update(['current_version_id' => $versionId]);
             }
 
-            // ── Step 5: Restore financial transactions (batch upsert) ─────
-            if (!empty($financialRows)) {
+            // ── Step 5: Restore financial transactions ────────────────────
+            if (! empty($financialRows)) {
                 $financialsForUpsert = [];
-                $backupFtIds   = array_column($financialRows, 'id');
-                $existingFtIds = FinancialTransaction::withTrashed()
+                $backupFtIds         = array_column($financialRows, 'id');
+                $existingFtIds       = FinancialTransaction::withTrashed()
                     ->whereIn('id', $backupFtIds)
                     ->pluck('id')
                     ->flip()
@@ -651,7 +602,6 @@ class DocumentBackupController extends Controller
                         ? 'pending'
                         : $ftData['status'];
 
-                    // ***** DATETIME NORMALIZATION APPLIED HERE *****
                     $financialsForUpsert[] = [
                         'id'               => $ftData['id'],
                         'type'             => $ftData['type'],
@@ -676,7 +626,6 @@ class DocumentBackupController extends Controller
                     $stats['financial']++;
                 }
 
-                // Execute batch upsert
                 foreach (array_chunk($financialsForUpsert, 200) as $chunk) {
                     FinancialTransaction::upsert($chunk, ['id'], [
                         'type', 'user_id', 'status', 'description', 'amount', 'category',
@@ -686,7 +635,7 @@ class DocumentBackupController extends Controller
                     ]);
                 }
 
-                // ── Step 5b: Re-derive Document copies (same as before) ──
+                // ── Regenerate approval documents ─────────────────────────
                 if ($financialRestoreStatus !== 'force_pending') {
                     $restoredFts = FinancialTransaction::whereIn('id', $backupFtIds)
                         ->whereIn('status', ['approved', 'paid'])
@@ -696,17 +645,14 @@ class DocumentBackupController extends Controller
 
                     foreach ($restoredFts as $ft) {
                         try {
-                            if ($ft->type === 'receivable' && $ft->status !== 'paid') {
-                                continue;
-                            }
+                            if ($ft->type === 'receivable' && $ft->status !== 'paid') continue;
 
-                            $alreadyHasDoc = $ft->documents()
-                                ->whereJsonContains('tags', 'auto-generated')
-                                ->exists();
+                            // ✅ PostgreSQL compatible jsonb check
+                            $alreadyHasDoc = $isPostgres
+                                ? $ft->documents()->whereRaw("tags::jsonb @> '[\"auto-generated\"]'::jsonb")->exists()
+                                : $ft->documents()->whereJsonContains('tags', 'auto-generated')->exists();
 
-                            if ($alreadyHasDoc) {
-                                continue;
-                            }
+                            if ($alreadyHasDoc) continue;
 
                             $this->saveApprovedTransactionAsDocument($ft, $actorUser);
                             $stats['financial_docs_generated']++;
@@ -717,7 +663,7 @@ class DocumentBackupController extends Controller
                 }
             }
 
-            // ── Step 6: Record this restore ───────────────────────────────
+            // ── Step 6: Record restore ────────────────────────────────────
             RestoredBackup::updateOrCreate(
                 ['backup_filename' => $filename],
                 [
@@ -727,12 +673,10 @@ class DocumentBackupController extends Controller
                 ]
             );
 
-            DB::statement('SET FOREIGN_KEY_CHECKS=1;');
             DB::commit();
             $zip->close();
 
         } catch (\Throwable $e) {
-            DB::statement('SET FOREIGN_KEY_CHECKS=1;');
             DB::rollBack();
             $zip->close();
 
@@ -749,7 +693,7 @@ class DocumentBackupController extends Controller
         AuditLogger::log(
             'backup_restored',
             null,
-            "Backup restored: {$stats['documents']} documents, {$stats['files']} files, {$stats['financial']} financial records, {$stats['financial_docs_generated']} approval docs regenerated, {$stats['skipped']} skipped",
+            "Backup restored: {$stats['documents']} documents, {$stats['financial']} financial records, {$stats['financial_docs_generated']} approval docs regenerated, {$stats['skipped']} skipped",
             [],
             array_merge($stats, ['scope' => $scope])
         );
@@ -758,12 +702,11 @@ class DocumentBackupController extends Controller
             'Restore complete!',
             "{$stats['categories']} categories,",
             "{$stats['documents']} documents,",
-            "{$stats['versions']} versions,",
-            "{$stats['files']} files restored.",
-            $stats['financial']               > 0 ? "{$stats['financial']} financial records restored."                         : '',
-            $stats['financial_docs_generated'] > 0 ? "{$stats['financial_docs_generated']} approval documents regenerated."     : '',
-            $stats['fin_skipped']             > 0 ? "{$stats['fin_skipped']} financial records skipped."                        : '',
-            $stats['skipped']                 > 0 ? "{$stats['skipped']} documents skipped (already exist)."                    : '',
+            "{$stats['versions']} versions restored.",
+            $stats['financial']                > 0 ? "{$stats['financial']} financial records restored."                     : '',
+            $stats['financial_docs_generated'] > 0 ? "{$stats['financial_docs_generated']} approval documents regenerated." : '',
+            $stats['fin_skipped']              > 0 ? "{$stats['fin_skipped']} financial records skipped."                   : '',
+            $stats['skipped']                  > 0 ? "{$stats['skipped']} documents skipped (already exist)."               : '',
             $financialRestoreStatus === 'force_pending' && $stats['financial'] > 0
                 ? '⚠️ Financial records reset to pending — please re-audit and re-approve.'
                 : ($stats['financial'] > 0 ? '✅ Financial records restored with original status.' : ''),
@@ -774,21 +717,21 @@ class DocumentBackupController extends Controller
     }
 
     // -------------------------------------------------------------------------
-    // Destroy
+    // Destroy — delete from Cloudinary and DB
     // -------------------------------------------------------------------------
 
     public function destroy(string $filename)
     {
         $this->requirePermission('backups.delete');
 
-        $filename = basename($filename);
-        $path     = "{$this->backupFolder}/{$filename}";
+        // ✅ Find in DB and delete from Cloudinary
+        $backup = \App\Models\DocumentBackup::where('filename', basename($filename))->firstOrFail();
 
-        if (!Storage::disk($this->backupDisk)->exists($path)) {
-            return back()->with('error', 'Backup not found.');
-        }
+        $cloudinary = new CloudinaryService();
+        $cloudinary->delete($backup->cloudinary_public_id);
 
-        Storage::disk($this->backupDisk)->delete($path);
+        $backup->delete();
+
         AuditLogger::log('backup_deleted', null, "Backup deleted: {$filename}");
 
         return back()->with('success', "Backup {$filename} deleted.");
@@ -798,10 +741,6 @@ class DocumentBackupController extends Controller
     // Helpers
     // -------------------------------------------------------------------------
 
-    /**
-     * Convert an ISO 8601 or other Carbon‑parsable date to MySQL DATETIME format (Y‑m‑d H:i:s).
-     * Returns null for empty/unparsable values.
-     */
     private function normalizeDatetime($value): ?string
     {
         if (empty($value) || $value instanceof \DateTimeInterface) {
@@ -809,58 +748,18 @@ class DocumentBackupController extends Controller
         }
 
         try {
-            return \Carbon\Carbon::parse($value)->toDateTimeString();
+            return Carbon::parse($value)->toDateTimeString();
         } catch (\Throwable) {
             return null;
         }
     }
 
-    private function backupHasFinancialData(string $storagePath): bool
-    {
-        $tmpPath = sys_get_temp_dir() . '/' . basename($storagePath);
-
-        try {
-            $stream = Storage::disk($this->backupDisk)->readStream($storagePath);
-            if (!is_resource($stream)) return false;
-
-            $dest = fopen($tmpPath, 'wb');
-            stream_copy_to_stream($stream, $dest);
-            fclose($dest);
-            fclose($stream);
-
-            $zip = new ZipArchive;
-            if ($zip->open($tmpPath) !== true) return false;
-
-            $has = $zip->locateName('financial_transactions.json') !== false;
-            $zip->close();
-
-            return $has;
-        } catch (\Throwable) {
-            return false;
-        } finally {
-            @unlink($tmpPath);
-        }
-    }
-
-    private function parseBackupSlug(string $basename): array
-    {
-        if (str_contains($basename, '__')) {
-            $parts = explode('__', $basename);
-            return [$parts[1] ?? 'all', $parts[2] ?? 'all'];
-        }
-
-        $parts = explode('_', $basename, 6);
-        return [$parts[2] ?? 'all', $parts[3] ?? 'all'];
-    }
-
     private function formatBytes(int $bytes): string
     {
         if ($bytes <= 0) return '0 B';
-
         $units = ['B', 'KB', 'MB', 'GB'];
         $i     = (int) floor(log($bytes, 1024));
         $i     = min($i, count($units) - 1);
-
         return round($bytes / (1024 ** $i), 2) . ' ' . $units[$i];
     }
 }
