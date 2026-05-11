@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Hash;
 use App\Models\Document;
 use App\Models\FinancialTransaction;
 use Illuminate\Support\Facades\Storage;
+use App\Models\Member;
 
 class ProfileController extends Controller
 {
@@ -210,11 +211,20 @@ class ProfileController extends Controller
     // Helper
     // -------------------------------------------------------------------------
 
-    private function shouldClearYearLevel($roleId, $position)
+    private function shouldClearYearLevel(int $roleId, ?string $position): bool
     {
-        $alwaysNonStudent = [1, 6, 8];
-        if (in_array($roleId, $alwaysNonStudent)) return true;
-        if ($roleId == 2 && $position !== 'SSLG President') return true;
-        return false;
+        $positionsForRole = Member::VALID_POSITIONS[$roleId] ?? [];
+
+        if (empty($positionsForRole)) {
+            return true;
+        }
+
+        $nonStudent = Member::NON_STUDENT_POSITIONS;
+
+        if (array_diff($positionsForRole, $nonStudent) === []) {
+            return true;
+        }
+
+        return $position !== null && in_array($position, $nonStudent, true);
     }
 }
