@@ -359,6 +359,10 @@ class DocumentBackupController extends Controller
     // Restore — DB records only, no file restoration needed
     // -------------------------------------------------------------------------
 
+    // -------------------------------------------------------------------------
+    // Restore — DB records only, no file restoration needed
+    // -------------------------------------------------------------------------
+
     public function restore(Request $request)
     {
         $this->requirePermission('backups.restore');
@@ -372,13 +376,24 @@ class DocumentBackupController extends Controller
         ]);
 
         $uploadedFile = $request->file('backup_file');
-        $filename     = $uploadedFile->getClientOriginalName();
-        $tmpPath      = $uploadedFile->getPathname();
-        $backupHash   = hash_file('sha256', $tmpPath);
+
+        // ✅ Fix 1: Sanitize filename — prevents '--' in filename
+        // from being interpreted as a SQL comment by PostgreSQL
+        $filename = trim(basename($uploadedFile->getClientOriginalName()));
+
+        if (empty($filename)) {
+            return back()->with('error', 'Invalid backup filename.');
+        }
+
+        $tmpPath    = $uploadedFile->getPathname();
+        $backupHash = hash_file('sha256', $tmpPath);
+
         ini_set('max_execution_time', 300);
 
-        // ✅ Always ensure clean connection state before starting
+        // ✅ Fix 2: Force a clean PostgreSQL connection state
+        // DB::rollBack() alone doesn't clear an aborted transaction on pgsql
         try { DB::rollBack(); } catch (\Throwable) {}
+        DB::reconnect(); // ← clears any aborted transaction block
 
         if (! $request->boolean('force_restore')) {
             try {
@@ -569,11 +584,9 @@ class DocumentBackupController extends Controller
                 }
             }
 
-            // ✅ Insert documents one by one to avoid upsert jsonb issues on PostgreSQL
             $chunkSize = 200;
 
             if ($isPostgres) {
-                // PostgreSQL — use individual upsert queries to handle jsonb correctly
                 foreach ($documentsForUpsert as $docRow) {
                     DB::table('documents')->upsert([$docRow], ['id'], [
                         'owner_id', 'title', 'description', 'tags',
@@ -697,7 +710,6 @@ class DocumentBackupController extends Controller
             $zip->close();
 
         } catch (\Throwable $e) {
-            // ✅ Always rollback on any error
             try { DB::rollBack(); } catch (\Throwable) {}
             $zip->close();
 

@@ -25,12 +25,24 @@ class CloudinaryService
 
     public function upload($file, string $folder = 'vsulhs-sslg/documents'): array
     {
+        $mimeType    = $file->getMimeType();
+        $isRawFile   = in_array($mimeType, [
+            'application/zip',
+            'application/x-zip-compressed',
+            'application/octet-stream',
+        ]);
+
+        // ✅ Use explicit 'raw' resource_type for ZIP/binary files
+        // so Cloudinary serves them publicly without authentication
+        $resourceType = $isRawFile ? 'raw' : 'auto';
+
         $result = $this->cloudinary->uploadApi()->upload(
             $file->getRealPath(),
             [
                 'folder'        => $folder,
-                'resource_type' => 'auto',
+                'resource_type' => $resourceType,
                 'access_mode'   => 'public',
+                'type'          => 'upload', // ✅ force upload type (not authenticated)
             ]
         );
 
@@ -40,14 +52,14 @@ class CloudinaryService
         ];
     }
 
-    public function delete(string $publicId): void
+    public function delete(string $publicId, string $resourceType = 'raw'): void
     {
         try {
             $this->cloudinary->uploadApi()->destroy($publicId, [
-                'resource_type' => 'raw',
+                'resource_type' => $resourceType,
             ]);
         } catch (\Exception $e) {
-            // Silently fail if file doesn't exist
+            // Silently fail if file does not exist
         }
     }
 }
