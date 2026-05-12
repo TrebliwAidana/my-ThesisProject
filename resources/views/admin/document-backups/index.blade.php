@@ -823,8 +823,8 @@ html.dark .backups-info-list { color: #93c5fd; }
                     array_unique(array_column(...)) is therefore safe here.
                 --}}
                 @php
-                    $uniqueFiletypes  = array_unique(array_column($backups, 'filetype_slug'));
-                    $uniqueCategories = array_unique(array_column($backups, 'category_slug'));
+                    $uniqueFiletypes  = $backups->pluck('filetype_slug')->unique()->values()->toArray();
+                    $uniqueCategories = $backups->pluck('category_slug')->unique()->values()->toArray();
                 @endphp
                 <div class="px-5 py-3 border-b border-border flex items-center gap-3 flex-wrap">
                     <div class="flex flex-wrap gap-1.5 flex-1" id="filter-chips">
