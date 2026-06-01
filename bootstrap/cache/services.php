@@ -29,6 +29,7 @@
     25 => 'Maatwebsite\\Excel\\ExcelServiceProvider',
     26 => 'Carbon\\Laravel\\ServiceProvider',
     27 => 'App\\Providers\\AppServiceProvider',
+    28 => 'Laravel\\Tinker\\TinkerServiceProvider',
   ),
   'eager' => 
   array (
@@ -207,6 +208,7 @@
     'validator' => 'Illuminate\\Validation\\ValidationServiceProvider',
     'validation.presence' => 'Illuminate\\Validation\\ValidationServiceProvider',
     'Illuminate\\Contracts\\Validation\\UncompromisedVerifier' => 'Illuminate\\Validation\\ValidationServiceProvider',
+    'command.tinker' => 'Laravel\\Tinker\\TinkerServiceProvider',
   ),
   'when' => 
   array (
@@ -247,6 +249,9 @@
     array (
     ),
     'Illuminate\\Validation\\ValidationServiceProvider' => 
+    array (
+    ),
+    'Laravel\\Tinker\\TinkerServiceProvider' => 
     array (
     ),
   ),
