@@ -122,8 +122,6 @@
     }
 
     /* ── Button Styles ── */
-    
-    /* Emerald button (Green base → Gold hover) */
     .btn-emerald {
         display: inline-flex;
         align-items: center;
@@ -148,7 +146,6 @@
         box-shadow: 0 4px 16px rgba(212,175,55,0.35);
     }
 
-    /* Purple button for Receivable (Purple base → Gold hover) */
     .btn-purple {
         display: inline-flex;
         align-items: center;
@@ -173,7 +170,6 @@
         box-shadow: 0 4px 16px rgba(212,175,55,0.35);
     }
 
-    /* Blue button for Documents (Blue base → Gold hover) */
     .btn-blue {
         display: inline-flex;
         align-items: center;
@@ -198,7 +194,6 @@
         box-shadow: 0 4px 16px rgba(212,175,55,0.35);
     }
 
-    /* Red button for Expense (Red base → Gold hover) */
     .btn-red {
         display: inline-flex;
         align-items: center;
@@ -223,7 +218,6 @@
         box-shadow: 0 4px 16px rgba(212,175,55,0.35);
     }
 
-    /* Gold button for Edit Profile (Gold base → Emerald hover) */
     .btn-gold {
         display: inline-flex;
         align-items: center;
@@ -364,6 +358,7 @@
             #047857 60%,
             #0A3A28 100%);
     }
+
     /* ── Stat bar (bottom of chart) ── */
     .stat-bar-cell {
         padding: 0.75rem 1rem;
@@ -388,7 +383,7 @@
 <div style="font-family:'Outfit',sans-serif;" class="space-y-5">
 
     {{-- ══════════════════════════════════════
-         HERO HEADER — emerald green base
+         HERO HEADER
     ══════════════════════════════════════ --}}
     <div class="hero-gradient relative overflow-hidden rounded-2xl anim-fade-up" style="min-height:156px;">
         {{-- Decorative elements --}}
@@ -401,7 +396,8 @@
 
         <div class="relative z-10 p-6 md:p-7">
             <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                {{-- Greeting --}}
+
+                {{-- Left: Greeting --}}
                 <div>
                     <p class="text-emerald-300 text-[11px] font-semibold tracking-[0.2em] uppercase mb-1"
                        style="font-family:'DM Mono',monospace;">
@@ -417,44 +413,27 @@
                     <p class="text-emerald-200/70 text-sm mt-1.5 max-w-lg">{{ $roleDescription }}</p>
                 </div>
 
-                {{-- Right: badges + pending alert --}}
+                {{-- ── Right: ONE role badge + pending (if any) ── --}}
                 <div class="flex flex-col items-start md:items-end gap-2.5">
-                    {{-- Badges --}}
-                    <div class="flex flex-wrap gap-2">
-                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold"
-                              style="background: rgba(255,255,255,0.12); color:#D1FAE5; border:1px solid rgba(255,255,255,0.15);">
-                            <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"/></svg>
-                            {{ $user->role->name }}
-                        </span>
-                        @if($user->role->abbreviation)
-                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold"
-                              style="background: rgba(212,175,55,0.2); color:#F0CC55; border:1px solid rgba(212,175,55,0.3); font-family:'DM Mono',monospace;">
-                            {{ $user->role->abbreviation }}
-                        </span>
-                        @endif
-                        @if($user->position)
-                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs"
-                              style="background: rgba(255,255,255,0.1); color:#E2E8F0; border:1px solid rgba(255,255,255,0.12);">
-                            {{ $user->position }}
-                        </span>
-                        @endif
-                        @if(isset($userBadges))
-                            @foreach($userBadges as $badge)
-                            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold"
-                                  style="background: rgba(139,92,246,0.2); color:#DDD6FE; border:1px solid rgba(139,92,246,0.3);">
-                                ✦ {{ $badge['text'] }}
-                            </span>
-                            @endforeach
-                        @endif
-                    </div>
 
+                    {{-- Single consolidated role badge --}}
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold"
+                          style="background: rgba(255,255,255,0.12); color:#D1FAE5; border:1px solid rgba(255,255,255,0.18); font-family:'DM Mono',monospace;">
+                        <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"/>
+                        </svg>
+                        {{ $user->role->name }}
+                    </span>
+
+                    {{-- Pending tasks — only rendered when count > 0 --}}
                     @if($pendingTasksCount > 0)
                     <div class="pulse-ring inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold"
                          style="background:rgba(239,68,68,0.15); color:#FCA5A5; border:1px solid rgba(239,68,68,0.3);">
                         <span class="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse"></span>
-                        {{ $pendingTasksCount }} pending task{{ $pendingTasksCount > 1 ? 's' : '' }}
+                        {{ $pendingTasksCount }} pending {{ $pendingTasksCount === 1 ? 'task' : 'tasks' }}
                     </div>
                     @endif
+
                 </div>
             </div>
         </div>
@@ -568,7 +547,6 @@
         <div class="p-5 md:p-6">
             {{-- Header --}}
             <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-5">
-                {{-- Title --}}
                 <div>
                     <div class="flex items-center gap-2 mb-1">
                         <div class="icon-chip" style="background:rgba(5,150,105,0.1); width:2rem; height:2rem; border-radius:0.5rem;">
@@ -590,7 +568,6 @@
                     </p>
                 </div>
 
-                {{-- Right: legend + range --}}
                 <div class="flex flex-col items-start sm:items-end gap-2.5">
                     {{-- Legend pills --}}
                     <div class="flex flex-wrap items-center gap-3">
@@ -701,13 +678,12 @@
     </div>
 
     {{-- ══════════════════════════════════════
-         QUICK ACTIONS — All buttons with proper colors
-    ══════════════════════════════════════════ --}}
+         QUICK ACTIONS
+    ══════════════════════════════════════ --}}
     @if($user->hasPermission('members.create') || $user->hasPermission('documents.create') || $user->hasPermission('financial.create'))
     <div class="anim-fade-up d5">
         <p class="section-label mb-3">Quick Actions</p>
         <div class="flex flex-wrap gap-3">
-            {{-- Add Member — Emerald (Green → Gold) --}}
             @if($user->hasPermission('members.create'))
             <a href="{{ route('members.create') }}" class="btn-emerald">
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
@@ -716,8 +692,7 @@
                 Add Member
             </a>
             @endif
-            
-            {{-- Upload Document — Blue (Blue → Gold) --}}
+
             @if($user->hasPermission('documents.create'))
             <a href="{{ route('documents.create') }}" class="btn-blue">
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
@@ -726,8 +701,7 @@
                 Upload Document
             </a>
             @endif
-            
-            {{-- Add Income — Emerald (Green → Gold) --}}
+
             @if($user->hasPermission('financial.create'))
             <a href="{{ route('financial.income.create') }}" class="btn-emerald">
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
@@ -735,20 +709,12 @@
                 </svg>
                 Add Income
             </a>
-            @endif
-            
-            {{-- Add Expense — Red (Red → Gold) --}}
-            @if($user->hasPermission('financial.create'))
             <a href="{{ route('financial.expense.create') }}" class="btn-red">
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M20 12H4"/>
                 </svg>
                 Add Expense
             </a>
-            @endif
-            
-            {{-- Add Receivable — Purple (Purple → Gold) --}}
-            @if($user->hasPermission('financial.create'))
             <a href="{{ route('financial.receivable.create') }}" class="btn-purple">
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
@@ -767,7 +733,7 @@
 
         {{-- Profile Card --}}
         <div class="lg:col-span-1 anim-fade-up d4">
-             @if($user->hasPermission('profile.index') && $user->role->name !== 'Guest')
+            @if($user->hasPermission('profile.index') && $user->role->name !== 'Guest')
             <div class="dash-card dash-card-hover lg:sticky lg:top-6" style="overflow:visible;">
                 {{-- Card header --}}
                 <div class="hero-gradient px-5 py-5 relative overflow-hidden rounded-t-2xl">
@@ -804,32 +770,30 @@
 
                 {{-- Fields --}}
                 <div class="p-5">
-                        @php
-                        $profileRows = [
-                            ['Role',         $user->role->name],
-                            ['Position',     $user->member?->position ?? $user->position ?? '—'],
-                            ['Member Since', optional($user->member?->joined_at ?? $user->member?->term_start ?? $user->created_at)->format('M d, Y') ?? '—'],
-                            ['Last Login',   optional($user->last_login_at)->format('M d · H:i') ?? 'Never'],
-                            ['Last Updated', optional($user->updated_at)->format('M d, Y')],
-                        ];
-                        @endphp
-                        <div class="space-y-0">
-                            @foreach($profileRows as $row)
-                            <div class="flex justify-between items-center py-2.5 border-b dash-divider last:border-0">
-                                <span class="text-xs" style="color:var(--text-3);">{{ $row[0] }}</span>
-                                <span class="text-xs font-semibold text-right max-w-[56%] truncate" style="color:var(--text);">{{ $row[1] }}</span>
-                            </div>
-                            @endforeach
+                    @php
+                    $profileRows = [
+                        ['Role',         $user->role->name],
+                        ['Position',     $user->member?->position ?? $user->position ?? '—'],
+                        ['Member Since', optional($user->member?->joined_at ?? $user->member?->term_start ?? $user->created_at)->format('M d, Y') ?? '—'],
+                        ['Last Login',   optional($user->last_login_at)->format('M d · H:i') ?? 'Never'],
+                        ['Last Updated', optional($user->updated_at)->format('M d, Y')],
+                    ];
+                    @endphp
+                    <div class="space-y-0">
+                        @foreach($profileRows as $row)
+                        <div class="flex justify-between items-center py-2.5 border-b dash-divider last:border-0">
+                            <span class="text-xs" style="color:var(--text-3);">{{ $row[0] }}</span>
+                            <span class="text-xs font-semibold text-right max-w-[56%] truncate" style="color:var(--text);">{{ $row[1] }}</span>
                         </div>
-                       
-                        {{-- Edit Profile Button — Gold (Gold → Emerald) --}}
-                        <a href="{{ route('profile.index') }}" class="btn-emerald w-full justify-center mt-4">
-                            Edit Profile
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                            </svg>
-                        </a>
-                        
+                        @endforeach
+                    </div>
+
+                    <a href="{{ route('profile.index') }}" class="btn-emerald w-full justify-center mt-4">
+                        Edit Profile
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                        </svg>
+                    </a>
                 </div>
             </div>
             @endif
@@ -1029,18 +993,16 @@ document.addEventListener('DOMContentLoaded', function () {
     const data    = @json($chartData);
     const h       = 260;
 
-    // Emerald gradient bars
     const ig = ctx.createLinearGradient(0, 0, 0, h);
     ig.addColorStop(0, 'rgba(5,150,105,0.85)');
     ig.addColorStop(1, 'rgba(5,150,105,0.25)');
 
-    // Rose gradient bars
     const eg = ctx.createLinearGradient(0, 0, 0, h);
     eg.addColorStop(0, 'rgba(244,63,94,0.8)');
     eg.addColorStop(1, 'rgba(244,63,94,0.2)');
 
-    const gridColor  = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
-    const tickColor  = isDark ? '#475569' : '#94A3B8';
+    const gridColor = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
+    const tickColor = isDark ? '#475569' : '#94A3B8';
 
     new Chart(ctx, {
         type: 'bar',
