@@ -126,6 +126,9 @@ class DocumentController extends Controller
     {
         $this->authorize('view', $document);
 
+        // ✅ Eager load category to prevent stale data and N+1 queries
+        $document->load('category:id,name');
+
         return view('documents.show', compact('document'));
     }
 
