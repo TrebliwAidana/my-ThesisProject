@@ -85,11 +85,21 @@ trait FinancialHelperTrait
         $cloudinary = new CloudinaryService();
         $uploaded   = $cloudinary->upload($file, 'vsulhs-sslg/receipts');
 
+        // ✅ Determine category based on transaction type
+        $categoryName = match($transaction->type) {
+            'income'      => 'Approved Income',
+            'expense'     => 'Approved Expense',
+            'receivable'  => 'Approved Receivable',
+            default       => null,
+        };
+        $documentCategory = $categoryName ? DocumentCategory::where('name', $categoryName)->first() : null;
+
         $document = Document::create([
-            'title'       => 'Receipt: ' . $transaction->description,
-            'description' => 'Attached to financial transaction #' . $transaction->id,
-            'tags'        => ['receipt', 'financial'],
-            'owner_id'    => Auth::id(),
+            'title'                => 'Receipt: ' . $transaction->description,
+            'description'          => 'Attached to financial transaction #' . $transaction->id,
+            'document_category_id' => $documentCategory?->id,
+            'tags'                 => ['receipt', 'financial'],
+            'owner_id'             => Auth::id(),
         ]);
 
         // ✅ Use new addVersion() signature with Cloudinary URL

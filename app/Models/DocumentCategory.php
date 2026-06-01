@@ -9,7 +9,7 @@ class DocumentCategory extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name', 'description', 'is_active', 'document_category_id',];
+    protected $fillable = ['name', 'description', 'is_active'];
 
     protected $casts = [
         'is_active' => 'boolean',

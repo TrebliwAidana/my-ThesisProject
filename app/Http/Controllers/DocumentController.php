@@ -25,9 +25,15 @@ class DocumentController extends Controller
     {
         $isPostgres = DB::getDriverName() === 'pgsql';
 
+        // ✅ Fetch financial categories with null-checks (these should exist via migration)
         $incomeCategory     = DocumentCategory::where('name', 'Approved Income')->first();
         $expenseCategory    = DocumentCategory::where('name', 'Approved Expense')->first();
         $receivableCategory = DocumentCategory::where('name', 'Approved Receivable')->first();
+
+        // ⚠️ Log warning if any category is missing — indicates seeding issue
+        if (!$incomeCategory || !$expenseCategory || !$receivableCategory) {
+            \Illuminate\Support\Facades\Log::warning('Financial document categories missing. Some expected categories were not found in the database.');
+        }
 
         $query = $this->applyDocumentFilters(
             Document::with([
@@ -80,20 +86,21 @@ class DocumentController extends Controller
         $isPostgres = DB::getDriverName() === 'pgsql';
 
         if ($request->filled('search')) {
-            $query->where(function ($q) use ($request) {
-                $q->where('title', 'like', '%' . $request->search . '%')
-                    ->orWhere('description', 'like', '%' . $request->search . '%');
+            $searchTerm = $request->input('search');
+            $query->where(function ($q) use ($searchTerm) {
+                $q->where('title', 'like', '%' . $searchTerm . '%')
+                    ->orWhere('description', 'like', '%' . $searchTerm . '%');
             });
         }
 
         if ($request->filled('category')) {
-            $query->where('document_category_id', $request->category);
+            $query->where('document_category_id', $request->input('category'));
         }
 
         if ($request->filled('source')) {
-            if ($request->source === 'auto') {
+            if ($request->input('source') === 'auto') {
                 $query->whereJsonContains('tags', 'auto-generated');
-            } elseif ($request->source === 'manual') {
+            } elseif ($request->input('source') === 'manual') {
                 if ($isPostgres) {
                     $query->where(function ($q) {
                         $q->whereNull('tags')
@@ -204,11 +211,17 @@ class DocumentController extends Controller
         if ($user->role->level !== 1 && ! $user->hasPermission('documents.edit')) {
             abort(403);
         }
-        if ($user->role->level !== 1 && $document->owner_id !== $user->id) {
+        if ($user->role->level !== 1 && $document->getAttribute('owner_id') !== $user->id) {
             abort(403, 'You can only edit your own documents.');
         }
 
-        $categories = DocumentCategory::active()->orderBy('name')->get(['id', 'name']);
+        // ✅ Show active categories, plus current category even if inactive
+        $categories = DocumentCategory::active()
+            ->when($document->category_id && !$document->category?->is_active, function ($q) use ($document) {
+                $q->orWhere('id', $document->category_id);
+            })
+            ->orderBy('name')
+            ->get(['id', 'name']);
 
         return view('documents.edit', compact('document', 'categories'));
     }
@@ -219,7 +232,7 @@ class DocumentController extends Controller
         if ($user->role->level !== 1 && ! $user->hasPermission('documents.edit')) {
             abort(403);
         }
-        if ($user->role->level !== 1 && $document->owner_id !== $user->id) {
+        if ($user->role->level !== 1 && $document->getAttribute('owner_id') !== $user->id) {
             abort(403);
         }
 
@@ -257,7 +270,7 @@ class DocumentController extends Controller
             );
         }
 
-        AuditLogger::log('updated', $document, "Document: {$document->title}", $oldData, $document->getChanges());
+        AuditLogger::log('updated', $document, "Document: {$document->getAttribute('title')}", $oldData, $document->getChanges());
 
         return redirect()->route('documents.index')
             ->with('success', 'Document updated successfully.');
@@ -273,7 +286,7 @@ class DocumentController extends Controller
         if ($user->role->level !== 1 && ! $user->hasPermission('documents.delete')) {
             abort(403);
         }
-        if ($user->role->level !== 1 && $document->owner_id !== $user->id) {
+        if ($user->role->level !== 1 && $document->getAttribute('owner_id') !== $user->id) {
             abort(403);
         }
 
@@ -283,7 +296,7 @@ class DocumentController extends Controller
                 ->with('error', 'Auto-generated financial documents cannot be deleted here. To remove this record and keep your totals accurate, delete the transaction directly from Financial Records.');
         }
 
-        AuditLogger::log('deleted', $document, "Document: {$document->title}", $document->toArray(), []);
+        AuditLogger::log('deleted', $document, "Document: {$document->getAttribute('title')}", $document->toArray(), []);
         $document->delete();
 
         return redirect()->route('documents.index')

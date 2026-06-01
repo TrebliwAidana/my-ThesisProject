@@ -31,27 +31,20 @@ class DocumentCategoryController extends Controller
     {
         $this->requirePermission('categories.create');
 
-        $request->validate([
+        $validated = $request->validate([
             'name'        => 'required|string|max:255|unique:document_categories,name',
             'description' => 'nullable|string|max:500',
             'is_active'   => 'boolean',
         ]);
 
         DocumentCategory::create([
-            'name'        => $request->name,
-            'description' => $request->description,
+            'name'        => $validated['name'],
+            'description' => $validated['description'] ?? null,
             'is_active'   => $request->boolean('is_active', true),
         ]);
 
         return redirect()->route('admin.document-categories.index')
             ->with('success', 'Category created successfully.');
-    }
-
-    public function show(DocumentCategory $documentCategory)
-    {
-        $this->requirePermission('categories.view');
-
-        return view('admin.document-categories.show', compact('documentCategory'));
     }
 
     public function edit(DocumentCategory $documentCategory)
@@ -65,15 +58,15 @@ class DocumentCategoryController extends Controller
     {
         $this->requirePermission('categories.edit');
 
-        $request->validate([
-            'name'        => 'required|string|max:255|unique:document_categories,name,' . $documentCategory->id,
+        $validated = $request->validate([
+            'name'        => 'required|string|max:255|unique:document_categories,name,' . $documentCategory->getKey(),
             'description' => 'nullable|string|max:500',
             'is_active'   => 'boolean',
         ]);
 
         $documentCategory->update([
-            'name'        => $request->name,
-            'description' => $request->description,
+            'name'        => $validated['name'],
+            'description' => $validated['description'] ?? null,
             'is_active'   => $request->boolean('is_active', true),
         ]);
 
@@ -85,10 +78,12 @@ class DocumentCategoryController extends Controller
     {
         $this->requirePermission('categories.delete');
 
-        if ($documentCategory->documents()->exists()) {
-            $count = $documentCategory->documents()->count();
+        // ✅ Exclude soft-deleted documents from the count
+        if ($documentCategory->documents()->withoutTrashed()->exists()) {
+            $count = $documentCategory->documents()->withoutTrashed()->count();
+            $categoryName = $documentCategory->getAttribute('name');
             return redirect()->route('admin.document-categories.index')
-                ->with('error', "Cannot delete category '{$documentCategory->name}' because it is used by {$count} document(s). Please reassign or delete those documents first.");
+                ->with('error', "Cannot delete category '{$categoryName}' because it is used by {$count} active document(s). Please reassign or delete those documents first.");
         }
 
         $documentCategory->delete();
